@@ -1,0 +1,33 @@
+# HorizontalPodAutoscaler (autoscaling/v2) con tiempos acortados para verlo en pocos minutos.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php-apache
+  namespace: lab-10
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php-apache
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50     # objetivo: 50% de la CPU pedida (requests) en promedio
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100                 # como mucho duplica las replicas...
+          periodSeconds: 15          # ...cada 15 segundos
+    scaleDown:
+      stabilizationWindowSeconds: 30 # por defecto son 300 s (5 min); aqui 30 s para el lab
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15

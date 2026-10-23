@@ -1,0 +1,36 @@
+# Job: ejecuta una tarea hasta completarla (aqui 3 veces, de 2 en 2 en paralelo).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: calculo
+  namespace: lab-03
+spec:
+  completions: 3          # cuantas ejecuciones exitosas se necesitan
+  parallelism: 2          # cuantas a la vez como maximo
+  backoffLimit: 2         # reintentos antes de marcar el Job como fallido
+  template:
+    spec:
+      restartPolicy: Never   # en un Job solo se permite Never u OnFailure
+      containers:
+        - name: calc
+          image: busybox:1.37
+          command: ["sh", "-c", "echo calculando en $(hostname); sleep 5; echo listo"]
+---
+# CronJob: crea un Job segun un horario cron (aqui, cada minuto).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reporte
+  namespace: lab-03
+spec:
+  schedule: "*/1 * * * *"          # minuto hora dia-mes mes dia-semana
+  successfulJobsHistoryLimit: 2    # cuantos Jobs terminados conservar
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: reporte
+              image: busybox:1.37
+              command: ["sh", "-c", "date; echo generando reporte"]

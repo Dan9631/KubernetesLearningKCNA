@@ -1,0 +1,10 @@
+# Default deny de ENTRADA: selecciona todos los pods del namespace y no permite ningun origen.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: lab-05
+spec:
+  podSelector: {}          # {} = todos los pods del namespace
+  policyTypes:
+    - Ingress              # sin reglas "ingress:" -> nada entra

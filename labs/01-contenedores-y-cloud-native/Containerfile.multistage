@@ -1,0 +1,15 @@
+# Ejemplo de build multi-stage (paso opcional del laboratorio).
+# Construir:  podman build -f Containerfile.multistage -t kcna-web:multi .
+#
+# Etapa 1 ("build"): usa una imagen con herramientas para GENERAR artefactos.
+# En un proyecto real aqui irian el compilador, npm, maven, go build...
+FROM busybox:1.37 AS build
+WORKDIR /out
+RUN echo "<h1>Generado en la etapa build</h1>" > index.html && \
+    echo "<p>Fecha de build: $(date -u)</p>" >> index.html
+
+# Etapa 2 (final): solo copia el resultado. Las herramientas de la etapa 1
+# NO viajan en la imagen final -> imagen mas pequena y con menos superficie de ataque.
+FROM nginx:1.27-alpine
+COPY --from=build /out/index.html /usr/share/nginx/html/index.html
+EXPOSE 80

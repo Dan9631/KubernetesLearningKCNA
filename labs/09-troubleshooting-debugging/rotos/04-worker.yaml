@@ -1,0 +1,35 @@
+# Caso 4: el worker carga sus datos en memoria al arrancar... y muere.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: lab-09
+  labels:
+    app: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              echo "[worker] cargando 64 MiB de datos en memoria..."
+              head -c 64m /dev/zero | tail > /dev/null
+              echo "[worker] datos cargados. Procesando cola."
+              while true; do sleep 30; done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi

@@ -1,0 +1,21 @@
+# Modulo 06 - Pod "cliente" para probar la red desde DENTRO del cluster (nslookup, wget)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cliente
+  namespace: lab-06
+  labels:
+    app: cliente
+spec:
+  containers:
+    - name: busybox
+      image: busybox:1.37
+      command: ["sleep", "36000"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 50m
+          memory: 32Mi
+  terminationGracePeriodSeconds: 1

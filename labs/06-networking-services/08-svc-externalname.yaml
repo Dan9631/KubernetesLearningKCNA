@@ -1,0 +1,9 @@
+# Modulo 06 - Service ExternalName: solo un alias DNS (CNAME). Sin selector, sin endpoints, sin proxy.
+apiVersion: v1
+kind: Service
+metadata:
+  name: buscador
+  namespace: lab-06
+spec:
+  type: ExternalName
+  externalName: www.example.com

@@ -1,0 +1,20 @@
+# Abre un hueco en el default deny: a los pods app=api solo pueden entrar pods role=frontend, puerto 8080.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: permitir-frontend
+  namespace: lab-05
+spec:
+  podSelector:
+    matchLabels:
+      app: api               # A QUIEN protege la politica
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: frontend # QUIEN puede entrar
+      ports:
+        - protocol: TCP
+          port: 8080         # puerto del contenedor (no el del Service)

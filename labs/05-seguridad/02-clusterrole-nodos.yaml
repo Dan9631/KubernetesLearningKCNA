@@ -1,0 +1,23 @@
+# Los nodos no pertenecen a ningun namespace: para leerlos hace falta ClusterRole + ClusterRoleBinding.
+# Son objetos cluster-scoped, por eso llevan el prefijo lab-05- (los borra reset.ps1).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: lab-05-lector-nodos
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: lab-05-lector-nodos
+subjects:
+  - kind: ServiceAccount
+    name: lector
+    namespace: lab-05
+roleRef:
+  kind: ClusterRole
+  name: lab-05-lector-nodos
+  apiGroup: rbac.authorization.k8s.io

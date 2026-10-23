@@ -1,0 +1,52 @@
+# Modulo 08 - Volumenes que NO guardan datos de la app: configMap + secret + downwardAPI en un volumen "projected"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-app
+  namespace: lab-08
+data:
+  app.properties: |
+    modo=laboratorio
+    color=azul
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clave-app
+  namespace: lab-08
+stringData:
+  token: no-es-un-secreto-real
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: proyectado
+  namespace: lab-08
+  labels:
+    equipo: kcna
+spec:
+  terminationGracePeriodSeconds: 2
+  volumes:
+    - name: todo-junto
+      projected:
+        sources:
+          - configMap:
+              name: config-app
+          - secret:
+              name: clave-app
+          - downwardAPI:
+              items:
+                - path: etiquetas
+                  fieldRef:
+                    fieldPath: metadata.labels
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "36000"]
+      volumeMounts:
+        - name: todo-junto
+          mountPath: /etc/app
+          readOnly: true
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits:   { cpu: 50m, memory: 32Mi }

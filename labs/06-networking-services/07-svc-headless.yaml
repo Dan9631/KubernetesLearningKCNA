@@ -1,0 +1,15 @@
+# Modulo 06 - Service headless (clusterIP: None): sin IP virtual ni balanceo de kube-proxy.
+# El DNS devuelve directamente las IPs de los pods (util para StatefulSets y clientes que balancean solos).
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-headless
+  namespace: lab-06
+spec:
+  clusterIP: None
+  selector:
+    app: whoami
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

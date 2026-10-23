@@ -1,0 +1,2 @@
+busybox:1.37
+curlimages/curl:8.11.1

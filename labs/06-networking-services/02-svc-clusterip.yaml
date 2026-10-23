@@ -1,0 +1,14 @@
+# Modulo 06 - Service ClusterIP: IP virtual estable + nombre DNS para los pods app=whoami
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami
+  namespace: lab-06
+spec:
+  type: ClusterIP          # valor por defecto; se escribe para que quede explicito
+  selector:
+    app: whoami            # elige los pods por label, no por nombre
+  ports:
+    - name: http
+      port: 80             # puerto del Service (el que usan los clientes)
+      targetPort: http     # puerto del contenedor (por nombre: containerPort 80)

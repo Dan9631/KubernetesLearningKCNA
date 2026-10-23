@@ -1,0 +1,3 @@
+registry.k8s.io/hpa-example:latest   # solo existe como latest -> imagePullPolicy: IfNotPresent
+busybox:1.37
+nginx:1.27-alpine

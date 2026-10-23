@@ -1,0 +1,36 @@
+# Valores minimos para el chart prometheus-community/prometheus (lab 11)
+# Objetivo: un Prometheus ligero para aprender, sin almacenamiento persistente.
+
+server:
+  persistentVolume:
+    enabled: false          # TSDB en emptyDir: se pierde al borrar el pod (suficiente para el lab)
+  retention: "6h"
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 768Mi         # ~100k series en memoria rondan los 400 MiB
+
+alertmanager:
+  enabled: false            # alertas fuera del alcance del lab
+
+prometheus-pushgateway:
+  enabled: false            # solo para jobs batch de vida corta
+
+kube-state-metrics:
+  enabled: true             # estado de objetos de Kubernetes (kube_pod_status_phase, ...)
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+prometheus-node-exporter:
+  enabled: true             # metricas de cada nodo (CPU, memoria, disco) como DaemonSet
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi

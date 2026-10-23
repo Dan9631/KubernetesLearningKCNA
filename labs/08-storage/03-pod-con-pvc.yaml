@@ -1,0 +1,22 @@
+# Modulo 08 - Pod que monta el PVC "datos" en /data
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pvc
+  namespace: lab-08
+spec:
+  terminationGracePeriodSeconds: 2
+  volumes:
+    - name: almacen
+      persistentVolumeClaim:
+        claimName: datos           # el pod pide el PVC por nombre; nunca el PV directamente
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "36000"]
+      volumeMounts:
+        - name: almacen
+          mountPath: /data
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits:   { cpu: 50m, memory: 32Mi }

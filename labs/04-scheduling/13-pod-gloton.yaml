@@ -1,0 +1,18 @@
+# Pide mas CPU de la que permite el LimitRange (max 500m por contenedor).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gloton
+  namespace: lab-04
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "3600"]
+      resources:
+        requests:
+          cpu: 800m
+          memory: 32Mi
+        limits:
+          cpu: 800m
+          memory: 32Mi

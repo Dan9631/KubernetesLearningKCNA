@@ -1,0 +1,26 @@
+# nodeSelector: solo nodos con la label disktype=ssd (kcna-worker).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-ssd
+  namespace: lab-04
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-ssd
+  template:
+    metadata:
+      labels:
+        app: web-ssd
+        tier: frontend
+    spec:
+      nodeSelector:
+        disktype: ssd
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

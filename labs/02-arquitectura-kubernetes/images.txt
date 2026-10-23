@@ -1,0 +1,2 @@
+# Imagenes que usa el lab 02
+nginx:1.27-alpine

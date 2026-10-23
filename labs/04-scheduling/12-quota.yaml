@@ -1,0 +1,13 @@
+# Techo de consumo TOTAL del namespace lab-04 (suma de todos los pods).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cuota-lab
+  namespace: lab-04
+spec:
+  hard:
+    pods: "6"
+    requests.cpu: 500m
+    requests.memory: 512Mi
+    limits.cpu: "1"
+    limits.memory: 1Gi

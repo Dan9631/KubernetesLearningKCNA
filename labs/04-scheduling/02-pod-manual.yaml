@@ -1,0 +1,18 @@
+# Manual scheduling: nodeName asigna el nodo directamente y se salta a kube-scheduler.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: manual
+  namespace: lab-04
+  labels:
+    app: manual
+    tier: backend
+spec:
+  nodeName: kcna-worker2
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi

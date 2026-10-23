@@ -1,0 +1,38 @@
+# Traefik como Ingress Controller + Gateway API para el cluster kind "kcna".
+# Escucha en los puertos 80/443 del control-plane, mapeados a localhost:8080/8443 en Windows.
+ports:
+  web:
+    hostPort: 80
+  websecure:
+    hostPort: 443
+service:
+  type: ClusterIP
+# Con hostPort solo cabe un pod por nodo: reemplazar primero el viejo (si no, el nuevo queda Pending)
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+nodeSelector:
+  ingress-ready: "true"
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesGateway:
+    enabled: true
+gateway:
+  # Gateway "traefik-gateway" en el namespace traefik, listener HTTP en el puerto 8000 del pod (80 del nodo)
+  enabled: true
+  listeners:
+    web:
+      port: 8000
+      protocol: HTTP
+      namespacePolicy:
+        from: All

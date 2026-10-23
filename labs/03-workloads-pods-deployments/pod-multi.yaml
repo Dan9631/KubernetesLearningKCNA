@@ -1,0 +1,40 @@
+# Pod con init container + contenedor principal + sidecar.
+# - El init container genera la pagina y TERMINA antes de que arranquen los demas.
+# - nginx la sirve desde un volumen emptyDir compartido.
+# - El sidecar consulta a nginx por "localhost": todos los contenedores del Pod
+#   comparten la misma red (IP) y pueden compartir volumenes.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi
+  namespace: lab-03
+  labels:
+    app: multi
+spec:
+  initContainers:
+    - name: preparar
+      image: busybox:1.37
+      command: ["sh", "-c", "echo '<h1>Pagina creada por el init container</h1>' > /html/index.html; sleep 3"]
+      volumeMounts:
+        - name: html
+          mountPath: /html
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+      volumeMounts:
+        - name: html
+          mountPath: /usr/share/nginx/html
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { cpu: 100m, memory: 64Mi }
+    - name: sidecar
+      image: busybox:1.37
+      command: ["sh", "-c", "while true; do wget -qO- http://localhost:80/ ; sleep 10; done"]
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { cpu: 50m, memory: 32Mi }
+  volumes:
+    - name: html
+      emptyDir: {}

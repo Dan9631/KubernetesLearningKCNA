@@ -1,0 +1,2 @@
+traefik/whoami:v1.11
+busybox:1.37

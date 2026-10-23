@@ -1,0 +1,17 @@
+# Modulo 06 - Service NodePort: abre el puerto 30080 en TODOS los nodos.
+# kind mapea el 30080 del control-plane a http://localhost:30080 en Windows.
+# Ojo: un nodePort es unico en todo el cluster; si otro Service ya usa 30080, este fallara.
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-nodeport
+  namespace: lab-06
+spec:
+  type: NodePort
+  selector:
+    app: whoami
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      nodePort: 30080      # rango permitido: 30000-32767

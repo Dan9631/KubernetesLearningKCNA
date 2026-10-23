@@ -1,0 +1,16 @@
+# Ningun nodo tiene disktype=nvme: el pod se queda Pending para siempre.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: imposible
+  namespace: lab-04
+spec:
+  nodeSelector:
+    disktype: nvme
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi

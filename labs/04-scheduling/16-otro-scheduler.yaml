@@ -1,0 +1,15 @@
+# schedulerName apunta a un scheduler que no existe: nadie le asigna nodo a este pod.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: otro-scheduler
+  namespace: lab-04
+spec:
+  schedulerName: mi-scheduler
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi

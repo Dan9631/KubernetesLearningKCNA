@@ -1,0 +1,38 @@
+# Caso 2: la API arranca y se cae una y otra vez.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: lab-09
+  labels:
+    app: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              echo "[api] iniciando..."
+              if [ -z "$DB_HOST" ]; then
+                echo "[api] ERROR: la variable DB_HOST no esta definida. Abortando."
+                exit 1
+              fi
+              echo "[api] conectado a $DB_HOST. Atendiendo peticiones."
+              while true; do sleep 30; done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi

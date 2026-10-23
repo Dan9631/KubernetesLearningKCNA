@@ -1,0 +1,31 @@
+# Pod que usa la identidad "lector" para hablar con el API server desde dentro del cluster.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cliente-api
+  namespace: lab-05
+spec:
+  serviceAccountName: lector
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: curlimages/curl:8.11.1
+      command: ["sleep", "3600"]
+      env:
+        - name: SA          # carpeta donde Kubernetes monta el token proyectado
+          value: /var/run/secrets/kubernetes.io/serviceaccount
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

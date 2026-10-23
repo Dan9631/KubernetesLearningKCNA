@@ -1,0 +1,14 @@
+# Modulo 08 - PersistentVolumeClaim con aprovisionamiento dinamico (StorageClass "standard").
+# "standard" usa volumeBindingMode: WaitForFirstConsumer -> el PVC queda Pending hasta que un pod lo use.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: datos
+  namespace: lab-08
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi

@@ -1,0 +1,17 @@
+# Static pod: este archivo se copia DENTRO del nodo kcna-worker2, en /etc/kubernetes/manifests.
+# El kubelet lo arranca por su cuenta, sin pasar por kube-scheduler.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: estatico
+  namespace: lab-04
+  labels:
+    app: estatico
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi

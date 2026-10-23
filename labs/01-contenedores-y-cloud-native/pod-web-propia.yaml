@@ -1,0 +1,24 @@
+# Pod que ejecuta la imagen construida con Podman en el laboratorio guiado.
+# Antes: podman build -t kcna-web:1.0 .   y   .\kcna.ps1 load localhost/kcna-web:1.0
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-propia
+  namespace: lab-01
+  labels:
+    app: kcna-web
+    version: v1
+spec:
+  containers:
+    - name: web
+      image: localhost/kcna-web:1.0   # nombre completo que le pone Podman a las imagenes locales
+      imagePullPolicy: IfNotPresent   # la imagen ya esta en el nodo; nunca intentes descargarla
+      ports:
+        - containerPort: 80
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

@@ -1,0 +1,12 @@
+# kubectl apply -k gitops   -> servidor git + ConfigMap con los archivos iniciales del repo
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lab-12
+resources:
+  - git-server.yaml
+configMapGenerator:
+  - name: git-seed
+    files:
+      - repo/deployment.yaml
+      - repo/service.yaml
+      - repo/README.md

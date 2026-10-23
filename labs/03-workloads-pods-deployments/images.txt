@@ -1,0 +1,4 @@
+# Imagenes que usa el lab 03
+nginx:1.27-alpine
+nginx:1.28-alpine
+busybox:1.37

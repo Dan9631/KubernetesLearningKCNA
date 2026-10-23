@@ -1,0 +1,19 @@
+# Modulo 06 - HTTPRoute (Gateway API): se "cuelga" del Gateway compartido traefik-gateway
+# Prueba desde Windows: http://localhost:8080/lab06/gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: whoami
+  namespace: lab-06
+spec:
+  parentRefs:
+    - name: traefik-gateway       # Gateway creado por el operador del cluster
+      namespace: traefik          # vive en otro namespace: por eso se indica
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /lab06/gateway
+      backendRefs:
+        - name: whoami            # Service de destino (mismo namespace que la ruta)
+          port: 80

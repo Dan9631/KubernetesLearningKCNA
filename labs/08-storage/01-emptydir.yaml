@@ -1,0 +1,33 @@
+# Modulo 08 - emptyDir: volumen temporal que nace y muere con el POD (sobrevive a reinicios de contenedor).
+# Dos contenedores del mismo pod lo comparten: uno escribe y otro lee.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compartido
+  namespace: lab-08
+spec:
+  terminationGracePeriodSeconds: 2
+  volumes:
+    - name: cache
+      emptyDir:
+        sizeLimit: 50Mi          # opcional; con medium: Memory seria un tmpfs en RAM
+  containers:
+    - name: escritor
+      image: busybox:1.37
+      command: ["sh", "-c", "while true; do echo \"$(date +%T) escrito por $(hostname)\" >> /cache/log.txt; sleep 5; done"]
+      volumeMounts:
+        - name: cache
+          mountPath: /cache
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits:   { cpu: 50m, memory: 32Mi }
+    - name: lector
+      image: busybox:1.37
+      command: ["sh", "-c", "sleep 2; tail -f /compartida/log.txt"]
+      volumeMounts:
+        - name: cache
+          mountPath: /compartida   # mismo volumen, otra ruta: lo que importa es el nombre del volumen
+          readOnly: true
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits:   { cpu: 50m, memory: 32Mi }

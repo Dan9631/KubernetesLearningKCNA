@@ -1,0 +1,43 @@
+# App de ejemplo para HPA: cada peticion HTTP hace un calculo que consume CPU.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-apache
+  namespace: lab-10
+  labels:
+    app: php-apache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: php-apache
+  template:
+    metadata:
+      labels:
+        app: php-apache
+    spec:
+      containers:
+        - name: php-apache
+          image: registry.k8s.io/hpa-example:latest
+          imagePullPolicy: IfNotPresent      # solo existe como latest; se usa la precargada
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m        # el HPA calcula el % de uso SOBRE este valor
+              memory: 32Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-apache
+  namespace: lab-10
+spec:
+  selector:
+    app: php-apache
+  ports:
+    - port: 80
+      targetPort: 80

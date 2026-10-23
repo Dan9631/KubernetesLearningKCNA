@@ -1,0 +1,14 @@
+# Overlay dev: reutiliza la base y solo declara las diferencias.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lab-12
+namePrefix: dev-
+resources:
+  - ../../base
+labels:
+  - pairs:
+      env: dev
+    includeSelectors: true   # tambien en selectores: dev y prod no se mezclan
+replicas:
+  - name: web
+    count: 1

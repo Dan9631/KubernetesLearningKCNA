@@ -1,0 +1,35 @@
+# Un pod "agente" por nodo. La toleration permite incluir tambien el control-plane.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: agente
+  namespace: lab-04
+spec:
+  selector:
+    matchLabels:
+      app: agente
+  template:
+    metadata:
+      labels:
+        app: agente
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: agente
+          image: busybox:1.37
+          command: ["sh", "-c", "while true; do echo agente en $NODO; sleep 30; done"]
+          env:
+            - name: NODO
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi

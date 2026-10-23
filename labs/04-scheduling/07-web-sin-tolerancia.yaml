@@ -1,0 +1,23 @@
+# Sin tolerations: no puede caer en nodos con taints NoSchedule.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-sin-tol
+  namespace: lab-04
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: web-sin-tol
+  template:
+    metadata:
+      labels:
+        app: web-sin-tol
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

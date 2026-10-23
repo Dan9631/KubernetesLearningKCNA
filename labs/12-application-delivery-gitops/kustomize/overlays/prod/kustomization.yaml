@@ -1,0 +1,19 @@
+# Overlay prod: mas replicas, otra version de imagen y mas recursos.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lab-12
+namePrefix: prod-
+resources:
+  - ../../base
+labels:
+  - pairs:
+      env: prod
+    includeSelectors: true
+replicas:
+  - name: web
+    count: 3
+images:
+  - name: nginx
+    newTag: 1.28-alpine
+patches:
+  - path: recursos-patch.yaml

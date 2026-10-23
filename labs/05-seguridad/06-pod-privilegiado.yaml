@@ -1,0 +1,20 @@
+# Pod privilegiado: acceso casi total al nodo. Pod Security Admission "restricted" (y "baseline") lo rechaza.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-privilegiado
+  namespace: lab-05
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "3600"]
+      securityContext:
+        privileged: true
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 50m
+          memory: 32Mi

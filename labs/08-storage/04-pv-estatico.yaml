@@ -1,0 +1,46 @@
+# Modulo 08 - Aprovisionamiento ESTATICO: el administrador crea el PV a mano y un PVC lo reclama.
+# Recursos cluster-scoped con prefijo lab-08- (los borra labs/08-storage/reset.ps1).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: lab-08-manual
+provisioner: kubernetes.io/no-provisioner   # sin aprovisionador: solo agrupa PVs creados a mano
+volumeBindingMode: Immediate                # el PVC se enlaza en cuanto encuentra un PV compatible
+reclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: lab-08-pv-manual
+  labels:
+    lab: lab-08
+spec:
+  storageClassName: lab-08-manual
+  capacity:
+    storage: 200Mi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain     # al borrar el PVC, el PV queda "Released" con los datos
+  hostPath:                                 # SOLO para laboratorio: carpeta del nodo
+    path: /tmp/lab-08-pv
+    type: DirectoryOrCreate
+  nodeAffinity:                             # hostPath vive en UN nodo: fijamos cual
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: ["kcna-worker"]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claim-manual
+  namespace: lab-08
+spec:
+  storageClassName: lab-08-manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi                        # pide 100Mi; recibira el PV entero de 200Mi

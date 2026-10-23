@@ -1,0 +1,64 @@
+# ConfigMap + Secret de ejemplo y un Pod que los consume de dos formas:
+# como variables de entorno y como archivos montados en un volumen.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: lab-03
+data:
+  APP_COLOR: azul                    # clave sencilla -> variable de entorno
+  APP_MODE: desarrollo
+  app.properties: |                  # clave con contenido de archivo -> volumen
+    idioma=es
+    reintentos=3
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: lab-03
+type: Opaque
+stringData:                          # stringData: texto plano; Kubernetes lo guarda en base64 en .data
+  DB_USER: admin
+  DB_PASSWORD: S3cr3t0-de-lab
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: consume-config
+  namespace: lab-03
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sh", "-c", "sleep 3600"]
+      env:
+        - name: COLOR                # una clave concreta del ConfigMap
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_COLOR
+        - name: DB_PASSWORD          # una clave concreta del Secret
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: DB_PASSWORD
+      envFrom:
+        - configMapRef:              # TODAS las claves del ConfigMap como variables
+            name: app-config
+      volumeMounts:
+        - name: config
+          mountPath: /etc/app        # cada clave del ConfigMap = un archivo
+        - name: secreto
+          mountPath: /etc/secreto
+          readOnly: true
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { cpu: 50m, memory: 32Mi }
+  volumes:
+    - name: config
+      configMap:
+        name: app-config
+    - name: secreto
+      secret:
+        secretName: app-secret

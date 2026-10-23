@@ -1,0 +1,38 @@
+# Modulo 07 - Patron sidecar con "native sidecar container" (GA desde Kubernetes v1.33):
+# un initContainer con restartPolicy: Always arranca ANTES que la app y sigue vivo junto a ella.
+# La app (nginx) escribe sus logs en un emptyDir; el sidecar los lee con tail -F.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-con-sidecar
+  namespace: lab-07
+  labels:
+    app: web-con-sidecar
+spec:
+  terminationGracePeriodSeconds: 5   # busybox (sh) ignora SIGTERM: asi el borrado no tarda 30 s
+  volumes:
+    - name: logs
+      emptyDir: {}
+  initContainers:
+    - name: log-tail                 # el sidecar
+      image: busybox:1.37
+      restartPolicy: Always          # <- esto lo convierte en sidecar nativo
+      command: ["sh", "-c", "echo 'sidecar listo, esperando logs...'; tail -F /logs/access.log"]
+      volumeMounts:
+        - name: logs
+          mountPath: /logs
+          readOnly: true
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits:   { cpu: 50m, memory: 32Mi }
+  containers:
+    - name: nginx                    # la aplicacion principal
+      image: nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+      volumeMounts:
+        - name: logs
+          mountPath: /var/log/nginx  # nginx escribe aqui access.log y error.log
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits:   { cpu: 100m, memory: 64Mi }

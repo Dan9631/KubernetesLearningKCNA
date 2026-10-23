@@ -1,0 +1,9 @@
+# Modulo 12 - Application Delivery y GitOps
+# Kustomize (base/overlays) y chart de Helm
+nginx:1.27-alpine
+nginx:1.28-alpine
+# Las imagenes de Argo CD (parte opcional, ~850 MB: quay.io/argoproj/argocd:v3.5.5,
+# ghcr.io/dexidp/dex:v2.45.1, public.ecr.aws/docker/library/redis:8.2.3-alpine)
+# NO van aqui para no cargarlas en cada ".\kcna.ps1 up". Las carga
+# gitops\install-argocd.ps1 leyendo el manifiesto oficial de la version elegida.
+# El servidor git del lab reutiliza la imagen de Argo CD (trae git-daemon).

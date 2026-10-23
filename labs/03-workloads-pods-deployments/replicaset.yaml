@@ -1,0 +1,23 @@
+# ReplicaSet: mantiene N pods que cumplan el selector.
+# En la practica casi nunca se crea a mano: lo crea un Deployment.
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs-demo
+  namespace: lab-03
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rs-demo          # "cuenta" todos los pods con este label...
+  template:                 # ...y si faltan, crea nuevos con esta plantilla
+    metadata:
+      labels:
+        app: rs-demo        # debe coincidir con el selector
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 100m, memory: 64Mi }

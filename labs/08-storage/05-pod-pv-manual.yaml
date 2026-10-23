@@ -1,0 +1,22 @@
+# Modulo 08 - Pod que usa el PVC enlazado al PV estatico (hostPath en kcna-worker)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-manual
+  namespace: lab-08
+spec:
+  terminationGracePeriodSeconds: 2
+  volumes:
+    - name: disco
+      persistentVolumeClaim:
+        claimName: claim-manual
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sh", "-c", "echo \"hola desde $(hostname)\" > /mnt/disco/saludo.txt; sleep 36000"]
+      volumeMounts:
+        - name: disco
+          mountPath: /mnt/disco
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits:   { cpu: 50m, memory: 32Mi }

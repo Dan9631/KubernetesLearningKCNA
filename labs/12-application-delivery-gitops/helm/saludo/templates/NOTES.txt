@@ -1,0 +1,5 @@
+Release "{{ .Release.Name }}" (revision {{ .Release.Revision }}) instalado en el namespace {{ .Release.Namespace }}.
+
+Para verlo en el navegador:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Release.Name }} 8090:{{ .Values.service.port }}
+  y abre http://localhost:8090

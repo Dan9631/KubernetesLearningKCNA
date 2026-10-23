@@ -1,0 +1,5 @@
+# Imagenes base que usa el lab 01 (se descargan con Podman en el host y se cargan al cluster).
+# La imagen propia (localhost/kcna-web:1.0 y :2.0) NO va aqui: no existe en ningun registry,
+# la construyes tu con "podman build" y la cargas con ".\kcna.ps1 load localhost/kcna-web:1.0".
+nginx:1.27-alpine
+busybox:1.37

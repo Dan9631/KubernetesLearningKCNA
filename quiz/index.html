@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KCNA Practice</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #5d6673; --border: #dde1e6;
+    --accent: #326ce5; --accent-soft: #e6eefc; --ok: #1f883d; --ok-soft: #e3f5e8;
+    --bad: #cf222e; --bad-soft: #fde8ea; --warn: #9a6700;
+    --f: #326ce5; --o: #8250df; --d: #bc4c00; --a: #1a7f64;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1216; --panel: #171b21; --text: #e6e9ee; --muted: #9aa4b2; --border: #2a313b;
+      --accent: #6b9bff; --accent-soft: #1b2a45; --ok: #3fb950; --ok-soft: #12301b;
+      --bad: #f85149; --bad-soft: #3a1416; --warn: #d29922;
+      --f: #6b9bff; --o: #b392f0; --d: #f0883e; --a: #3fb9a0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --panel: #171b21; --text: #e6e9ee; --muted: #9aa4b2; --border: #2a313b;
+    --accent: #6b9bff; --accent-soft: #1b2a45; --ok: #3fb950; --ok-soft: #12301b;
+    --bad: #f85149; --bad-soft: #3a1416; --warn: #d29922;
+    --f: #6b9bff; --o: #b392f0; --d: #f0883e; --a: #3fb9a0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .spacer { flex: 1; }
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); padding: 8px 14px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.ghost { background: transparent; }
+  button:disabled { opacity: .5; cursor: default; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 0 10px; }
+  .domain { border-left: 4px solid var(--c); }
+  .bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 8px 0 4px; }
+  .bar > span { display: block; height: 100%; background: var(--c, var(--accent)); }
+  .small { font-size: 13px; color: var(--muted); }
+  .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); margin-right: 6px; }
+  .q-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .q-text { font-size: 18px; font-weight: 500; margin: 6px 0 16px; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left;
+    padding: 12px 14px; margin-bottom: 8px; border-radius: 10px; }
+  .opt .key { flex: 0 0 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border);
+    display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+  .opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .opt.correct { border-color: var(--ok); background: var(--ok-soft); }
+  .opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+  .explain { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--accent-soft); }
+  .explain.ok { background: var(--ok-soft); } .explain.bad { background: var(--bad-soft); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+  .timer { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .timer.low { color: var(--bad); }
+  .navgrid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 14px; }
+  .navgrid button { width: 34px; height: 30px; padding: 0; font-size: 12px; }
+  .navgrid button.answered { background: var(--accent-soft); border-color: var(--accent); }
+  .navgrid button.flag { outline: 2px solid var(--warn); }
+  .navgrid button.current { background: var(--accent); color: #fff; }
+  .navgrid button.r-ok { background: var(--ok-soft); border-color: var(--ok); }
+  .navgrid button.r-bad { background: var(--bad-soft); border-color: var(--bad); }
+  .score { font-size: 44px; font-weight: 700; margin: 4px 0; }
+  .pass { color: var(--ok); } .fail { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  select { font: inherit; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); }
+  .flash { min-height: 220px; display: grid; place-items: center; text-align: center; cursor: pointer;
+    font-size: 22px; padding: 28px; user-select: none; }
+  .flash .def { font-size: 17px; color: var(--text); max-width: 560px; }
+  kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  @media (max-width: 560px) { .q-text { font-size: 16px; } .score { font-size: 36px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>KCNA Practice</h1>
+  <span class="small" id="hdr-info"></span>
+  <span class="spacer"></span>
+  <button class="ghost" id="btn-home" title="Inicio">Inicio</button>
+  <button class="ghost" id="btn-theme" title="Cambiar tema">◐</button>
+</header>
+<main id="app"></main>
+
+<script src="preguntas.js"></script>
+<script src="flashcards.js"></script>
+<script>
+(function () {
+  'use strict';
+  const QS = window.KCNA_QUESTIONS || [];
+  const FC = window.KCNA_FLASHCARDS || [];
+  const DOMAINS = {
+    fundamentals:  { name: 'Kubernetes Fundamentals', weight: 44, color: 'var(--f)', exam: 26 },
+    orchestration: { name: 'Container Orchestration', weight: 28, color: 'var(--o)', exam: 17 },
+    delivery:      { name: 'Cloud Native Application Delivery', weight: 16, color: 'var(--d)', exam: 10 },
+    architecture:  { name: 'Cloud Native Architecture', weight: 12, color: 'var(--a)', exam: 7 }
+  };
+  const MODULES = {
+    1: 'Contenedores y cloud native', 2: 'Arquitectura de Kubernetes', 3: 'Workloads',
+    4: 'Scheduling', 5: 'Seguridad', 6: 'Networking y Services', 7: 'Service mesh',
+    8: 'Storage', 9: 'Troubleshooting y debugging', 10: 'Arquitectura cloud native',
+    11: 'Observabilidad', 12: 'Application delivery y GitOps'
+  };
+  const EXAM_SECONDS = 90 * 60;
+  const app = document.getElementById('app');
+
+  // ---------- almacenamiento (por navegador; puede no estar disponible) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('kcna.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('kcna.' + k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
+  };
+  // stats[id] = { seen, ok, last }  (last: true/false del último intento)
+  let stats = store.get('stats', {});
+  let history = store.get('history', []);
+  let known = store.get('known', {});
+  function record(q, correct) {
+    const s = stats[q.id] || { seen: 0, ok: 0 };
+    s.seen++; if (correct) s.ok++; s.last = correct;
+    stats[q.id] = s; store.set('stats', stats);
+  }
+
+  // ---------- utilidades ----------
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  // Prepara una pregunta con opciones barajadas y respuesta remapeada
+  function prep(q) {
+    const order = shuffle(q.options.map((_, i) => i));
+    return { q, order, options: order.map(i => q.options[i]), answer: order.map((orig, idx) => q.answer.includes(orig) ? idx : -1).filter(i => i >= 0), picked: [], flagged: false, done: false };
+  }
+  const isCorrect = it => it.picked.length === it.answer.length && it.picked.every(p => it.answer.includes(p));
+  const fmt = s => { const m = Math.floor(s / 60), r = s % 60; return m + ':' + String(r).padStart(2, '0'); };
+  const pct = (a, b) => b ? Math.round(100 * a / b) : 0;
+
+  // ---------- tema ----------
+  document.getElementById('btn-theme').onclick = () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    const next = dark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next); store.set('theme', next);
+  };
+  const savedTheme = store.get('theme', null); if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+  document.getElementById('btn-home').onclick = () => { stopTimer(); home(); };
+
+  let timer = null; function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+  let keyHandler = null; document.addEventListener('keydown', e => { if (keyHandler && !e.ctrlKey && !e.metaKey) keyHandler(e); });
+
+  // ---------- INICIO ----------
+  function domainStats(d) {
+    const qs = QS.filter(q => q.domain === d);
+    let seen = 0, ok = 0, mastered = 0;
+    qs.forEach(q => { const s = stats[q.id]; if (s) { seen += s.seen; ok += s.ok; if (s.last) mastered++; } });
+    return { total: qs.length, acc: pct(ok, seen), mastered, seen };
+  }
+  function home() {
+    stopTimer(); keyHandler = null;
+    document.getElementById('hdr-info').textContent = QS.length + ' preguntas · ' + FC.length + ' flashcards';
+    if (!QS.length) { app.innerHTML = '<div class="card empty">No se encontró <b>preguntas.js</b> junto a este archivo.</div>'; return; }
+    const wrong = QS.filter(q => stats[q.id] && stats[q.id].last === false).length;
+    const last = history.slice(-5).reverse();
+    app.innerHTML = `
+      <div class="grid">
+        <div class="card"><h2>Simulacro de examen</h2><p>60 preguntas con los pesos oficiales, 90 minutos, sin ver respuestas hasta el final. Aprobado: 75%.</p><button class="primary" id="go-exam">Empezar</button></div>
+        <div class="card"><h2>Práctica</h2><p>Por dominio o módulo, con la explicación inmediatamente después de responder.</p>
+          <select id="sel-scope" style="width:100%;margin-bottom:10px">
+            <option value="all">Todo el temario</option>
+            ${Object.entries(DOMAINS).map(([k, d]) => `<option value="d:${k}">${d.name} (${d.weight}%)</option>`).join('')}
+            ${Object.entries(MODULES).map(([n, t]) => `<option value="m:${n}">Módulo ${String(n).padStart(2, '0')} · ${t}</option>`).join('')}
+          </select>
+          <button class="primary" id="go-practice">Practicar 20</button></div>
+        <div class="card"><h2>Repasar falladas</h2><p>${wrong} pregunta(s) cuyo último intento fue incorrecto.</p><button id="go-wrong" ${wrong ? '' : 'disabled'}>Repasar</button></div>
+        <div class="card"><h2>Flashcards</h2><p>Términos clave: inglés → definición en español. Marca las que ya dominas.</p><button id="go-flash" ${FC.length ? '' : 'disabled'}>Abrir</button></div>
+      </div>
+      <div class="section-title">Progreso por dominio</div>
+      <div class="grid">
+        ${Object.entries(DOMAINS).map(([k, d]) => { const s = domainStats(k); return `
+          <div class="card domain" style="--c:${d.color}">
+            <h2>${d.name}</h2><div class="small">${d.weight}% del examen · ${s.total} preguntas</div>
+            <div class="bar"><span style="width:${pct(s.mastered, s.total)}%"></span></div>
+            <div class="small">${s.mastered}/${s.total} acertadas en su último intento · precisión ${s.seen ? s.acc + '%' : '—'}</div>
+          </div>`; }).join('')}
+      </div>
+      ${last.length ? `<div class="section-title">Últimos simulacros</div><div class="card"><table>
+        <tr><th>Fecha</th><th>Resultado</th><th>Tiempo</th></tr>
+        ${last.map(h => `<tr><td>${esc(new Date(h.date).toLocaleString())}</td><td class="${h.score >= 75 ? 'pass' : 'fail'}">${h.score}% (${h.ok}/${h.total})</td><td>${fmt(h.secs)}</td></tr>`).join('')}
+      </table></div>` : ''}
+      <div class="section-title">Atajos</div>
+      <div class="small"><kbd>1</kbd>-<kbd>5</kbd> elegir opción · <kbd>Enter</kbd> confirmar / siguiente · <kbd>←</kbd> <kbd>→</kbd> navegar en el simulacro · <kbd>F</kbd> marcar para revisar · <kbd>Espacio</kbd> voltear flashcard</div>
+      <div class="row"><button class="ghost" id="go-reset">Borrar mi progreso</button></div>`;
+    document.getElementById('go-exam').onclick = startExam;
+    document.getElementById('go-practice').onclick = () => {
+      const v = document.getElementById('sel-scope').value;
+      let pool = QS;
+      if (v.startsWith('d:')) pool = QS.filter(q => q.domain === v.slice(2));
+      if (v.startsWith('m:')) pool = QS.filter(q => String(q.module) === v.slice(2));
+      startPractice(pool, 20);
+    };
+    document.getElementById('go-wrong').onclick = () => startPractice(QS.filter(q => stats[q.id] && stats[q.id].last === false), 999);
+    document.getElementById('go-flash').onclick = flashcards;
+    document.getElementById('go-reset').onclick = () => {
+      if (confirm('¿Borrar estadísticas, historial y flashcards dominadas?')) { stats = {}; history = []; known = {}; store.set('stats', stats); store.set('history', history); store.set('known', known); home(); }
+    };
+  }
+
+  // ---------- render de pregunta ----------
+  function questionHTML(it, idx, total, mode) {
+    const d = DOMAINS[it.q.domain] || { name: it.q.domain, color: 'var(--accent)' };
+    const multi = it.answer.length > 1;
+    const reveal = mode === 'practice' ? it.done : mode === 'review';
+    return `
+      <div class="q-meta">
+        <span class="pill" style="background:transparent;border:1px solid ${d.color};color:${d.color}">${esc(d.name)}</span>
+        <span class="pill">${esc(it.q.topic || '')}</span>
+        ${it.q.module ? `<span class="small">Módulo ${String(it.q.module).padStart(2, '0')}</span>` : ''}
+        <span class="spacer" style="flex:1"></span>
+        <span class="small">${idx + 1} / ${total}</span>
+      </div>
+      <div class="q-text">${esc(it.q.q)}</div>
+      ${multi ? `<div class="small" style="margin:-8px 0 12px">Selecciona ${it.answer.length} respuestas.</div>` : ''}
+      ${it.options.map((o, i) => {
+        let cls = it.picked.includes(i) ? 'sel' : '';
+        if (reveal) { if (it.answer.includes(i)) cls = 'correct'; else if (it.picked.includes(i)) cls = 'wrong'; }
+        return `<button class="opt ${cls}" data-i="${i}" ${reveal ? 'disabled' : ''}><span class="key">${i + 1}</span><span>${esc(o)}</span></button>`;
+      }).join('')}
+      ${reveal ? `<div class="explain ${isCorrect(it) ? 'ok' : 'bad'}"><b>${isCorrect(it) ? 'Correcto.' : (it.picked.length ? 'Incorrecto.' : 'Sin responder.')}</b> ${esc(it.q.explanation || '')}</div>` : ''}`;
+  }
+  function togglePick(it, i) {
+    if (it.answer.length > 1) {
+      it.picked = it.picked.includes(i) ? it.picked.filter(x => x !== i) : it.picked.concat(i);
+      if (it.picked.length > it.answer.length) it.picked.shift();
+    } else it.picked = [i];
+  }
+
+  // ---------- PRÁCTICA ----------
+  function startPractice(pool, n) {
+    stopTimer();
+    // prioriza las nunca vistas y las falladas
+    const scored = shuffle(pool).sort((a, b) => weightOf(b) - weightOf(a));
+    const items = scored.slice(0, Math.min(n, pool.length)).map(prep);
+    if (!items.length) { app.innerHTML = '<div class="card empty">No hay preguntas para esta selección todavía.</div>'; return; }
+    let idx = 0, ok = 0;
+    function weightOf(q) { const s = stats[q.id]; if (!s) return 2; return s.last === false ? 3 : 1 - s.ok / (s.seen + 1); }
+    function render() {
+      const it = items[idx];
+      document.getElementById('hdr-info').textContent = 'Práctica · ' + ok + ' correctas';
+      app.innerHTML = `<div class="card">${questionHTML(it, idx, items.length, 'practice')}
+        <div class="row">${it.done
+          ? `<button class="primary" id="next">${idx + 1 < items.length ? 'Siguiente' : 'Ver resultado'}</button>`
+          : `<button class="primary" id="confirm" ${it.picked.length ? '' : 'disabled'}>Responder</button>`}
+          <span class="spacer" style="flex:1"></span><button class="ghost" id="quit">Terminar</button></div></div>`;
+      app.querySelectorAll('.opt').forEach(b => b.onclick = () => { togglePick(it, +b.dataset.i); render(); });
+      const c = document.getElementById('confirm'); if (c) c.onclick = confirm_;
+      const nx = document.getElementById('next'); if (nx) nx.onclick = next;
+      document.getElementById('quit').onclick = finish;
+    }
+    function confirm_() { const it = items[idx]; if (!it.picked.length) return; it.done = true; const good = isCorrect(it); if (good) ok++; record(it.q, good); render(); }
+    function next() { if (idx + 1 < items.length) { idx++; render(); } else finish(); }
+    function finish() {
+      keyHandler = null;
+      const answered = items.filter(i => i.done).length;
+      app.innerHTML = `<div class="card"><h2>Práctica terminada</h2>
+        <div class="score ${pct(ok, answered) >= 75 ? 'pass' : 'fail'}">${pct(ok, answered)}%</div>
+        <div class="small">${ok} de ${answered} correctas</div>
+        <div class="row"><button class="primary" id="again">Otra ronda</button><button id="h">Inicio</button></div></div>`;
+      document.getElementById('again').onclick = () => startPractice(pool, n);
+      document.getElementById('h').onclick = home;
+    }
+    keyHandler = e => {
+      const it = items[idx];
+      if (/^[1-5]$/.test(e.key) && !it.done && +e.key <= it.options.length) { togglePick(it, +e.key - 1); render(); }
+      else if (e.key === 'Enter') { e.preventDefault(); it.done ? next() : confirm_(); }
+    };
+    render();
+  }
+
+  // ---------- SIMULACRO ----------
+  function startExam() {
+    stopTimer();
+    let items = [];
+    Object.entries(DOMAINS).forEach(([k, d]) => { items = items.concat(shuffle(QS.filter(q => q.domain === k)).slice(0, d.exam)); });
+    items = shuffle(items).map(prep);
+    let idx = 0, left = EXAM_SECONDS; const started = Date.now();
+    function tick() {
+      left = Math.max(0, EXAM_SECONDS - Math.floor((Date.now() - started) / 1000));
+      const t = document.getElementById('timer'); if (t) { t.textContent = fmt(left); t.classList.toggle('low', left < 300); }
+      if (left <= 0) submit(true);
+    }
+    function render() {
+      const it = items[idx];
+      const answered = items.filter(i => i.picked.length).length;
+      document.getElementById('hdr-info').innerHTML = `Simulacro · <span class="timer" id="timer">${fmt(left)}</span> · ${answered}/${items.length} respondidas`;
+      app.innerHTML = `<div class="card">${questionHTML(it, idx, items.length, 'exam')}
+        <div class="row">
+          <button id="prev" ${idx ? '' : 'disabled'}>← Anterior</button>
+          <button id="next">${idx + 1 < items.length ? 'Siguiente →' : 'Revisar'}</button>
+          <button class="ghost" id="flag">${it.flagged ? '★ Marcada' : '☆ Marcar para revisar'}</button>
+          <span class="spacer" style="flex:1"></span>
+          <button class="primary" id="submit">Entregar</button>
+        </div>
+        <div class="navgrid">${items.map((x, i) => `<button data-n="${i}" class="${i === idx ? 'current' : ''} ${x.picked.length ? 'answered' : ''} ${x.flagged ? 'flag' : ''}">${i + 1}</button>`).join('')}</div>
+      </div>`;
+      app.querySelectorAll('.opt').forEach(b => b.onclick = () => { togglePick(it, +b.dataset.i); render(); });
+      app.querySelectorAll('.navgrid button').forEach(b => b.onclick = () => { idx = +b.dataset.n; render(); });
+      document.getElementById('prev').onclick = () => { if (idx) { idx--; render(); } };
+      document.getElementById('next').onclick = () => { if (idx + 1 < items.length) { idx++; render(); } };
+      document.getElementById('flag').onclick = () => { it.flagged = !it.flagged; render(); };
+      document.getElementById('submit').onclick = () => submit(false);
+      tick();
+    }
+    function submit(timeout) {
+      const pending = items.filter(i => !i.picked.length).length;
+      if (!timeout && !confirm(pending ? `Tienes ${pending} sin responder. ¿Entregar de todas formas?` : '¿Entregar el simulacro?')) return;
+      stopTimer(); keyHandler = null;
+      const secs = Math.min(EXAM_SECONDS, Math.floor((Date.now() - started) / 1000));
+      items.forEach(i => { i.done = true; record(i.q, isCorrect(i)); });
+      const ok = items.filter(isCorrect).length, score = pct(ok, items.length);
+      history.push({ date: Date.now(), score, ok, total: items.length, secs }); store.set('history', history);
+      results(items, score, ok, secs, timeout);
+    }
+    keyHandler = e => {
+      const it = items[idx];
+      if (/^[1-5]$/.test(e.key) && +e.key <= it.options.length) { togglePick(it, +e.key - 1); render(); }
+      else if (e.key === 'ArrowRight' || e.key === 'Enter') { if (idx + 1 < items.length) { idx++; render(); } }
+      else if (e.key === 'ArrowLeft') { if (idx) { idx--; render(); } }
+      else if (e.key.toLowerCase() === 'f') { it.flagged = !it.flagged; render(); }
+    };
+    timer = setInterval(tick, 1000);
+    render();
+  }
+
+  function results(items, score, ok, secs, timeout) {
+    const byDom = {}, byTopic = {};
+    items.forEach(i => {
+      const d = byDom[i.q.domain] = byDom[i.q.domain] || { ok: 0, n: 0 }; d.n++; if (isCorrect(i)) d.ok++;
+      const t = byTopic[i.q.topic] = byTopic[i.q.topic] || { ok: 0, n: 0, m: i.q.module }; t.n++; if (isCorrect(i)) t.ok++;
+    });
+    const weak = Object.entries(byTopic).filter(([, t]) => pct(t.ok, t.n) < 75).sort((a, b) => pct(a[1].ok, a[1].n) - pct(b[1].ok, b[1].n));
+    document.getElementById('hdr-info').textContent = 'Resultado del simulacro';
+    app.innerHTML = `
+      <div class="card">
+        <div class="small">${timeout ? 'Se acabó el tiempo.' : 'Simulacro entregado.'} Tiempo: ${fmt(secs)}</div>
+        <div class="score ${score >= 75 ? 'pass' : 'fail'}">${score}%</div>
+        <div>${ok} de ${items.length} correctas — ${score >= 75 ? '<b class="pass">Aprobado</b>' : '<b class="fail">Por debajo del 75%</b>'}</div>
+        <div class="section-title">Por dominio</div>
+        ${Object.entries(DOMAINS).map(([k, d]) => { const s = byDom[k] || { ok: 0, n: 0 }; return `
+          <div style="--c:${d.color}"><div class="small">${d.name}: ${s.ok}/${s.n} (${pct(s.ok, s.n)}%)</div><div class="bar"><span style="width:${pct(s.ok, s.n)}%"></span></div></div>`; }).join('')}
+        ${weak.length ? `<div class="section-title">Temas a reforzar</div><table><tr><th>Competencia</th><th>Aciertos</th><th>Repasar</th></tr>
+          ${weak.map(([t, s]) => `<tr><td>${esc(t)}</td><td>${s.ok}/${s.n}</td><td>${s.m ? 'Módulo ' + String(s.m).padStart(2, '0') : ''}</td></tr>`).join('')}</table>` : ''}
+        <div class="row"><button class="primary" id="rev">Revisar respuestas</button><button id="h">Inicio</button></div>
+      </div>`;
+    document.getElementById('rev').onclick = () => review(items, 0);
+    document.getElementById('h').onclick = home;
+  }
+
+  function review(items, idx) {
+    const it = items[idx];
+    app.innerHTML = `<div class="card">${questionHTML(it, idx, items.length, 'review')}
+      <div class="row"><button id="prev" ${idx ? '' : 'disabled'}>← Anterior</button><button id="next" ${idx + 1 < items.length ? '' : 'disabled'}>Siguiente →</button>
+      <span class="spacer" style="flex:1"></span><button id="h">Inicio</button></div>
+      <div class="navgrid">${items.map((x, i) => `<button data-n="${i}" class="${i === idx ? 'current' : (isCorrect(x) ? 'r-ok' : 'r-bad')}">${i + 1}</button>`).join('')}</div></div>`;
+    document.getElementById('prev').onclick = () => review(items, idx - 1);
+    document.getElementById('next').onclick = () => review(items, idx + 1);
+    document.getElementById('h').onclick = home;
+    app.querySelectorAll('.navgrid button').forEach(b => b.onclick = () => review(items, +b.dataset.n));
+    keyHandler = e => { if (e.key === 'ArrowRight' && idx + 1 < items.length) review(items, idx + 1); if (e.key === 'ArrowLeft' && idx) review(items, idx - 1); };
+  }
+
+  // ---------- FLASHCARDS ----------
+  function flashcards() {
+    stopTimer();
+    let onlyPending = true, dom = 'all', deck = [], idx = 0, flipped = false;
+    function build() {
+      deck = shuffle(FC.filter(c => (dom === 'all' || c.domain === dom) && (!onlyPending || !known[c.term])));
+      idx = 0; flipped = false;
+    }
+    function render() {
+      const done = FC.filter(c => known[c.term]).length;
+      document.getElementById('hdr-info').textContent = 'Flashcards · ' + done + '/' + FC.length + ' dominadas';
+      const c = deck[idx];
+      app.innerHTML = `
+        <div class="row" style="margin-top:0">
+          <select id="fdom"><option value="all">Todos los dominios</option>${Object.entries(DOMAINS).map(([k, d]) => `<option value="${k}" ${dom === k ? 'selected' : ''}>${d.name}</option>`).join('')}</select>
+          <label class="small"><input type="checkbox" id="fpend" ${onlyPending ? 'checked' : ''}> Solo pendientes</label>
+          <span class="spacer" style="flex:1"></span><span class="small">${deck.length ? (idx + 1) + ' / ' + deck.length : ''}</span>
+        </div>
+        <div class="card flash" id="fcard" style="margin-top:12px">${c
+          ? (flipped ? `<div><div class="small">${esc(c.term)}</div><div class="def">${esc(c.def)}</div></div>` : `<div><b>${esc(c.term)}</b><div class="small" style="margin-top:8px">clic o Espacio para ver la definición</div></div>`)
+          : '<div class="small">¡No quedan tarjetas pendientes en esta selección!</div>'}</div>
+        ${c ? `<div class="row"><button id="fprev" ${idx ? '' : 'disabled'}>←</button><button id="fnext">→</button>
+          <span class="spacer" style="flex:1"></span>
+          <button id="fknow" class="${known[c.term] ? '' : 'primary'}">${known[c.term] ? 'Quitar de dominadas' : 'La domino ✓'}</button></div>` : ''}`;
+      document.getElementById('fdom').onchange = e => { dom = e.target.value; build(); render(); };
+      document.getElementById('fpend').onchange = e => { onlyPending = e.target.checked; build(); render(); };
+      const card = document.getElementById('fcard'); if (c) card.onclick = () => { flipped = !flipped; render(); };
+      if (c) {
+        document.getElementById('fprev').onclick = () => { idx--; flipped = false; render(); };
+        document.getElementById('fnext').onclick = () => { idx = (idx + 1) % deck.length; flipped = false; render(); };
+        document.getElementById('fknow').onclick = () => {
+          if (known[c.term]) delete known[c.term]; else known[c.term] = true; store.set('known', known);
+          if (onlyPending && known[c.term]) { deck.splice(idx, 1); if (idx >= deck.length) idx = 0; flipped = false; }
+          render();
+        };
+      }
+    }
+    keyHandler = e => {
+      if (!deck.length) return;
+      if (e.key === ' ') { e.preventDefault(); flipped = !flipped; render(); }
+      else if (e.key === 'ArrowRight') { idx = (idx + 1) % deck.length; flipped = false; render(); }
+      else if (e.key === 'ArrowLeft' && idx) { idx--; flipped = false; render(); }
+    };
+    build(); render();
+  }
+
+  home();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Modulo 06 - Ingress: regla HTTP por path que atiende el Ingress Controller (Traefik)
+# Prueba desde Windows: http://localhost:8080/lab06/ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: whoami
+  namespace: lab-06
+spec:
+  ingressClassName: traefik       # opcional aqui: traefik es la IngressClass por defecto
+  rules:
+    - http:
+        paths:
+          - path: /lab06/ingress
+            pathType: Prefix
+            backend:
+              service:
+                name: whoami
+                port:
+                  number: 80

@@ -1,0 +1,30 @@
+# Identidad para una app (ServiceAccount) + permisos (Role) + la union de ambos (RoleBinding).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lector
+  namespace: lab-05
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lector-pods
+  namespace: lab-05
+rules:
+  - apiGroups: [""]              # "" = grupo core (pods, services, secrets...)
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lector-pods
+  namespace: lab-05
+subjects:
+  - kind: ServiceAccount
+    name: lector
+    namespace: lab-05
+roleRef:
+  kind: Role
+  name: lector-pods
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,42 @@
+# Tres pods para observar fases y restartPolicy.
+# Despues de aplicarlos:  kubectl get pods -n lab-03 -w
+---
+# Termina bien (exit 0) y no se reinicia -> fase Succeeded (STATUS: Completed)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: termina-ok
+  namespace: lab-03
+spec:
+  restartPolicy: Never
+  containers:
+    - name: tarea
+      image: busybox:1.37
+      command: ["sh", "-c", "echo trabajo terminado; exit 0"]
+---
+# Termina mal (exit 1) y no se reinicia -> fase Failed (STATUS: Error)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: termina-error
+  namespace: lab-03
+spec:
+  restartPolicy: Never
+  containers:
+    - name: tarea
+      image: busybox:1.37
+      command: ["sh", "-c", "echo algo salio mal; exit 1"]
+---
+# Termina mal pero restartPolicy Always (el valor por defecto): el kubelet lo
+# reinicia una y otra vez con espera creciente -> STATUS: CrashLoopBackOff
+apiVersion: v1
+kind: Pod
+metadata:
+  name: reinicia-siempre
+  namespace: lab-03
+spec:
+  restartPolicy: Always
+  containers:
+    - name: tarea
+      image: busybox:1.37
+      command: ["sh", "-c", "echo arranco y fallo; sleep 2; exit 1"]

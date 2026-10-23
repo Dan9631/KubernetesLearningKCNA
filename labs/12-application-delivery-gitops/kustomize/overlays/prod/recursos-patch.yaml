@@ -1,0 +1,14 @@
+# Patch estrategico (strategic merge): solo los campos que cambian.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  template:
+    spec:
+      containers:
+        - name: nginx
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi

@@ -1,0 +1,40 @@
+# Caso 5: el generador de reportes se queda "creando contenedor".
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: report-config
+  namespace: lab-09
+data:
+  REPORT_FORMAT: "pdf"
+  REPORT_EVERY: "60"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporter
+  namespace: lab-09
+  labels:
+    app: reporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reporter
+  template:
+    metadata:
+      labels:
+        app: reporter
+    spec:
+      containers:
+        - name: reporter
+          image: busybox:1.37
+          command: ["sh", "-c", "while true; do echo \"[reporter] generando reporte $REPORT_FORMAT\"; sleep $REPORT_EVERY; done"]
+          envFrom:
+            - configMapRef:
+                name: reporter-config
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi

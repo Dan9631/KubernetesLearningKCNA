@@ -1,0 +1,23 @@
+# Imagen propia del modulo 01: un nginx minimo que sirve nuestra pagina.
+# Construir (desde la carpeta del lab):
+#   podman build -t kcna-web:1.0 .
+
+# 1) Imagen base pequena y con tag fijo (nunca "latest")
+FROM nginx:1.27-alpine
+
+# 2) Metadatos OCI (se ven con: podman inspect kcna-web:1.0)
+LABEL org.opencontainers.image.title="kcna-web" \
+      org.opencontainers.image.description="Pagina estatica del curso KCNA" \
+      org.opencontainers.image.version="1.0"
+
+# 3) Variable de entorno de ejemplo (disponible dentro del contenedor)
+ENV KCNA_MODULO=01
+
+# 4) Copiamos nuestro contenido: esto crea UNA capa nueva encima de la base
+COPY web/ /usr/share/nginx/html/
+
+# 5) Documenta el puerto que escucha el proceso (no publica nada por si solo)
+EXPOSE 80
+
+# 6) No hace falta CMD: se hereda el de nginx:1.27-alpine
+#    (equivale a: CMD ["nginx", "-g", "daemon off;"])

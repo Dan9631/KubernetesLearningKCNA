@@ -1,0 +1,30 @@
+# Deployment sin ninguna regla de scheduling: kube-scheduler decide libremente.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-libre
+  namespace: lab-04
+  labels:
+    app: web-libre
+    tier: frontend
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: web-libre
+  template:
+    metadata:
+      labels:
+        app: web-libre
+        tier: frontend
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

@@ -1,0 +1,57 @@
+# "tienda": una app de juguete que expone metricas en formato Prometheus.
+# Es un exportador escrito en shell: cada 5 s reescribe /www/metrics.txt y busybox httpd lo sirve en :8080.
+#   tienda_pedidos_total   -> counter (solo sube)
+#   tienda_carrito_items   -> gauge   (sube y baja)
+# OJO: tal como esta, Prometheus NO la descubre. Ese es el reto del modulo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tienda
+  namespace: lab-11
+  labels:
+    app: tienda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tienda
+  template:
+    metadata:
+      labels:
+        app: tienda
+    spec:
+      containers:
+        - name: tienda
+          image: busybox:1.37
+          ports:
+            - name: metrics
+              containerPort: 8080
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /www
+              httpd -p 8080 -h /www
+              tarjeta=0; efectivo=0
+              while true; do
+                tarjeta=$((tarjeta + RANDOM % 5))
+                efectivo=$((efectivo + RANDOM % 2))
+                carrito=$((RANDOM % 50))
+                {
+                  echo "# HELP tienda_pedidos_total Pedidos procesados desde el arranque."
+                  echo "# TYPE tienda_pedidos_total counter"
+                  echo "tienda_pedidos_total{metodo=\"tarjeta\"} $tarjeta"
+                  echo "tienda_pedidos_total{metodo=\"efectivo\"} $efectivo"
+                  echo "# HELP tienda_carrito_items Articulos en carritos abiertos ahora mismo."
+                  echo "# TYPE tienda_carrito_items gauge"
+                  echo "tienda_carrito_items $carrito"
+                } > /www/metrics.tmp
+                mv /www/metrics.tmp /www/metrics.txt
+                sleep 5
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 8Mi
+            limits:
+              memory: 32Mi

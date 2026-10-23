@@ -1,0 +1,50 @@
+# Modulo 08 - StatefulSet con volumeClaimTemplates: un PVC PROPIO por replica (datos-db-0, datos-db-1).
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: lab-08
+spec:
+  clusterIP: None            # headless: da nombre DNS estable a cada pod (db-0.db, db-1.db)
+  selector:
+    app: db
+  ports:
+    - port: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+  namespace: lab-08
+spec:
+  serviceName: db
+  replicas: 2
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      terminationGracePeriodSeconds: 2
+      containers:
+        - name: db
+          image: busybox:1.37
+          # Al arrancar anota su nombre y la hora en SU volumen; asi se ve que cada replica tiene el suyo
+          command: ["sh", "-c", "echo \"$(hostname) arranco a las $(date +%T)\" >> /var/lib/db/arranques.txt; sleep 36000"]
+          volumeMounts:
+            - name: datos
+              mountPath: /var/lib/db
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits:   { cpu: 50m, memory: 32Mi }
+  volumeClaimTemplates:
+    - metadata:
+        name: datos
+      spec:
+        storageClassName: standard
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Mi

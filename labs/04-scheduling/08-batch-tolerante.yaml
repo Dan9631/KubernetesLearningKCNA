@@ -1,0 +1,29 @@
+# Toleration para el taint lab-04-dedicado=batch:NoSchedule.
+# Ojo: tolerar NO obliga a ir a ese nodo; solo lo permite.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: batch
+  namespace: lab-04
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: batch
+  template:
+    metadata:
+      labels:
+        app: batch
+    spec:
+      tolerations:
+        - key: lab-04-dedicado
+          operator: Equal
+          value: batch
+          effect: NoSchedule
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

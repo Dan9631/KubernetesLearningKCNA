@@ -1,0 +1,24 @@
+# PriorityClass es cluster-scoped: por eso lleva el prefijo lab-04- (la borra reset.ps1).
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: lab-04-alta
+value: 100000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Prioridad alta para cargas criticas del lab 04"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: critico
+  namespace: lab-04
+spec:
+  priorityClassName: lab-04-alta
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi

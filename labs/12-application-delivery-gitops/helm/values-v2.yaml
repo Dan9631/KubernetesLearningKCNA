@@ -1,0 +1,7 @@
+# Valores para el upgrade del laboratorio: solo se escribe lo que cambia.
+replicaCount: 2
+
+image:
+  tag: 1.28-alpine
+
+mensaje: "Hola desde Helm (v2)"

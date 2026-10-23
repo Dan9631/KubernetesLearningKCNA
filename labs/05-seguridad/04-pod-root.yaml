@@ -1,0 +1,18 @@
+# Pod SIN securityContext: corre como root con las capabilities por defecto del runtime.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-root
+  namespace: lab-05
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "3600"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 50m
+          memory: 32Mi

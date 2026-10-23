@@ -1,0 +1,47 @@
+# Tres pods, tres QoS classes distintas.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos-guaranteed
+  namespace: lab-04
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "3600"]
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+        limits:          # limits == requests en CPU y memoria -> Guaranteed
+          cpu: 50m
+          memory: 32Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos-burstable
+  namespace: lab-04
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "3600"]
+      resources:
+        requests:        # hay requests, pero limits distintos (o ausentes) -> Burstable
+          cpu: 20m
+          memory: 16Mi
+        limits:
+          memory: 64Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos-besteffort
+  namespace: lab-04
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sleep", "3600"]
+      # sin resources -> BestEffort

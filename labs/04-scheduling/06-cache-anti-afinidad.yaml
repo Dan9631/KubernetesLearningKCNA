@@ -1,0 +1,31 @@
+# Pod anti-affinity: nunca dos replicas de "cache" en el mismo nodo (hostname).
+# Solo hay 2 workers disponibles, asi que la tercera replica queda Pending.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache
+  namespace: lab-04
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cache
+  template:
+    metadata:
+      labels:
+        app: cache
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: cache
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

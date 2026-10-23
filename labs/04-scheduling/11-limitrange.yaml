@@ -1,0 +1,18 @@
+# Valores por defecto y maximos POR CONTENEDOR en el namespace lab-04.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limites-lab
+  namespace: lab-04
+spec:
+  limits:
+    - type: Container
+      defaultRequest:    # se aplica si el contenedor no declara requests
+        cpu: 25m
+        memory: 32Mi
+      default:           # se aplica si el contenedor no declara limits
+        cpu: 100m
+        memory: 64Mi
+      max:               # nadie puede pedir mas que esto
+        cpu: 500m
+        memory: 256Mi
