@@ -727,7 +727,7 @@ gitops-demo   Synced        Progressing     b527c146f70c5b0c766b64207ff8f2f4e39a
 nginx:1.28-alpine
 ```
 
-Qué observar: la columna `REVISION` es el SHA de **tu** commit. `Progressing` dura lo que tarda el rolling update; luego pasa a `Healthy`. Volver atrás sería un `git revert` + push. Vuelve a la carpeta del lab antes de seguir: `cd C:\Users\80846\KubernetesLearning\labs\12-application-delivery-gitops`.
+Qué observar: la columna `REVISION` es el SHA de **tu** commit. `Progressing` dura lo que tarda el rolling update; luego pasa a `Healthy`. Volver atrás sería un `git revert` + push. Vuelve a la carpeta del lab antes de seguir: `cd $HOME\KubernetesLearning\labs\12-application-delivery-gitops`.
 
 ### 17. (Opcional) Prune
 
@@ -992,7 +992,7 @@ Si intentas hacer trampa con `kubectl scale --replicas=3`, el selfHeal lo devuel
 ## Limpieza
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 reset 12
 Remove-Item -Recurse -Force $env:TEMP\kcna-gitops   # tu clon local del repo GitOps, si lo creaste
 ```

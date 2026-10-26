@@ -1,1 +1,16 @@
+# Clúster local: kubeconfig y binarios del laboratorio
+.kube/
 .bin/
+.tmp/
+
+# Sitio web
+web/node_modules/
+web/dist/
+web/.astro/
+web/src/data/*.json
+
+# Herramientas de prueba
+.playwright-mcp/
+
+# Configuracion local de Claude Code
+.claude/

@@ -230,7 +230,7 @@ En todo el laboratorio se usa `-n lab-03` explícito. Si prefieres no escribirlo
 ### 1. Preparar el laboratorio
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 lab 03
 . .\kcna-env.ps1
 ```

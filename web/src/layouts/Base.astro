@@ -1,0 +1,77 @@
+---
+import '../styles/global.css';
+import { url } from '../lib/modules';
+import ThemeToggle from '../components/ThemeToggle.svelte';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** ancho del contenido: 'read' (columna + rail) o 'wide' */
+  width?: 'read' | 'wide';
+}
+const { title, description = 'Curso interactivo para la certificación KCNA con laboratorio sobre Podman.', width = 'wide' } = Astro.props;
+const path = Astro.url.pathname;
+const nav = [
+  { href: url('/'), label: 'Ruta', match: /^\/?$|\/modulos/ },
+  { href: url('/practica'), label: 'Práctica', match: /\/practica|\/flashcards/ },
+  { href: url('/terminal'), label: 'Terminal', match: /\/terminal/ },
+  { href: url('/entorno'), label: 'Entorno', match: /\/entorno/ },
+];
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const rel = path.startsWith(base) ? path.slice(base.length) || '/' : path;
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · KCNA</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
+    <script is:inline>
+      // Tema antes de pintar, para evitar el parpadeo
+      try {
+        const t = localStorage.getItem('kcna.theme');
+        if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme = 'dark';
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Ir al contenido</a>
+    <header class="top">
+      <a class="brand" href={url('/')} aria-label="Inicio del curso KCNA">
+        <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="13" cy="13" r="3.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2v5M13 19v5M2 13h5M19 13h5M5.2 5.2l3.6 3.6M17.2 17.2l3.6 3.6M5.2 20.8l3.6-3.6M17.2 8.8l3.6-3.6"/></g></svg>
+        <span>KCNA</span>
+      </a>
+      <nav aria-label="Secciones">
+        {nav.map((n) => <a href={n.href} aria-current={n.match.test(rel) ? 'page' : undefined}>{n.label}</a>)}
+      </nav>
+      <ThemeToggle client:load />
+    </header>
+    <main id="main" class:list={['main', width]}>
+      <slot />
+    </main>
+    <footer class="foot">
+      <p>Curso personal para la certificación Kubernetes and Cloud Native Associate. Temario oficial de la CNCF vigente desde noviembre de 2025.</p>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .skip { position: absolute; left: -999px; top: 8px; background: var(--panel); padding: 8px 12px; border-radius: var(--r-s); z-index: 20; }
+  .skip:focus { left: 8px; }
+  .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 22px; padding: 0 clamp(14px, 3vw, 32px); height: 56px;
+    background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line-2); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 600; letter-spacing: 0.02em; }
+  .brand svg { color: var(--helm); }
+  nav { display: flex; gap: 4px; margin-left: 8px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+  nav::-webkit-scrollbar { display: none; }
+  nav a { color: var(--ink-2); text-decoration: none; padding: 6px 12px; border-radius: var(--r-s); font-weight: 500; white-space: nowrap; }
+  nav a:hover { color: var(--ink); background: var(--panel); }
+  nav a[aria-current='page'] { color: var(--helm-ink); background: var(--helm-2); }
+  .main { padding: 0 clamp(14px, 3vw, 32px) 64px; margin: 0 auto; width: 100%; }
+  .main.wide { max-width: var(--wide); }
+  .main.read { max-width: calc(var(--rail) + 24px + 860px); }
+  .foot { border-top: 1px solid var(--line-2); padding: 20px clamp(14px, 3vw, 32px) 40px; color: var(--ink-3); font-size: 0.85rem; max-width: var(--wide); margin: 0 auto; }
+  @media (max-width: 560px) { .top { gap: 12px; } .brand span { display: none; } nav a { padding: 6px 9px; } }
+</style>

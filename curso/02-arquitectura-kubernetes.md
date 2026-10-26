@@ -239,7 +239,7 @@ Orden de búsqueda: la opción `--kubeconfig`, si no la variable de entorno **`K
 ### 1. Preparar el laboratorio
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 lab 02
 . .\kcna-env.ps1
 ```
@@ -268,7 +268,7 @@ Kustomize Version: v5.8.1
 Server Version: v1.37.0
 ```
 
-Qué observar: el runtime de los nodos es **containerd**. `kcna-env.ps1` pone delante un `kubectl` v1.37 guardado en `.bin\` para que coincida con el clúster. Prueba con tu kubectl global (`C:\Users\80846\kubectl\kubectl.exe version`, v1.35): verás un aviso de *version skew*, que es la política de **±1 versión menor** entre kubectl y el API server en acción.
+Qué observar: el runtime de los nodos es **containerd**. `kcna-env.ps1` pone delante un `kubectl` v1.37 guardado en `.bin\` para que coincida con el clúster. Prueba con tu kubectl global (abre una terminal nueva sin cargar `kcna-env.ps1` y ejecuta `kubectl version --kubeconfig .kube\kcna-config`; es la v1.35): verás un aviso de *version skew*, que es la política de **±1 versión menor** entre kubectl y el API server en acción.
 
 ### 3. Los componentes del sistema
 

@@ -231,6 +231,32 @@ function Invoke-Reset([string]$Id) {
     Ok 'Listo. Puedes repetir el lab desde cero.'
 }
 
+# Sitio web del curso: construye en Windows, empaqueta con nginx y lo publica en el cluster
+function Invoke-Site([string]$Action) {
+    $web = Join-Path $Root 'web'
+    if ($Action -eq 'dev') { Set-Location $web; & npm run dev; return }
+    if ($Action -eq 'down') { Assert-Cluster; Invoke-Native kubectl @('delete', '-k', (Join-Path $web 'k8s'), '--ignore-not-found') | Write-Host; return }
+    Assert-Cluster
+    $tag = 'localhost/kcna-web:' + (Get-Date -Format 'yyyyMMdd-HHmm')
+    Info 'Construyendo el sitio (npm run build con PUBLIC_BASE=/curso)'
+    Push-Location $web
+    try {
+        if (-not (Test-Path 'node_modules')) { $null = Invoke-Native npm @('install', '--no-audit', '--no-fund') }
+        $env:PUBLIC_BASE = '/curso'
+        $out = Invoke-Native npm @('run', 'build')
+        if ($LASTEXITCODE -ne 0) { Fail 'npm run build fallo'; $out | Select-Object -Last 15 | Write-Host; return }
+    } finally { Pop-Location; Remove-Item Env:PUBLIC_BASE -ErrorAction SilentlyContinue }
+    Info "Construyendo la imagen $tag"
+    $out = Invoke-Native podman @('build', '-t', $tag, '--build-arg', 'PUBLIC_BASE=/curso', '-f', (Join-Path $web 'Containerfile'), $Root)
+    if ($LASTEXITCODE -ne 0) { Fail 'podman build fallo'; $out | Select-Object -Last 10 | Write-Host; return }
+    Import-Images @($tag) -Force
+    Info 'Publicando en el namespace kcna-web'
+    $null = Invoke-Native kubectl @('apply', '-k', (Join-Path $web 'k8s'))
+    $null = Invoke-Native kubectl @('-n', 'kcna-web', 'set', 'image', 'deployment/kcna-web', "web=$tag")
+    Invoke-Native kubectl @('-n', 'kcna-web', 'rollout', 'status', 'deployment/kcna-web', '--timeout=120s') | Write-Host
+    Ok 'Sitio publicado: http://localhost:8080/curso/'
+}
+
 function Show-Help {
 @"
 
@@ -256,7 +282,12 @@ function Show-Help {
   HERRAMIENTAS VISUALES
     ui                 Abre Headlamp (UI de escritorio de Kubernetes) apuntando al lab
     k9s                Abre k9s (UI de terminal)
-    quiz               Abre la app de preguntas tipo examen
+    quiz               Abre la app de preguntas tipo examen (version simple)
+
+  SITIO WEB DEL CURSO (web\)
+    site dev           Servidor de desarrollo en http://localhost:4321
+    site               Construye el sitio y lo publica en el cluster: http://localhost:8080/curso
+    site down          Quita el sitio del cluster
 
   Primera vez:   .\kcna.ps1 up    y luego    . .\kcna-env.ps1
 
@@ -280,5 +311,6 @@ switch ($Command.ToLower()) {
     'ui'           { if (Test-Path $Headlamp) { Start-Process $Headlamp; Ok 'Headlamp abierto (usa el contexto kind-kcna)' } else { Fail 'Headlamp no instalado' } }
     'k9s'          { & k9s }
     'quiz'         { Start-Process (Join-Path $Root 'quiz\index.html') }
+    'site'         { Invoke-Site ($Rest | Select-Object -First 1) }
     default        { Show-Help }
 }

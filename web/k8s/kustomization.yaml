@@ -1,0 +1,10 @@
+# Publica el sitio del curso dentro del clúster kind "kcna" en http://localhost:8080/curso
+#   .\kcna.ps1 site
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kcna-web
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml

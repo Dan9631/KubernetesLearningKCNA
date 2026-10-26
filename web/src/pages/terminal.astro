@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import Terminal from '../components/terminal/Terminal.svelte';
+---
+<Base title="Terminal de práctica" description="Simulador de kubectl para practicar la sintaxis sin encender el clúster del curso." width="wide">
+  <article class="term">
+    <header class="head">
+      <p class="kicker">Terminal de práctica</p>
+      <h1>kubectl sin encender el clúster</h1>
+      <p class="lead">Un clúster <span class="mono">kind-kcna</span> simulado en el navegador, con los mismos nodos y las mismas imágenes precargadas que tu laboratorio. Sirve para practicar la sintaxis y el ciclo de vida de los objetos: las salidas imitan a kubectl v1.37, los pods tardan en arrancar, las imágenes que no están cargadas acaban en <span class="mono">ImagePullBackOff</span> y los rollouts se hacen poco a poco. Nada de lo que hagas aquí toca tu máquina.</p>
+    </header>
+    <Terminal client:only="svelte" />
+  </article>
+</Base>
+
+<style>
+  .term { padding-top: 28px; }
+  .head { margin-bottom: 22px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.08rem; color: var(--ink-2); margin-top: 10px; max-width: 78ch; }
+</style>

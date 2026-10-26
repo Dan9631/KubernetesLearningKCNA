@@ -225,7 +225,7 @@ Instalarás un Prometheus ligero con Helm (sin Alertmanager ni Pushgateway, sin 
 ### 1. Preparar el lab
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 lab 11
 . .\kcna-env.ps1
 ```

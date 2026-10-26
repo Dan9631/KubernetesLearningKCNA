@@ -1,0 +1,107 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Ruta from '../../components/Ruta.svelte';
+import Enhance from '../../components/Enhance.svelte';
+import SimHost from '../../components/SimHost.svelte';
+import ModuleQuiz from '../../components/ModuleQuiz.svelte';
+import { MODULES, DOMAINS, byId, pad, titleFromBody, moduleUrl } from '../../lib/modules';
+import { SIMS } from '../../sims/registry';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('curso');
+  return entries
+    .map((entry) => ({ entry, meta: byId(entry.id) }))
+    .filter((x) => x.meta)
+    .map(({ entry, meta }) => ({ params: { id: pad(meta!.n) }, props: { entry, meta: meta! } }));
+}
+
+const { entry, meta } = Astro.props;
+const { Content, headings } = await render(entry);
+const title = titleFromBody(entry.body ?? '', meta.title);
+const sims = SIMS[meta.n] ?? [];
+const toc = headings.filter((h) => h.depth === 2);
+const prev = MODULES.find((m) => m.n === meta.n - 1);
+const next = MODULES.find((m) => m.n === meta.n + 1);
+const domain = DOMAINS[meta.domain];
+---
+<Base title={`${pad(meta.n)} · ${meta.title}`} description={meta.summary} width="read">
+  <div class="layout">
+    <aside class="rail">
+      <Ruta client:load current={meta.n} compact base={import.meta.env.BASE_URL} />
+    </aside>
+    <article>
+      <header class="head">
+        <p class="kicker">Módulo {pad(meta.n)}{meta.domain !== 'base' ? ` · ${domain.name}, ${domain.weight}% del examen` : ''}</p>
+        <h1>{title}</h1>
+        <p class="lead">{meta.summary}</p>
+        <div class="facts">
+          {meta.topics.map((t) => <span class="chip">{t}</span>)}
+          <span class="fact">{meta.hours}</span>
+          {meta.lab && <span class="fact">Lab verificable: <code>.\kcna.ps1 check {pad(meta.n)}</code></span>}
+        </div>
+        {toc.length > 0 && (
+          <nav class="toc" aria-label="En este módulo">
+            {sims.length > 0 && <a href="#simulaciones">Simulaciones</a>}
+            {toc.map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
+            <a href="#practica">Practica este módulo</a>
+          </nav>
+        )}
+      </header>
+
+      {sims.length > 0 && (
+        <section id="simulaciones" class="sims">
+          <h2>Antes de leer, pruébalo</h2>
+          <p class="hint">Cada simulación muestra el comportamiento real del clúster. Tócala, cambia valores y luego lee la explicación.</p>
+          {sims.map((s) => <SimHost client:visible module={meta.n} simId={s.id} />)}
+        </section>
+      )}
+
+      <Enhance client:load module={pad(meta.n)} />
+
+      <div class="prose">
+        <Content />
+      </div>
+
+      <section id="practica" class="practica">
+        <h2>Practica este módulo</h2>
+        <ModuleQuiz client:visible module={meta.n} />
+      </section>
+
+      <nav class="pager" aria-label="Módulos anterior y siguiente">
+        {prev ? <a href={moduleUrl(prev.n)}><span>Anterior</span><strong>{pad(prev.n)} · {prev.title}</strong></a> : <span />}
+        {next ? <a class="next" href={moduleUrl(next.n)}><span>Siguiente</span><strong>{pad(next.n)} · {next.title}</strong></a> : <span />}
+      </nav>
+    </article>
+  </div>
+</Base>
+
+<style>
+  .layout { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); gap: 32px; padding-top: 28px; }
+  .rail { position: sticky; top: 72px; align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; padding-right: 6px; }
+  article { min-width: 0; max-width: 860px; }
+  .head { margin-bottom: 8px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+  .fact { font-size: 0.88rem; color: var(--ink-2); }
+  .fact code { font-size: 0.82rem; background: var(--panel-2); border: 1px solid var(--line-2); padding: 1px 6px; border-radius: 4px; }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-2); font-size: 0.9rem; }
+  .toc a { color: var(--ink-2); text-decoration: none; }
+  .toc a:hover { color: var(--helm-ink); text-decoration: underline; }
+  .sims { margin-top: 26px; }
+  .sims h2 { font-size: 1.3rem; }
+  .sims .hint { color: var(--ink-2); font-size: 0.95rem; margin-top: 4px; max-width: var(--measure); }
+  .practica { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line-2); }
+  .practica h2 { margin-bottom: 12px; }
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 40px; }
+  .pager a { display: grid; gap: 2px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-m); text-decoration: none; color: var(--ink); background: var(--panel); }
+  .pager a:hover { border-color: var(--helm); }
+  .pager a span { font-size: 0.82rem; color: var(--ink-3); }
+  .pager .next { text-align: right; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; gap: 16px; }
+    .rail { position: static; max-height: none; display: none; }
+    .pager { grid-template-columns: 1fr; }
+  }
+</style>

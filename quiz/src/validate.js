@@ -1,6 +1,6 @@
 global.window = {};
-require('C:/Users/80846/KubernetesLearning/quiz/preguntas.js');
-require('C:/Users/80846/KubernetesLearning/quiz/flashcards.js');
+require(require('path').join(__dirname, '..', 'preguntas.js'));
+require(require('path').join(__dirname, '..', 'flashcards.js'));
 const q = window.KCNA_QUESTIONS, fc = window.KCNA_FLASHCARDS;
 const DOM = ['fundamentals', 'orchestration', 'delivery', 'architecture'];
 const PRE = { fundamentals: 'F', orchestration: 'O', delivery: 'D', architecture: 'A' };

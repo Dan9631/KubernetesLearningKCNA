@@ -5,13 +5,19 @@ Curso práctico en español para preparar la certificación **KCNA**, construido
 ## Empieza aquí
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 up          # enciende el clúster (kind, 3 nodos, sobre Podman)
 . .\kcna-env.ps1       # prepara la terminal: kubectl apunta SOLO al laboratorio
 k get nodes
 ```
 
-Luego abre [curso/00-preparacion-entorno.md](curso/00-preparacion-entorno.md).
+Luego abre [curso/00-preparacion-entorno.md](curso/00-preparacion-entorno.md), o mejor, el **sitio interactivo**:
+
+```powershell
+.\kcna.ps1 site dev    # http://localhost:4321 — simulaciones, práctica, terminal simulada
+```
+
+El sitio (carpeta [web/](web/README.md)) renderiza estos mismos módulos con simulaciones interactivas por tema, un simulacro de examen y un simulador de `kubectl`. Es estático: se publica en GitHub Pages, en cualquier hosting o dentro de tu propio clúster con `.\kcna.ps1 site` (http://localhost:8080/curso).
 
 > Los ejercicios corren en un clúster aislado (`.kube\kcna-config`). Tu `~/.kube/config` con los clústeres de la empresa no se usa ni se modifica.
 

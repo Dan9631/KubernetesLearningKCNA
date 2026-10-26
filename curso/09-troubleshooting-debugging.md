@@ -170,7 +170,7 @@ En la carpeta `labs\09-troubleshooting-debugging\rotos\` hay **6 manifiestos rot
 ### 1. Preparar el lab
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 lab 09
 . .\kcna-env.ps1
 ```

@@ -1,0 +1,28 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Enhance from '../components/Enhance.svelte';
+import EnvCheck from '../components/EnvCheck.svelte';
+
+const entries = await getCollection('curso');
+const entry = entries.find((e) => e.id === '00-preparacion-entorno')!;
+const { Content } = await render(entry);
+---
+<Base title="Entorno" width="read">
+  <article class="env">
+    <header class="head">
+      <p class="kicker">Consideraciones del entorno</p>
+      <h1>Tu laboratorio: Podman, kind y un clúster aislado</h1>
+      <p class="lead">Todo lo que debes saber antes de practicar: cómo está montado, qué está aislado de tus clústeres de trabajo, por qué las imágenes se precargan y cómo encender y apagar el clúster.</p>
+    </header>
+    <EnvCheck client:load />
+    <Enhance client:load module="00" />
+    <div class="prose"><Content /></div>
+  </article>
+</Base>
+
+<style>
+  .env { max-width: 860px; margin: 0 auto; padding-top: 28px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+</style>

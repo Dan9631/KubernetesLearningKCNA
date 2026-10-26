@@ -2,7 +2,7 @@
 
 Referencia rápida del curso. Todo pensado para **PowerShell 5.1** en Windows y para el clúster local `kind-kcna`.
 
-> Antes de nada, en cada terminal nueva: `cd C:\Users\80846\KubernetesLearning` y `. .\kcna-env.ps1`. El prompt debe decir `[kcna:kind-kcna]`. Nunca uses `~/.kube/config` para los labs.
+> Antes de nada, en cada terminal nueva: `cd $HOME\KubernetesLearning` y `. .\kcna-env.ps1`. El prompt debe decir `[kcna:kind-kcna]`. Nunca uses `~/.kube/config` para los labs.
 
 **Particularidades de PowerShell que conviene recordar**
 

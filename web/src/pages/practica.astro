@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import Practica from '../components/practica/Practica.svelte';
+---
+<Base title="Práctica" description="Simulacro de examen KCNA, práctica por dominio o módulo, repaso de falladas y flashcards." width="wide">
+  <section class="practica">
+    <header class="head">
+      <p class="kicker">Práctica</p>
+      <h1>Pon a prueba lo que sabes</h1>
+      <p class="lead">220 preguntas en inglés, como en el examen, con la explicación en español. Practica por dominio, repasa lo que fallas y mide tu nivel con un simulacro cronometrado.</p>
+    </header>
+    <Practica client:load />
+  </section>
+</Base>
+
+<style>
+  .practica { padding-top: 28px; }
+  .head { margin-bottom: 28px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+</style>

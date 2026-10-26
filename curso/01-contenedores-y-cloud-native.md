@@ -284,7 +284,7 @@ Este laboratorio se hace sobre todo con **Podman en tu Windows** (no con el clú
 ### 1. Preparar el laboratorio
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 lab 01
 . .\kcna-env.ps1
 cd labs\01-contenedores-y-cloud-native
@@ -494,7 +494,7 @@ Qué observar: la imagen final pesa lo mismo que nginx + tu archivo; nada de la 
 Tu imagen solo existe en el almacén de Podman. Los nodos de kind tienen su propio almacén (el de containerd), así que hay que copiarla:
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 load localhost/kcna-web:1.0
 podman exec kcna-worker crictl images | Select-String kcna
 ```
@@ -576,7 +576,7 @@ Verifica:
 <details><summary>Ver solución</summary>
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 Copy-Item -Recurse labs\01-contenedores-y-cloud-native $env:TEMP\kcna-web-v2
 cd $env:TEMP\kcna-web-v2
 (Get-Content web\index.html) -replace 'v1', 'v2' | Set-Content web\index.html -Encoding utf8
@@ -584,7 +584,7 @@ cd $env:TEMP\kcna-web-v2
 podman build -t kcna-web:2.0 .
 (podman image inspect kcna-web:2.0 --format '{{json .Labels}}' | ConvertFrom-Json).'org.opencontainers.image.version'
 
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 load localhost/kcna-web:2.0
 kubectl run web-v2 -n lab-01 --image=localhost/kcna-web:2.0 --labels='app=kcna-web,version=v2'
 kubectl wait --for=condition=Ready pod/web-v2 -n lab-01 --timeout=60s

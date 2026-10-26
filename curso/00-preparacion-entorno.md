@@ -93,7 +93,7 @@ En un clúster normal con salida a internet nada de esto hace falta.
 ### 1. Encender el clúster
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 up
 ```
 
@@ -148,7 +148,7 @@ k delete pod hola
 
 **Headlamp:** `.\kcna.ps1 ui` lo abre con el kubeconfig del laboratorio; elige el clúster `kind-kcna`. Si lo abres desde el menú de Windows no verá el lab; en ese caso usa *Add Cluster → Load from KubeConfig* y selecciona `.kube\kcna-config`.
 
-**Podman Desktop:** en *Settings → Preferences → Kubernetes → Kubeconfig* puedes apuntar a `C:\Users\80846\KubernetesLearning\.kube\kcna-config`. Ten en cuenta que esto cambia lo que ve Podman Desktop (dejaría de mostrar tus clústeres de trabajo hasta que lo reviertas).
+**Podman Desktop:** en *Settings → Preferences → Kubernetes → Kubeconfig* puedes apuntar a `$HOME\KubernetesLearning\.kube\kcna-config`. Ten en cuenta que esto cambia lo que ve Podman Desktop (dejaría de mostrar tus clústeres de trabajo hasta que lo reviertas).
 
 **k9s** — atajos básicos: `:pods`, `:deploy`, `:svc` para cambiar de vista; `0` todos los namespaces; `d` describe; `l` logs; `s` shell; `Ctrl+d` borrar; `?` ayuda; `:q` salir.
 

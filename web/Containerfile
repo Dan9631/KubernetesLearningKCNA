@@ -1,0 +1,13 @@
+# Sitio del curso KCNA como contenedor estático (nginx).
+# Primero se construye el sitio en Windows (así no hace falta internet dentro del contenedor):
+#   cd web; $env:PUBLIC_BASE='/curso'; npm run build
+# y luego la imagen, desde la raíz del proyecto:
+#   podman build -t localhost/kcna-web:1.0 --build-arg PUBLIC_BASE=/curso -f web/Containerfile .
+# (.\kcna.ps1 site hace las dos cosas y lo publica en el clúster kind)
+
+FROM docker.io/library/nginx:1.27-alpine
+ARG PUBLIC_BASE=/
+COPY web/nginx.conf /etc/nginx/conf.d/default.conf
+# El sitio se copia bajo la subruta con la que se construyó (p. ej. /usr/share/nginx/html/curso)
+COPY web/dist /usr/share/nginx/html${PUBLIC_BASE}
+EXPOSE 80

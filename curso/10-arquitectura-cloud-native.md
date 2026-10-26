@@ -208,7 +208,7 @@ Vas a ver un HPA en acción: una app que consume CPU con cada petición, un gene
 ### 1. Preparar el lab
 
 ```powershell
-cd C:\Users\80846\KubernetesLearning
+cd $HOME\KubernetesLearning
 .\kcna.ps1 lab 10
 . .\kcna-env.ps1
 k top nodes

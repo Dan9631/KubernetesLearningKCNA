@@ -1,0 +1,22 @@
+---
+import Base from '../layouts/Base.astro';
+import Flashcards from '../components/practica/Flashcards.svelte';
+import { url } from '../lib/modules';
+---
+<Base title="Flashcards" description="150 términos clave de Kubernetes y cloud native en inglés con su definición en español." width="wide">
+  <section class="flash">
+    <header class="head">
+      <p class="kicker"><a href={url('/practica')}>Práctica</a> · Flashcards</p>
+      <h1>Términos clave del examen</h1>
+      <p class="lead">150 términos en inglés, tal como aparecen en el examen, con su definición. Voltea la tarjeta, marca los que ya dominas y repasa el resto como glosario.</p>
+    </header>
+    <Flashcards client:load />
+  </section>
+</Base>
+
+<style>
+  .flash { padding-top: 28px; }
+  .head { margin-bottom: 24px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+</style>

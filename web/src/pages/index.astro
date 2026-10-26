@@ -1,0 +1,66 @@
+---
+import Base from '../layouts/Base.astro';
+import Ruta from '../components/Ruta.svelte';
+import HeroCluster from '../sims/HeroCluster.svelte';
+import { DOMAINS, url } from '../lib/modules';
+const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] as const).map((k) => ({ k, ...DOMAINS[k] }));
+---
+<Base title="Curso interactivo" width="wide">
+  <section class="hero">
+    <div class="copy">
+      <p class="kicker">Kubernetes and Cloud Native Associate</p>
+      <h1>Kubernetes no ejecuta tus órdenes. Persigue el estado que le pides.</h1>
+      <p class="lead">Esta es la idea que organiza todo el examen: tú declaras cuántas réplicas quieres y un bucle de control las mantiene, pase lo que pase. Junto a este texto corre un clúster en miniatura. Súbele réplicas, mata un pod y mira cómo reacciona.</p>
+      <div class="cta">
+        <a class="btn primary" href={url('/modulos/00')}>Empezar por el laboratorio</a>
+        <a class="btn" href={url('/practica')}>Hacer un simulacro</a>
+      </div>
+    </div>
+    <div class="live">
+      <HeroCluster client:load />
+    </div>
+  </section>
+
+  <section class="domains" aria-label="Dominios del examen">
+    <h2>Lo que mide el examen</h2>
+    <p class="lead">60 preguntas de opción múltiple en inglés, 90 minutos, aprobado con 75%. Los pesos son los del temario oficial de la CNCF, vigente desde noviembre de 2025.</p>
+    <div class="weights">
+      {domains.map((d) => (
+        <div class={`w ${d.k}`} style={`--pct:${d.weight}%`}>
+          <div class="fill"><span></span></div>
+          <div class="txt"><strong>{d.weight}%</strong><span>{d.name}</span><em>{d.exam} preguntas aprox.</em></div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="route">
+    <div class="rhead">
+      <h2>La ruta</h2>
+      <p class="lead">Catorce módulos en el orden del curso de KodeKloud. Cada uno abre con una simulación, sigue con la explicación, un laboratorio en tu clúster y preguntas tipo examen.</p>
+    </div>
+    <Ruta client:load base={import.meta.env.BASE_URL} />
+  </section>
+</Base>
+
+<style>
+  .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 40px; align-items: center; padding: 56px 0 40px; }
+  .kicker { color: var(--helm-ink); font-weight: 500; margin-bottom: 14px; }
+  .lead { color: var(--ink-2); font-size: 1.1rem; margin-top: 16px; max-width: 60ch; }
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+  .live { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 18px; }
+  .domains { padding: 36px 0; border-top: 1px solid var(--line-2); }
+  .weights { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 22px; }
+  .w { --c: var(--helm); display: grid; gap: 10px; }
+  .w.orchestration { --c: #8250df; } .w.delivery { --c: var(--wait); } .w.architecture { --c: var(--ready); }
+  .fill { height: 10px; border-radius: 5px; background: var(--line-2); overflow: hidden; }
+  .fill span { display: block; height: 100%; width: var(--pct); background: var(--c); border-radius: 5px; animation: grow var(--dur-slow) var(--ease) both; }
+  .txt { display: grid; }
+  .txt strong { font-size: 1.6rem; line-height: 1.1; }
+  .txt span { font-weight: 500; }
+  .txt em { font-style: normal; color: var(--ink-3); font-size: 0.85rem; }
+  .route { padding: 36px 0; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 40px; }
+  .rhead { position: sticky; top: 80px; align-self: start; }
+  @keyframes grow { from { width: 0; } }
+  @media (max-width: 900px) { .hero, .route { grid-template-columns: 1fr; gap: 24px; } .hero { padding-top: 28px; } .rhead { position: static; } }
+</style>
