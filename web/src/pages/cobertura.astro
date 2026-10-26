@@ -1,0 +1,137 @@
+---
+// Mapa de cobertura: cada competencia oficial del KCNA cruzada con módulos, labs, simulaciones y preguntas.
+// Se calcula en el build a partir de los datos reales, así que no se puede desincronizar.
+import Base from '../layouts/Base.astro';
+import { DOMAINS, MODULES, moduleUrl, pad, url } from '../lib/modules';
+import { coverage, questionsByModule, CURRICULUM_URL, CURRICULUM_DATE, MIN_QUESTIONS } from '../lib/curriculum';
+import preguntas from '../data/preguntas.json';
+
+const rows = coverage();
+const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] as const).map((k) => {
+  const r = rows.filter((x) => x.competency.domain === k);
+  const qs = r.reduce((a, x) => a + x.questions, 0);
+  return { k, ...DOMAINS[k], rows: r, qs };
+});
+const total = (preguntas as unknown[]).length;
+const sourced = rows.reduce((a, r) => a + r.sourced, 0);
+const warned = rows.filter((r) => r.warnings.length).length;
+const byModule = questionsByModule();
+const short = (n: number) => MODULES.find((m) => m.n === n)?.title ?? '';
+const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0);
+---
+<Base title="Cobertura del temario" description="Cada competencia oficial del examen KCNA cruzada con los módulos, laboratorios, simulaciones y preguntas del curso." width="wide">
+  <header class="head">
+    <p class="kicker">Cobertura del temario</p>
+    <h1>Qué parte del examen cubre cada pieza del curso</h1>
+    <p class="lead">Las 13 competencias del <a href={CURRICULUM_URL}>temario oficial de la CNCF</a> ({CURRICULUM_DATE}), cruzadas con los módulos, laboratorios, simulaciones y preguntas del curso. Se calcula al construir el sitio a partir del contenido real: si algo queda corto, aparece aquí.</p>
+    <dl class="totals">
+      <div><dt>Competencias</dt><dd>{rows.length - warned} de {rows.length} sin avisos</dd></div>
+      <div><dt>Preguntas</dt><dd>{total}</dd></div>
+      <div><dt>Con fuente oficial enlazada</dt><dd>{sourced} ({pct(sourced, total)} %)</dd></div>
+    </dl>
+  </header>
+
+  {domains.map((d) => (
+    <section class={`dom ${d.k}`}>
+      <div class="dhead">
+        <h2>{d.name}</h2>
+        <p><strong>{d.weight} %</strong> del examen · {d.qs} preguntas en el banco ({pct(d.qs, total)} %)</p>
+      </div>
+      <div class="table">
+        <table>
+          <thead>
+            <tr><th>Competencia</th><th>Módulos</th><th class="n">Labs</th><th class="n">Simulaciones</th><th>Preguntas</th><th>Fuentes</th></tr>
+          </thead>
+          <tbody>
+            {d.rows.map((r) => (
+              <tr class:list={[{ warn: r.warnings.length > 0 }]}>
+                <td class="comp">
+                  <strong>{r.competency.name}</strong>
+                  <span>{r.competency.scope}</span>
+                  {r.warnings.length > 0 && <ul class="warns">{r.warnings.map((w) => <li>{w}</li>)}</ul>}
+                </td>
+                <td class="mods">{r.modules.map((n) => <a href={moduleUrl(n)}>{pad(n)} {short(n)}</a>)}</td>
+                <td class="n">{r.labs}</td>
+                <td class="n">{r.sims}</td>
+                <td class="qs">
+                  <span class="num">{r.questions}</span>
+                  <span class="bar" title={`mínimo recomendado: ${MIN_QUESTIONS}`}><span style={`width:${Math.min(100, pct(r.questions, MIN_QUESTIONS * 2))}%`} class:list={[{ low: r.questions < MIN_QUESTIONS }]}></span><i style={`left:50%`}></i></span>
+                  <a href={url(`/practica?modo=practica&modulo=${r.modules[0] ?? ''}`)} class="practice">practicar</a>
+                </td>
+                <td class="src">{r.questions ? `${pct(r.sourced, r.questions)} %` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  ))}
+
+  <section class="mods-q">
+    <h2>Preguntas por módulo</h2>
+    <p class="hint">Los módulos 00 y 13 son de preparación y estrategia: no llevan preguntas propias.</p>
+    <ol>
+      {MODULES.map((m) => (
+        <li class:list={[{ low: m.domain !== 'base' && (byModule[m.n] ?? 0) < MIN_QUESTIONS }]}>
+          <a href={moduleUrl(m.n)}>{pad(m.n)} {m.title}</a>
+          <span>{byModule[m.n] ?? 0}</span>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="how">
+    <h2>Cómo se calcula</h2>
+    <ul>
+      <li>Cada módulo declara qué competencias cubre; cada pregunta del banco indica su competencia y su módulo.</li>
+      <li>El temario no publica pesos por competencia, solo por dominio. Por eso el aviso usa un mínimo fijo de {MIN_QUESTIONS} preguntas por competencia y compara el reparto del banco con el peso de cada dominio.</li>
+      <li>"Fuentes" es el porcentaje de preguntas que enlazan la página de kubernetes.io, cncf.io o la documentación oficial del proyecto que respalda la respuesta.</li>
+      <li>Todo el contenido se verificó contra la documentación oficial el 26 de octubre de 2026 (Kubernetes v1.37). El <a href="https://github.com/Dan9631/KubernetesLearningKCNA/blob/main/docs/VERIFICACION.md">registro de verificación</a> lista cada corrección con su fuente y las dudas que siguen abiertas.</li>
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .head { padding: 28px 0 8px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.12rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+  .totals { display: flex; flex-wrap: wrap; gap: 12px 36px; margin: 22px 0 0; }
+  .totals div { display: grid; }
+  .totals dt { font-size: 0.85rem; color: var(--ink-3); }
+  .totals dd { margin: 0; font-size: 1.3rem; font-weight: 600; }
+  .dom { --c: var(--helm); margin-top: 36px; }
+  .dom.orchestration { --c: #8250df; } .dom.delivery { --c: var(--wait); } .dom.architecture { --c: var(--ready); }
+  .dhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding-left: 12px; border-left: 4px solid var(--c); margin-bottom: 12px; }
+  .dhead h2 { font-size: 1.3rem; }
+  .dhead p { color: var(--ink-2); }
+  .table { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-l); background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.93rem; min-width: 760px; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-2); font-size: 0.85rem; }
+  tbody tr:last-child td { border-bottom: 0; }
+  th.n, td.n { text-align: center; }
+  .comp { display: grid; gap: 3px; max-width: 360px; }
+  .comp span { color: var(--ink-2); font-size: 0.88rem; }
+  tr.warn .comp strong::after { content: ' ·  revisar'; color: var(--wait); font-weight: 500; font-size: 0.85rem; }
+  .warns { margin: 6px 0 0; padding-left: 1.1em; color: #8a5208; font-size: 0.84rem; }
+  :root[data-theme='dark'] .warns { color: var(--wait); }
+  .mods { display: grid; gap: 2px; }
+  .mods a { white-space: nowrap; }
+  .qs { min-width: 150px; }
+  .num { font-weight: 600; font-size: 1.05rem; }
+  .bar { position: relative; display: block; height: 6px; border-radius: 3px; background: var(--line-2); margin: 6px 0; overflow: visible; }
+  .bar span { display: block; height: 100%; border-radius: 3px; background: var(--c); }
+  .bar span.low { background: var(--wait); }
+  .bar i { position: absolute; top: -3px; width: 1px; height: 12px; background: var(--ink-3); }
+  .practice { font-size: 0.82rem; }
+  .src { font-variant-numeric: tabular-nums; }
+  .mods-q, .how { margin-top: 40px; }
+  .mods-q h2, .how h2 { font-size: 1.3rem; margin-bottom: 8px; }
+  .hint { color: var(--ink-2); font-size: 0.92rem; }
+  .mods-q ol { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 24px; }
+  .mods-q li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-2); }
+  .mods-q li span { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .mods-q li.low span { color: var(--wait); }
+  .how ul { color: var(--ink-2); max-width: var(--measure); padding-left: 1.2em; }
+  .how li + li { margin-top: 6px; }
+</style>

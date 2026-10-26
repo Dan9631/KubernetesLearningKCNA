@@ -23,7 +23,7 @@ const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] a
 
   <section class="domains" aria-label="Dominios del examen">
     <h2>Lo que mide el examen</h2>
-    <p class="lead">60 preguntas de opción múltiple en inglés, 90 minutos, aprobado con 75%. Los pesos son los del temario oficial de la CNCF, vigente desde noviembre de 2025.</p>
+    <p class="lead">Examen de opción múltiple de 90 minutos: 60 preguntas y aprobado con 75%, según las instrucciones de la Linux Foundation. Los pesos son los del temario oficial de la CNCF, vigente desde noviembre de 2025. <a href={url('/cobertura')}>Mira qué cubre el curso de cada competencia</a>.</p>
     <div class="weights">
       {domains.map((d) => (
         <div class={`w ${d.k}`} style={`--pct:${d.weight}%`}>

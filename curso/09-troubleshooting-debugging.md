@@ -3,6 +3,7 @@
 > **Dominios KCNA:** Container Orchestration (28%) → competencia *Troubleshooting* · Cloud Native Application Delivery (16%) → competencia *Debugging*
 > **Tiempo estimado:** 2 h 30 min · **Prerrequisitos:** módulos de workloads, Services, ConfigMaps/Secrets y scheduling
 > **Lecciones equivalentes de KodeKloud:** casi no existen (son competencias nuevas del temario 2025); se relaciona con "Application Failure", "Control Plane Failure", "Worker Node Failure" y "Probes" de otros cursos.
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -68,11 +69,13 @@ flowchart TD
 | `ErrImagePull` → `ImagePullBackOff` | El kubelet no pudo descargar la imagen; reintenta con espera creciente (*back-off*) | Tag o nombre inexistente, registro privado sin `imagePullSecrets`, sin red hacia el registro | Evento `Failed`: lee el mensaje (*not found*, *unauthorized*, *timeout*) |
 | `CreateContainerConfigError` | La imagen está, pero no se puede construir la configuración del contenedor | ConfigMap o Secret referenciado que no existe, o una clave que no existe | Evento `Failed: configmap "x" not found` |
 | `ContainerCreating` (mucho rato) | Esperando montar volúmenes o red | Volumen/Secret de volumen inexistente, problema de CSI o CNI | Eventos `FailedMount` |
-| `Error` / `CrashLoopBackOff` | El contenedor arranca y termina; el kubelet lo reinicia con back-off (10 s, 20 s, 40 s... hasta 5 min) | Comando/argumentos erróneos, falta una variable o archivo, la app falla al iniciar, **liveness mal configurada** | `logs --previous`, `describe` (Last State, Exit Code, eventos `Unhealthy`) |
+| `Error` / `CrashLoopBackOff` | El contenedor arranca y termina; el kubelet lo reinicia con back-off (10 s, 20 s, 40 s... hasta 5 min por defecto, tope configurable por nodo desde v1.35; el contador se reinicia si el contenedor aguanta 10 min funcionando) | Comando/argumentos erróneos, falta una variable o archivo, la app falla al iniciar, **liveness mal configurada** | `logs --previous`, `describe` (Last State, Exit Code, eventos `Unhealthy`) |
 | `OOMKilled` | El kernel mató el contenedor por superar su `limits.memory` | Límite demasiado bajo o fuga de memoria | `describe` → `Last State: Terminated, Reason: OOMKilled, Exit Code: 137` |
 | `Running` pero `0/1` | El contenedor vive pero no está listo | La **readiness** falla (puerto/ruta incorrectos, dependencia caída) | `describe` → eventos `Unhealthy: Readiness probe failed` |
 | `Completed` | El proceso terminó con código 0 | Normal en Jobs; en un Deployment indica que el comando no es de larga duración | `logs` |
 | `Terminating` (atascado) | Esperando que termine el contenedor o un *finalizer* | Proceso que ignora SIGTERM, finalizers | `get -o yaml` → `metadata.finalizers` |
+
+Ojo: `CrashLoopBackOff`, `ImagePullBackOff` o `Terminating` **no son fases** del pod; son valores que `kubectl` muestra en la columna `STATUS`. Las fases son solo cinco: `Pending`, `Running`, `Succeeded`, `Failed` y `Unknown`.
 
 **Códigos de salida que conviene memorizar:** `0` terminó bien · `1` (u otro bajo) error de la aplicación · `137` = 128 + 9 (**SIGKILL**: OOM o muerte forzada) · `143` = 128 + 15 (**SIGTERM**: apagado ordenado).
 
@@ -84,7 +87,7 @@ flowchart TD
 | **readinessProbe** | ¿Puede atender tráfico ahora? | Se **saca de los endpoints** del Service (no se reinicia) | Calentamiento, dependencias caídas |
 | **startupProbe** | ¿Ya terminó de arrancar? | Mientras no pase, liveness y readiness **no se ejecutan**; si agota sus intentos, reinicia | Apps de arranque lento (Java, migraciones) |
 
-Mecanismos: `httpGet` (código 200-399 = éxito), `tcpSocket`, `exec` (código 0 = éxito) y `grpc`. Parámetros: `initialDelaySeconds`, `periodSeconds`, `timeoutSeconds`, `failureThreshold`, `successThreshold`.
+Mecanismos: `httpGet` (código 200-399 = éxito), `tcpSocket`, `exec` (código 0 = éxito) y `grpc` (estable desde v1.27). Parámetros: `initialDelaySeconds`, `periodSeconds`, `timeoutSeconds`, `failureThreshold`, `successThreshold`.
 
 > Error clásico: una liveness apuntando al puerto equivocado. El contenedor está perfecto, pero el kubelet lo mata cada pocos segundos y termina en `CrashLoopBackOff`. Los logs de la app no muestran nada raro; la pista está en los eventos `Unhealthy` + `Killing`.
 
@@ -107,7 +110,7 @@ Checklist cuando "el Service no responde":
 4. ¿El `targetPort` coincide con el puerto donde escucha el contenedor?
 5. Si todo lo anterior está bien: DNS (`nslookup <svc>` desde un pod) y NetworkPolicies.
 
-Síntoma desde un cliente: con selector equivocado verás `Connection refused` al instante (kube-proxy rechaza el tráfico hacia un Service sin endpoints).
+Síntoma desde un cliente: con selector equivocado verás `Connection refused` al instante (en este lab, kube-proxy rechaza el tráfico hacia un Service sin endpoints; según la implementación de red, otros clústeres pueden mostrar un *timeout*).
 
 ### 6. Las herramientas de debugging
 
@@ -115,12 +118,12 @@ Síntoma desde un cliente: con selector equivocado verás `Connection refused` a
 - **`kubectl exec`**: ejecuta un comando en un contenedor **vivo** (`-it ... -- sh` para una shell).
 - **`kubectl port-forward`**: túnel desde tu máquina a un pod/Service, sin exponer nada. Ideal para probar una app o una UI interna.
 - **`kubectl debug`**, tres modos:
-  - **Contenedor efímero** (*ephemeral container*): añade un contenedor temporal a un pod **en ejecución**, con otra imagen (p. ej. con herramientas de red). Con `--target` comparte el espacio de procesos del contenedor objetivo. Perfecto para imágenes *distroless* sin shell. No se puede quitar después (desaparece con el pod).
-  - **Copia del pod** (`--copy-to`): crea un pod nuevo igual al original pero cambiando lo que quieras (comando, imagen). Útil cuando el original está en CrashLoopBackOff: arrancas la copia con `sleep`/`sh` y exploras. La copia **no lleva labels**, así que no recibe tráfico ni la adopta el ReplicaSet.
-  - **Depuración de nodo** (`kubectl debug node/<nodo>`): lanza un pod privilegiado en ese nodo con el sistema de archivos del host montado en `/host`. Con `chroot /host` ves el nodo como si hubieras entrado por SSH.
+  - **Contenedor efímero** (*ephemeral container*, estable desde v1.25): añade un contenedor temporal a un pod **en ejecución**, con otra imagen (p. ej. con herramientas de red). Con `--target` comparte el espacio de procesos del contenedor objetivo. Perfecto para imágenes *distroless* sin shell. No se puede quitar ni modificar después (desaparece con el pod), nunca se reinicia y no admite `ports` ni sondas.
+  - **Copia del pod** (`--copy-to`): crea un pod nuevo igual al original pero cambiando lo que quieras (comando, imagen con `--set-image`). Útil cuando el original está en CrashLoopBackOff: arrancas la copia con `sleep`/`sh` y exploras. Por defecto la copia **no lleva labels** (salvo que uses `--keep-labels`), así que no recibe tráfico ni la adopta el ReplicaSet.
+  - **Depuración de nodo** (`kubectl debug node/<nodo>`): lanza un pod en ese nodo, en los namespaces de red, PID e IPC del host, con el sistema de archivos del host montado en `/host`. Por defecto **no es privilegiado** (`chroot /host` puede fallar); para un pod privilegiado usa `--profile=sysadmin`. Con `chroot /host` ves el nodo como si hubieras entrado por SSH.
 - **`kubectl top`**: consumo actual de CPU/memoria de pods y nodos (requiere **metrics-server**). Compáralo con `requests`/`limits`.
 
-`--profile` de `kubectl debug` define los permisos: `general` (por defecto razonable), `baseline`, `restricted`, `netadmin` y `sysadmin` (privilegiado).
+`--profile` de `kubectl debug` define los permisos: `general` (valor por defecto en kubectl v1.37; versiones anteriores usaban `legacy`, en vías de retirarse), `baseline`, `restricted`, `netadmin` y `sysadmin` (privilegiado). Por eso los comandos del lab indican siempre el perfil de forma explícita.
 
 ### 7. Troubleshooting del clúster
 
@@ -137,7 +140,8 @@ Síntoma desde un cliente: con selector equivocado verás `Connection refused` a
 - Si **el controller-manager** cae, un Deployment no crea ReplicaSets/pods y nadie repone pods borrados.
 - Si **el kubelet** de un nodo cae, el nodo pasa a `NotReady` y, tras ~5 minutos, sus pods se reprograman en otros nodos (toleration `node.kubernetes.io/unreachable` por 300 s).
 - `kubectl describe node` muestra **Conditions** (`Ready`, `MemoryPressure`, `DiskPressure`, `PIDPressure`) y **Allocated resources** (suma de requests vs capacidad): la clave para entender un `Insufficient cpu`.
-- `kubectl get componentstatuses` está obsoleto; usa los endpoints `/livez` y `/readyz` del apiserver.
+- `kubectl get componentstatuses` está obsoleto (API *deprecated* desde v1.19); usa los endpoints `/livez` y `/readyz` del apiserver (`/healthz` también está obsoleto).
+- En nodos con systemd, el kubelet y el runtime de contenedores no corren en contenedores y escriben en **journald**: se leen con `journalctl -u kubelet` (o `-u containerd`).
 
 ## Comandos clave
 
@@ -744,3 +748,21 @@ Si editaste los archivos de `rotos\`, el lab deja de estar "roto" para la próxi
 ```powershell
 .\kcna.ps1 reset 09
 ```
+
+## Fuentes oficiales
+
+- [Pod Lifecycle — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/): fases del pod (incluida `Unknown`), `CrashLoopBackOff` no es una fase, back-off 10 s → 300 s y reinicio a los 10 min, tipos de sonda, 30 s de gracia por defecto.
+- [Configure Liveness, Readiness and Startup Probes — kubernetes.io](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/): httpGet 200-399, startup probe (`failureThreshold × periodSeconds`), readiness saca de los Services, gRPC estable desde v1.27.
+- [Ephemeral Containers — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/): estable desde v1.25, no se pueden quitar ni reiniciar, sin `ports` ni sondas.
+- [Debug Running Pods — kubernetes.io](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/): `kubectl debug` con `--target`, `--copy-to`, `--set-image`, `node/<nodo>` con `/host`, pod de nodo no privilegiado y perfiles.
+- [kubectl debug (referencia) — kubernetes.io](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_debug/): `--profile` (por defecto `general`), `--keep-labels` (solo con `--copy-to`).
+- [Assign Memory Resources to Containers and Pods — kubernetes.io](https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/): superar `limits.memory` → `OOMKilled`, `exitCode: 137`, reinicios.
+- [Debug Services — kubernetes.io](https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/): EndpointSlices con `kubernetes.io/service-name`, selector que no coincide con las labels.
+- [Continuing the transition from Endpoints to EndpointSlices — blog de Kubernetes](https://kubernetes.io/blog/2025/04/24/endpoints-deprecation/): API `Endpoints` obsoleta desde v1.33 con aviso.
+- [Taints and Tolerations — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/): tolerations automáticas `not-ready`/`unreachable` de 300 s.
+- [Logging Architecture — kubernetes.io](https://kubernetes.io/docs/concepts/cluster-administration/logging/): `kubectl logs --previous`, `journalctl -u kubelet` en nodos con systemd.
+- [Kubernetes API health endpoints — kubernetes.io](https://kubernetes.io/docs/reference/using-api/health-checks/): `/livez`, `/readyz`, `?verbose`, `/healthz` obsoleto.
+- [ComponentStatus (API) — kubernetes.io](https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/component-status-v1/): obsoleta desde v1.19.
+- [kube-apiserver (referencia) — kubernetes.io](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/): `--event-ttl` por defecto 1 h (retención de eventos).
+- [Troubleshooting Clusters — kubernetes.io](https://kubernetes.io/docs/tasks/debug/debug-cluster/): efectos de la caída del apiserver o del kubelet, logs de componentes.
+- [bash(1) y signal(7) — man7.org](https://man7.org/linux/man-pages/man7/signal.7.html): código de salida 128 + n al morir por la señal n; SIGKILL = 9 (→ 137) y SIGTERM = 15 (→ 143).

@@ -3,6 +3,8 @@
 > **Dominio KCNA:** Cloud Native Application Delivery (16%) — competencia *Application Delivery* · **Tiempo:** 3-4 h (partes A y B: 1,5 h; parte C con Argo CD: 1,5 h) · **Prerrequisitos:** módulos 03 (Deployments y rolling updates) y 06 (Services)
 >
 > **Lecciones equivalentes de KodeKloud:** Application Delivery Fundamentals · GitOps · GitOps Principles · Push vs Pull-based Deployments · CI/CD with GitOps · Argo CD / Flux · CICD Pipeline Demo
+>
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -89,7 +91,7 @@ Para automatizar blue/green y canary con análisis de métricas existen controla
 
 **GitOps** es una forma de operar sistemas en la que **Git es la única fuente de verdad** del estado deseado y un **agente automático** se encarga de que el clúster coincida con lo que dice Git. Para cambiar producción no ejecutas comandos: haces un commit (normalmente vía *pull request*, con su revisión).
 
-El grupo de trabajo **OpenGitOps** (proyecto de la CNCF) definió cuatro principios. Apréndelos con su nombre en inglés:
+**OpenGitOps** (proyecto *Sandbox* de la CNCF, supervisado por el GitOps Working Group) definió cuatro principios (v1.0.0). Apréndelos con su nombre en inglés:
 
 | Principio (OpenGitOps) | Qué significa | Qué te da |
 |---|---|---|
@@ -160,7 +162,7 @@ Detalles útiles:
 - **Promoción entre entornos** = un PR en el repo de configuración (por ejemplo, copiar el tag de `overlays/staging` a `overlays/prod`). El historial de Git es el registro de cambios de producción.
 - **Rollback** = `git revert` del commit problemático; el agente vuelve a sincronizar.
 - Hay herramientas que automatizan la actualización del tag: **Argo CD Image Updater** y los controladores de *image automation* de Flux.
-- El agente detecta cambios por **polling** (Argo CD revisa Git cada ~3 minutos por defecto) o al instante con un **webhook** de GitHub/GitLab.
+- El agente detecta cambios por **polling** (Argo CD revisa Git cada 120 s más hasta 60 s de *jitter*, es decir, como mucho cada 3 minutos por defecto; `timeout.reconciliation` en `argocd-cm`) o al instante con un **webhook** de GitHub/GitLab.
 
 ### 5. Argo CD y Flux
 
@@ -190,15 +192,15 @@ Opciones de la política de sync:
 | Opción | Efecto |
 |---|---|
 | Sync manual (por defecto) | Argo CD solo **avisa** de que está `OutOfSync`; alguien pulsa *Sync* |
-| `automated` | Cuando cambia Git, aplica solo |
-| `automated.selfHeal: true` | Si alguien cambia el **clúster** a mano (drift), lo revierte al estado de Git |
-| `automated.prune: true` | Si un recurso desaparece de Git, lo **borra** del clúster (sin prune queda huérfano) |
+| `automated` | Cuando cambia Git, aplica solo (los cambios hechos a mano en el clúster **no** disparan un sync) |
+| `automated.selfHeal: true` (por defecto `false`) | Si alguien cambia el **clúster** a mano (drift), lo revierte al estado de Git |
+| `automated.prune: true` (por defecto `false`) | Si un recurso desaparece de Git, lo **borra** del clúster (sin prune queda huérfano) |
 
 **Flux** — es un conjunto de controladores independientes (el *GitOps Toolkit*), cada uno con sus CRDs:
 
 | Controlador | CRDs principales | Función |
 |---|---|---|
-| source-controller | `GitRepository`, `HelmRepository`, `OCIRepository`, `Bucket` | Descarga las fuentes |
+| source-controller | `GitRepository`, `HelmRepository`, `HelmChart`, `OCIRepository`, `Bucket` | Descarga las fuentes |
 | kustomize-controller | `Kustomization` (CRD de Flux, no confundir con `kustomization.yaml`) | Aplica manifiestos/overlays y reconcilia |
 | helm-controller | `HelmRelease` | Instala y actualiza charts de Helm de forma declarativa |
 | notification-controller | `Provider`, `Alert`, `Receiver` | Notificaciones salientes y webhooks entrantes |
@@ -226,9 +228,9 @@ Escribir YAML para cada entorno a mano no escala. Hay dos enfoques principales:
 | **Revision** | Cada install/upgrade/rollback crea una revisión numerada; Helm guarda el historial en **Secrets** del namespace del release |
 | **Repository** | Servidor HTTP con un `index.yaml` y charts empaquetados (`.tgz`), o un registry **OCI**. Buscador público: **Artifact Hub** |
 
-Dato histórico muy preguntado: **Helm 2** usaba un componente en el clúster llamado **Tiller**, con permisos amplios; **Helm 3 lo eliminó** y Helm pasó a ser solo un cliente que usa tus credenciales de kubeconfig. (Tu laboratorio tiene Helm 4; los comandos del curso son los mismos.)
+Dato histórico muy preguntado: **Helm 2** usaba un componente en el clúster llamado **Tiller**, con permisos amplios; **Helm 3 lo eliminó** y Helm pasó a ser solo un cliente que usa tus credenciales de kubeconfig (además, Helm 3 introdujo el *three-way merge* y guarda los releases como Secrets en el namespace del release). Helm 4 ya está publicado y es la versión actual de la documentación; tu laboratorio tiene Helm 4 y los comandos del curso son los mismos.
 
-**Kustomize** — personalización **sin plantillas** (proyecto de SIG CLI), **integrado en kubectl** (`kubectl apply -k`, `kubectl kustomize`).
+**Kustomize** — personalización **sin plantillas** (proyecto patrocinado por SIG CLI), **integrado en kubectl desde v1.14** (`kubectl apply -k`, `kubectl kustomize`; `kubectl version --client` muestra la versión de Kustomize incluida).
 
 - **Base:** los manifiestos comunes, YAML válido y completo.
 - **Overlays:** uno por entorno (`dev`, `prod`...). Declaran solo las diferencias: `namePrefix`, `namespace`, `labels`, `replicas`, `images` (cambiar tag), `patches` (fragmentos que se fusionan), `configMapGenerator`/`secretGenerator` (generan ConfigMaps con un sufijo hash: si cambia el contenido cambia el nombre y los pods se reinician solos).
@@ -258,9 +260,9 @@ No son excluyentes: Argo CD y Flux soportan ambos, y Helm puede pasar su salida 
 | **GitHub Actions** | `.github/workflows/*.yml` en el repo | *Workflows* → *jobs* → *steps*; se ejecutan en *runners* (de GitHub o propios); enorme catálogo de *actions* reutilizables |
 | **GitLab CI/CD** | `.gitlab-ci.yml` | *Stages* y *jobs*; *runners*; registry y entornos integrados en GitLab |
 | **Jenkins** | `Jenkinsfile` (pipeline como código) | El veterano: servidor autoalojado, miles de plugins. Proyecto de la **CD Foundation** |
-| **Tekton** | CRDs en el propio clúster: `Task`, `Pipeline`, `TaskRun`, `PipelineRun` | **Nativo de Kubernetes**: cada paso es un contenedor en un pod. Proyecto de la CD Foundation |
+| **Tekton** | CRDs en el propio clúster: `Task`, `Pipeline`, `TaskRun`, `PipelineRun` | **Nativo de Kubernetes**: cada paso es un contenedor en un pod. Proyecto *incubating* de la **CNCF** desde marzo de 2026 (antes estaba en la CD Foundation) |
 
-Otros nombres que pueden aparecer: **Spinnaker** (CD multinube, CD Foundation), **Argo Workflows** (motor de flujos en Kubernetes, CNCF) y **Jenkins X**.
+Otros nombres que pueden aparecer: **Spinnaker** (CD multinube, CD Foundation), **Argo Workflows** (motor de flujos en Kubernetes, parte del proyecto Argo de la CNCF) y **Jenkins X** (CD Foundation).
 
 Un ejemplo conceptual de CI que construye la imagen y actualiza el repo de configuración (no hace falta memorizar la sintaxis):
 
@@ -713,7 +715,7 @@ To git://localhost/app.git
 
 > `git config sendpack.sideband false` evita un cuelgue conocido de Git para Windows al hacer `push` por el protocolo `git://`. Solo hace falta en este clon.
 
-Argo CD revisa Git cada ~3 minutos (en la prueba tardó 91 s). Para no esperar, fuerza un *refresh* (en la UI, botón **Refresh**; en el mundo real lo haría un webhook del servidor Git):
+Argo CD revisa Git cada 2-3 minutos por defecto (en la prueba tardó 91 s). Para no esperar, fuerza un *refresh* (en la UI, botón **Refresh**; en el mundo real lo haría un webhook del servidor Git):
 
 ```powershell
 kubectl annotate application gitops-demo -n argocd argocd.argoproj.io/refresh=normal --overwrite
@@ -959,7 +961,7 @@ Si intentas hacer trampa con `kubectl scale --replicas=3`, el selfHeal lo devuel
 
 <details><summary>Respuesta</summary>
 
-**C.** Argo (Argo CD) y Flux. Jenkins y Tekton son de la CD Foundation y se usan sobre todo para CI; Helm y Kustomize son empaquetado/plantillas; Prometheus y Fluentd son observabilidad.
+**C.** Argo (Argo CD) y Flux. Jenkins es de la CD Foundation y Tekton es un proyecto *incubating* (no graduado) de la CNCF; ambos se usan sobre todo para CI; Helm y Kustomize son empaquetado/plantillas; Prometheus y Fluentd son observabilidad.
 
 </details>
 
@@ -987,7 +989,7 @@ Si intentas hacer trampa con `kubectl scale --replicas=3`, el selfHeal lo devuel
 - **Argo CD:** `Application` (repo + ruta → clúster + namespace), estados `Synced/OutOfSync` y `Healthy/Progressing/Degraded`; `automated`, `selfHeal` (revierte cambios manuales), `prune` (borra lo que sale de Git); UI web integrada. **Flux:** GitOps Toolkit (source, kustomize, helm, notification, image controllers), sin UI propia.
 - **Helm:** chart (Chart.yaml + values.yaml + templates) → release → revisiones guardadas en Secrets; `install/upgrade/rollback/history/template`; Helm 3 eliminó **Tiller**.
 - **Kustomize:** sin plantillas, integrado en kubectl (`-k`), base + overlays, `namePrefix`, `labels`, `replicas`, `images`, `patches`, generadores con sufijo hash.
-- CI conceptual: **GitHub Actions** (`.github/workflows`), **GitLab CI** (`.gitlab-ci.yml`), **Jenkins** (`Jenkinsfile`), **Tekton** (CRDs nativos de Kubernetes).
+- CI conceptual: **GitHub Actions** (`.github/workflows`), **GitLab CI** (`.gitlab-ci.yml`), **Jenkins** (`Jenkinsfile`, CD Foundation), **Tekton** (CRDs nativos de Kubernetes, CNCF incubating).
 
 ## Limpieza
 
@@ -1004,3 +1006,20 @@ Remove-Item -Recurse -Force $env:TEMP\kcna-gitops   # tu clon local del repo Git
 ```
 
 Las imágenes de Argo CD siguen cargadas en los nodos, así que reinstalarlo después (`install-argocd.ps1`) tarda solo un par de minutos.
+
+## Fuentes oficiales
+
+- [OpenGitOps — opengitops.dev](https://opengitops.dev/): los cuatro principios v1.0.0 (Declarative, Versioned and Immutable, Pulled Automatically, Continuously Reconciled).
+- [OpenGitOps en la CNCF — cncf.io](https://www.cncf.io/projects/opengitops/): proyecto Sandbox desde 2021.
+- [Deployments — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/): estrategias `Recreate` y `RollingUpdate` (por defecto), `maxSurge`/`maxUnavailable` 25%, canary con varios Deployments.
+- [Argo CD Architecture — argo-cd.readthedocs.io](https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/): API server, repository server, application controller.
+- [Argo CD Automated Sync Policy — argo-cd.readthedocs.io](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/): `automated`, `prune` y `selfHeal` (ambos `false` por defecto), polling 120 s + 60 s de jitter.
+- [Flux components — fluxcd.io](https://fluxcd.io/flux/components/): controladores del GitOps Toolkit y sus CRDs.
+- [Flagger — fluxcd.io](https://fluxcd.io/flagger/) y [Argo Rollouts — argoproj.github.io](https://argoproj.github.io/argo-rollouts/): canary, A/B y blue/green automatizados con análisis de métricas.
+- [Argo](https://www.cncf.io/projects/argo/) y [Flux](https://www.cncf.io/projects/flux/) en la CNCF: graduados en diciembre y noviembre de 2022.
+- [Changes since Helm 2 — helm.sh](https://helm.sh/docs/faq/changes_since_helm2/): eliminación de Tiller, releases como Secrets en su namespace, three-way merge.
+- [Using Helm — helm.sh](https://helm.sh/docs/intro/using_helm/): releases y revisiones (install/upgrade/rollback incrementan la revisión), Artifact Hub; documentación de Helm 4.
+- [Declarative Management with Kustomize — kubernetes.io](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/): Kustomize en kubectl desde v1.14, `-k`, generadores con sufijo hash.
+- [Kustomize — github.com/kubernetes-sigs](https://github.com/kubernetes-sigs/kustomize): patrocinado por SIG CLI, versión incluida en kubectl.
+- [Tekton en la CNCF — cncf.io](https://www.cncf.io/projects/tekton/) y [CD Foundation projects — cd.foundation](https://cd.foundation/projects/): Tekton incubating en la CNCF desde marzo de 2026; Jenkins, Jenkins X y Spinnaker siguen en la CD Foundation.
+- [CNCF Projects — cncf.io](https://www.cncf.io/projects/): Harbor, Helm, Argo y Flux graduados.

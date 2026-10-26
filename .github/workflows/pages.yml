@@ -28,7 +28,12 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
+      # Calidad del contenido antes de publicar: banco de preguntas válido y con fuente oficial,
+      # y el simulador de kubectl pasando sus pruebas
+      - run: node quiz/src/validate.js --strict
       - run: npm ci
+        working-directory: web
+      - run: node src/lib/kube/kubectl.test.mjs
         working-directory: web
       - run: npm run build
         working-directory: web

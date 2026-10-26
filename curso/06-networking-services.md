@@ -4,6 +4,7 @@
 > **Tiempo estimado:** 2 h 30 min (1 h teoría + 1 h 30 min laboratorio)
 > **Prerrequisitos:** módulos de fundamentos y workloads (Pods, Deployments, labels/selectors). Clúster `kcna` levantado (`.\kcna.ps1 status`).
 > **Lecciones equivalentes en KodeKloud:** "Cluster Networking", "Pod Networking", "CNI in Kubernetes", "DNS in kubernetes", "Ingress", "Kubernetes Services".
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -62,7 +63,7 @@ flowchart LR
 
 **CNI** es una **especificación** de la CNCF (más un conjunto de plugins de referencia) que define cómo un runtime de contenedores pide a un plugin que conecte o desconecte un contenedor de la red. El contrato es sencillo:
 
-- El runtime (containerd, CRI-O) ejecuta un binario del plugin (en `/opt/cni/bin`) pasándole la operación (`ADD`, `DEL`, `CHECK`, `VERSION`) por variables de entorno y la configuración JSON por stdin.
+- El runtime (containerd, CRI-O) ejecuta un binario del plugin (en `/opt/cni/bin`) pasándole la operación (`ADD`, `DEL`, `CHECK`, `VERSION`; la spec 1.1 añade `STATUS` y `GC`) por variables de entorno y la configuración JSON por stdin.
 - La configuración vive en `/etc/cni/net.d/` en cada nodo.
 - El plugin devuelve en JSON la IP asignada, rutas, etc.
 
@@ -74,7 +75,7 @@ Gracias a esta interfaz común, Kubernetes puede funcionar con muchos proveedore
 | **Calico** | Enrutamiento L3 con BGP (o overlay), dataplane iptables o eBPF | Sí, muy completo |
 | **Cilium** | Basado en **eBPF**; puede reemplazar a kube-proxy, observabilidad L7 (Hubble), proyecto *graduated* de la CNCF | Sí (incluye L7) |
 | **Weave Net** | Overlay en malla; el proyecto ya no se mantiene | Sí |
-| **kindnet** | El CNI mínimo de kind (el de este clúster): rutas directas entre nodos (plugin `ptp` + `host-local`) | Sí, en versiones recientes |
+| **kindnet** | El CNI mínimo de kind (el de este clúster): rutas directas entre nodos (plugin `ptp` + `host-local`) | Sí, desde kind v0.24 (vía kube-network-policies) |
 
 > En el examen: "CNI es una especificación, no un producto". Kubernetes no trae red de pods propia: sin un plugin CNI los nodos aparecen `NotReady` y los pods se quedan en `ContainerCreating`.
 
@@ -119,9 +120,10 @@ Los tipos se "apilan": un LoadBalancer también tiene NodePort y ClusterIP; un N
 
 | Modo | Cómo funciona | Notas |
 |---|---|---|
-| **iptables** | Cadenas de reglas NAT; el backend se elige al azar por conexión | El modo por defecto en Linux durante años (el de este clúster) |
-| **IPVS** | Balanceador L4 del kernel con tablas hash y varios algoritmos (rr, lc...) | Escalaba mejor que iptables; marcado como obsoleto en versiones recientes |
-| **nftables** | Sucesor de iptables en el kernel, reglas más eficientes | GA desde v1.33; la dirección de futuro |
+| **iptables** | Cadenas de reglas NAT; el backend se elige al azar por conexión | Sigue siendo el modo por defecto en Linux en v1.37 (el de este clúster); una versión futura cambiará el defecto a nftables |
+| **IPVS** | Balanceador L4 del kernel con tablas hash y varios algoritmos (rr, lc...) | Escalaba mejor que iptables; **obsoleto desde v1.35** (se desactivará por defecto en v1.40 y se eliminará en v1.43) |
+| **nftables** | Sucesor de iptables en el kernel, reglas más eficientes (requiere kernel 5.13+) | GA desde v1.33; sustituto recomendado de iptables e IPVS |
+| **kernelspace** | Modo de kube-proxy en nodos **Windows** (reglas en la *Virtual Filtering Platform* del vSwitch de Windows) | Único modo disponible en Windows; los tres anteriores son solo de Linux |
 | (sin kube-proxy) **eBPF** | Un CNI como Cilium (o Calico eBPF) carga programas eBPF en el kernel que hacen el balanceo directamente | Menos latencia, mejor visibilidad; reemplaza a kube-proxy |
 
 **eBPF** (*extended Berkeley Packet Filter*) permite ejecutar pequeños programas verificados dentro del kernel Linux sin modificarlo, enganchados a eventos de red, llamadas al sistema, etc. Es la base de Cilium, de herramientas de observabilidad y seguridad (Falco, Pixie, Tetragon) y de algunos service mesh.
@@ -186,7 +188,7 @@ flowchart TB
 Por qué reemplaza a Ingress:
 
 - **Expresivo y portable**: división de tráfico por pesos, coincidencia por cabeceras, espejado, timeouts... están en la especificación, no en anotaciones.
-- **Orientado a roles**: el operador controla el Gateway y los equipos solo crean rutas en su namespace (las referencias entre namespaces se autorizan con **ReferenceGrant**).
+- **Orientado a roles**: el operador controla el Gateway y decide desde qué namespaces se le pueden enganchar rutas (`allowedRoutes` en cada listener); los equipos solo crean rutas en su namespace. Si una ruta quiere apuntar a un objeto de **otro** namespace (un Service, un Secret de TLS), el dueño de ese namespace debe permitirlo con un **ReferenceGrant**.
 - **Multiprotocolo**: HTTP, gRPC, TLS, TCP/UDP.
 - **También para service mesh** (iniciativa GAMMA, módulo 07).
 
@@ -735,7 +737,7 @@ kubectl rollout status deploy/tienda -n lab-06
 - **CNI** = especificación; plugins: Flannel (simple, sin NetworkPolicy), Calico (BGP, políticas), Cilium (eBPF), kindnet (kind). Sin CNI → nodos `NotReady`.
 - Service = IP virtual + DNS + balanceo por **selector de labels**. Tipos: ClusterIP (defecto, interno), NodePort (30000-32767 en todos los nodos), LoadBalancer (balanceador externo del cloud), ExternalName (CNAME), headless (`clusterIP: None`, DNS devuelve IPs de pods).
 - **EndpointSlices** guardan las IPs de los pods Ready; sustituyen a Endpoints (obsoleto desde v1.33).
-- **kube-proxy** programa iptables / IPVS / nftables en cada nodo; **eBPF** (Cilium) puede reemplazarlo. Balancea por conexión.
+- **kube-proxy** programa iptables (defecto) / IPVS (obsoleto desde v1.35) / nftables (GA v1.33) en cada nodo; **eBPF** (Cilium) puede reemplazarlo. Balancea por conexión.
 - **CoreDNS** (Service `kube-dns`): `<svc>.<ns>.svc.cluster.local`; `resolv.conf` con `search` y `ndots:5`.
 - **Ingress** necesita un **Ingress Controller**; solo HTTP/HTTPS; extras por anotaciones. ingress-nginx retirado en marzo de 2026.
 - **Gateway API** (GatewayClass → Gateway → HTTPRoute): por roles, portable, pesos/cabeceras en la spec, multiprotocolo; sucesor de Ingress.
@@ -746,3 +748,21 @@ kubectl rollout status deploy/tienda -n lab-06
 ```powershell
 .\kcna.ps1 reset 06
 ```
+
+## Fuentes oficiales
+
+- [Services, Load Balancing, and Networking — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/): modelo de red (IP propia por pod, pod a pod sin NAT, agentes del nodo, `localhost` dentro del pod).
+- [Cluster Networking — kubernetes.io](https://kubernetes.io/docs/concepts/cluster-administration/networking/): el plugin de red asigna IPs a los pods y el API server a los Services; uso de CNI por los runtimes.
+- [CNI Specification — github.com/containernetworking](https://github.com/containernetworking/cni/blob/main/SPEC.md): operaciones ADD/DEL/CHECK/STATUS/VERSION/GC, variables de entorno, configuración por stdin, versión 1.1.0.
+- [Service — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/service/): tipos de Service, rango NodePort 30000-32767, ExternalName como CNAME, headless, Endpoints obsoleto desde v1.33.
+- [EndpointSlices — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/): 100 endpoints por slice por defecto, label `kubernetes.io/service-name`, condiciones ready/serving/terminating.
+- [Virtual IPs and Service Proxies — kubernetes.io](https://kubernetes.io/docs/reference/networking/virtual-ips/): modos de kube-proxy, iptables por defecto en v1.37, backend aleatorio, IPVS obsoleto desde v1.35, nftables (kernel 5.13+), `kernelspace` en Windows.
+- [Kubernetes v1.33: Octarine — kubernetes.io/blog](https://kubernetes.io/blog/2025/04/23/kubernetes-v1-33-release/): nftables de kube-proxy pasa a estable.
+- [DNS for Services and Pods — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/): formato `<svc>.<ns>.svc.cluster.local`, headless, registros de pods, `resolv.conf` con `search` y `ndots:5`.
+- [CoreDNS GA for Kubernetes Cluster DNS — kubernetes.io/blog](https://kubernetes.io/blog/2018/07/10/coredns-ga-for-kubernetes-cluster-dns/): CoreDNS GA en v1.11 (por defecto desde v1.13).
+- [CNCF Projects — cncf.io](https://www.cncf.io/projects/): CoreDNS y Cilium son proyectos graduados.
+- [Ingress — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/ingress/): necesita un Ingress controller, API congelada, recomendación de usar Gateway API.
+- [Ingress NGINX Retirement: What You Need to Know — kubernetes.io/blog](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/): mantenimiento hasta marzo de 2026 y después sin versiones ni parches de seguridad.
+- [Gateway API — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/gateway/): GatewayClass, Gateway, HTTPRoute, GRPCRoute; roles proveedor / operador / desarrollador; add-on de CRDs.
+- [Gateway API v1.0: GA Release — kubernetes.io/blog](https://kubernetes.io/blog/2023/10/31/gateway-api-ga/): GA en octubre de 2023.
+- [ReferenceGrant — gateway-api.sigs.k8s.io](https://gateway-api.sigs.k8s.io/reference/api-types/referencegrant/): referencias entre namespaces; el enganche ruta → Gateway se controla en el propio Gateway.

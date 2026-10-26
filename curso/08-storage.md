@@ -4,6 +4,7 @@
 > **Tiempo estimado:** 2 h 15 min (1 h teoría + 1 h 15 min laboratorio)
 > **Prerrequisitos:** módulos de fundamentos y workloads (Pods, Deployments, StatefulSets a nivel básico), ConfigMaps/Secrets. Clúster `kcna` levantado.
 > **Lecciones equivalentes en KodeKloud:** "Storage Section Introduction", "Introduction to Docker Storage", "Storage in Docker", "Volume Driver Plugins in Docker", "Container Storage Interface (CSI)", "Volumes", "Persistent Volumes", "Persistent Volume Claims", "Using PVCs in PODs", "Storage Class".
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -117,7 +118,7 @@ Qué pasa con el PV (y los datos) cuando se borra su PVC:
 |---|---|---|
 | **Retain** | El PV pasa a `Released` y **conserva los datos**. Un administrador debe limpiarlo o reutilizarlo a mano | PVs estáticos creados a mano |
 | **Delete** | Se borran el PV **y** el almacenamiento real | PVs dinámicos (es el `reclaimPolicy` por defecto de una StorageClass) |
-| ~~Recycle~~ | Borraba el contenido (`rm -rf`) y lo dejaba disponible | **Obsoleto**; usar aprovisionamiento dinámico |
+| ~~Recycle~~ | Borra el contenido (`rm -rf /thevolume/*`) y lo deja disponible | **Obsoleto** (en v1.37 solo lo admiten `nfs` y `hostPath`); usar aprovisionamiento dinámico |
 
 ### 8. StorageClass y aprovisionamiento dinámico
 
@@ -142,7 +143,7 @@ allowVolumeExpansion: true
   - `Immediate`: el volumen se crea y enlaza en cuanto se crea el PVC, sin saber dónde correrá el pod. Puede crear un disco en una zona donde luego el pod no puede programarse.
   - **`WaitForFirstConsumer`**: el PVC queda **Pending** hasta que un pod lo usa; entonces el scheduler elige nodo teniendo en cuenta los requisitos del pod y el volumen se crea en la zona/nodo correctos. Imprescindible para volúmenes locales y recomendado en clústeres multizona. Es el modo de la clase `standard` de nuestro clúster.
 - **allowVolumeExpansion**: permite **ampliar** (nunca reducir) un PVC editando `spec.resources.requests.storage`; el driver hace crecer el volumen y, si hace falta, el sistema de archivos. En nuestro clúster, `standard` (local-path) **no** lo permite: lo comprobarás.
-- **VolumeAttributesClass** (GA en versiones recientes; verás la columna `VOLUMEATTRIBUTESCLASS` en `kubectl get pvc`): permite cambiar atributos como IOPS de un volumen ya creado, si el driver lo soporta.
+- **VolumeAttributesClass** (GA desde v1.34; verás la columna `VOLUMEATTRIBUTESCLASS` en `kubectl get pvc`): permite cambiar atributos como IOPS de un volumen ya creado. Solo funciona con drivers CSI que implementen la operación `ModifyVolume`.
 
 ### 9. StatefulSets y volumeClaimTemplates
 
@@ -711,3 +712,16 @@ La reclaim policy del PV dinámico la hereda de la StorageClass. Si borras el PV
 ```
 
 `reset 08` borra también lo que vive fuera del namespace: las StorageClasses `lab-08-*`, los PVs del lab (incluidos los que quedaron `Released` por `Retain`) y las carpetas de datos en los nodos.
+
+## Fuentes oficiales
+
+- [Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/volumes/): emptyDir (ciclo de vida, `medium: Memory`, `sizeLimit`), riesgos de hostPath, configMap de solo lectura y `subPath`, volúmenes CSI efímeros, plugins in-tree migrados a CSI.
+- [Projected Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/projected-volumes/): fuentes combinables (secret, configMap, downwardAPI, serviceAccountToken...).
+- [Persistent Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/persistent-volumes/): binding 1:1, access modes (RWOP estable desde v1.29, solo CSI), reclaim policies (Recycle obsoleto), fases, expansión sin reducción, `storageClassName: ""`.
+- [PersistentVolume API reference — kubernetes.io](https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-v1/): Retain por defecto en PVs creados a mano, Delete en dinámicos.
+- [Storage Classes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/storage-classes/): `reclaimPolicy` por defecto Delete, `allowVolumeExpansion`, clase por defecto por anotación, `volumeBindingMode`.
+- [Volume Attributes Classes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/): modificar atributos de un volumen existente; solo CSI con `ModifyVolume`; GA en v1.34.
+- [Volume Snapshots — kubernetes.io](https://kubernetes.io/docs/concepts/storage/volume-snapshots/): VolumeSnapshot / VolumeSnapshotContent / VolumeSnapshotClass, solo CSI, CRDs y controlador a cargo de la distribución.
+- [StatefulSets — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/): `volumeClaimTemplates`, nombres `<plantilla>-<sts>-<ordinal>`, PVCs conservados al escalar o borrar, `persistentVolumeClaimRetentionPolicy`, Service headless.
+- [Container Storage Interface (CSI) for Kubernetes GA — kubernetes.io/blog](https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/): CSI GA en Kubernetes 1.13.
+- [CSI Specification — github.com/container-storage-interface](https://github.com/container-storage-interface/spec): especificación estándar adoptada por Kubernetes, Mesos, Nomad y Cloud Foundry.

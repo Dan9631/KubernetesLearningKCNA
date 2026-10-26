@@ -2,13 +2,15 @@
 import Base from '../layouts/Base.astro';
 import Flashcards from '../components/practica/Flashcards.svelte';
 import { url } from '../lib/modules';
+import flashcards from '../data/flashcards.json';
+const total = (flashcards as unknown[]).length;
 ---
-<Base title="Flashcards" description="150 términos clave de Kubernetes y cloud native en inglés con su definición en español." width="wide">
+<Base title="Flashcards" description={`${total} términos clave de Kubernetes y cloud native en inglés con su definición en español.`} width="wide">
   <section class="flash">
     <header class="head">
       <p class="kicker"><a href={url('/practica')}>Práctica</a> · Flashcards</p>
       <h1>Términos clave del examen</h1>
-      <p class="lead">150 términos en inglés, tal como aparecen en el examen, con su definición. Voltea la tarjeta, marca los que ya dominas y repasa el resto como glosario.</p>
+      <p class="lead">{total} términos en inglés, tal como aparecen en el examen, con su definición y la fuente oficial. Voltea la tarjeta, marca los que ya dominas y repasa el resto como glosario.</p>
     </header>
     <Flashcards client:load />
   </section>

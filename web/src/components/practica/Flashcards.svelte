@@ -5,8 +5,9 @@
   import { DOMAINS, pad, url, type DomainKey } from '../../lib/modules';
   import { progress, toggleKnown } from '../../lib/progress.svelte';
   import { ms } from '../../lib/motion';
+  import SourceLinks from '../SourceLinks.svelte';
 
-  interface Card { term: string; def: string; domain: string; module: number }
+  interface Card { term: string; def: string; domain: string; module: number; source?: string }
   const FC = flashcards as Card[];
   const EXAM_DOMAINS = (Object.keys(DOMAINS) as DomainKey[]).filter((d) => DOMAINS[d].exam > 0);
 
@@ -99,6 +100,7 @@
           </div>
         </button>
       </div>
+      {#if flipped}<SourceLinks source={cur.source} />{/if}
       <div class="row">
         <button type="button" class="btn" onclick={prev} aria-label="Tarjeta anterior">Anterior</button>
         <button type="button" class="btn" onclick={next} aria-label="Tarjeta siguiente">Siguiente</button>
@@ -123,6 +125,7 @@
           <li class:known={isKnown(c.term)}>
             <div class="gt"><span class="term">{c.term}</span> <span class="chip {c.domain}">{DOMAINS[c.domain as DomainKey]?.short ?? c.domain}</span>{#if c.module}<a class="mod" href={url(`/modulos/${pad(c.module)}`)}>Módulo {pad(c.module)}</a>{/if}</div>
             <p class="gd">{c.def}</p>
+            <SourceLinks source={c.source} />
             <label class="chk"><input type="checkbox" checked={isKnown(c.term)} onchange={() => toggleKnown(c.term)} /> La domino</label>
           </li>
         {/each}

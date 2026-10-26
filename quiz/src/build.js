@@ -14,7 +14,9 @@ const domains = [['fundamentals', 'F', 'src_f.js'], ['orchestration', 'O', 'src_
 const qs = [];
 for (const [dom, pre, file] of domains) {
   require(path.join(dir, file)).forEach((r, i) => {
-    const [topic, module, q, opts, ans, explanation] = r;
+    // source: URL (o lista de URLs) de la documentación oficial que respalda la respuesta
+    const [topic, module, q, opts, ans, explanation, src] = r;
+    const source = src ? (Array.isArray(src) ? src : [src]) : [];
     if (new Set(opts).size !== opts.length) throw new Error('duplicate option in ' + q);
     const correct = new Set(ans.map(k => opts[k]));
     let o;
@@ -22,7 +24,7 @@ for (const [dom, pre, file] of domains) {
     else if (ans.length === 1) { const c = opts[ans[0]]; o = shuffle(opts.filter((_, k) => k !== ans[0])); o.splice(nextTarget(opts.length), 0, c); }
     else o = shuffle(opts);
     const answer = o.map((x, k) => correct.has(x) ? k : -1).filter(k => k >= 0);
-    qs.push({ id: pre + String(i + 1).padStart(3, '0'), domain: dom, topic, module, q, options: o, answer, explanation });
+    qs.push({ id: pre + String(i + 1).padStart(3, '0'), domain: dom, topic, module, q, options: o, answer, explanation, source });
   });
 }
 
@@ -40,14 +42,16 @@ let s = '// Banco de preguntas de práctica KCNA (Kubernetes and Cloud Native As
     '    q: ' + J(x.q) + ',\n' +
     '    options: [\n      ' + x.options.map(J).join(',\n      ') + '\n    ],\n' +
     '    answer: ' + J(x.answer) + ',\n' +
-    '    explanation: ' + J(x.explanation) + '\n' +
+    '    explanation: ' + J(x.explanation) + ',\n' +
+    '    source: ' + J(x.source) + '\n' +
     '  }').join(',\n') + '\n];\n';
 fs.writeFileSync(path.join(OUT, 'preguntas.js'), s, 'utf8');
 
-const fc = require(path.join(dir, 'src_fc.js')).map(([term, def, domain, module]) => ({ term, def, domain, module }));
+// source: URL oficial que respalda la definición de la tarjeta (5.º elemento de src_fc.js)
+const fc = require(path.join(dir, 'src_fc.js')).map(([term, def, domain, module, source]) => ({ term, def, domain, module, source: source || '' }));
 let f = '// Flashcards KCNA: término en inglés, definición en español.\n' +
   '// Total: ' + fc.length + ' tarjetas.\n' +
   'window.KCNA_FLASHCARDS = [\n' +
-  fc.map(x => '  { term: ' + J(x.term) + ', def: ' + J(x.def) + ', domain: ' + J(x.domain) + ', module: ' + x.module + ' }').join(',\n') + '\n];\n';
+  fc.map(x => '  { term: ' + J(x.term) + ', def: ' + J(x.def) + ', domain: ' + J(x.domain) + ', module: ' + x.module + ', source: ' + J(x.source) + ' }').join(',\n') + '\n];\n';
 fs.writeFileSync(path.join(OUT, 'flashcards.js'), f, 'utf8');
 console.log('questions', qs.length, 'flashcards', fc.length);

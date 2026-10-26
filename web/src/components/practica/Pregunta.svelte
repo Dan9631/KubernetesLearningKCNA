@@ -3,6 +3,7 @@
   // elegir (práctica/simulacro), revelar (práctica tras responder) y revisar (tras entregar el simulacro).
   import { DOMAINS, pad, url, type DomainKey } from '../../lib/modules';
   import { isCorrect, type Item } from './quiz';
+  import SourceLinks from '../SourceLinks.svelte';
 
   let { item, index, total, reveal = false, link = false, onpick }: {
     item: Item; index: number; total: number; reveal?: boolean; link?: boolean; onpick?: (k: number) => void;
@@ -46,6 +47,7 @@
   {#if reveal}
     <div class="explain" class:ok={good} class:fail={!good} role="status">
       <strong>{good ? 'Correcto.' : item.picked.length ? 'No es así.' : 'Sin responder.'}</strong> {item.q.explanation}
+      <SourceLinks source={item.q.source} />
     </div>
   {/if}
 </div>

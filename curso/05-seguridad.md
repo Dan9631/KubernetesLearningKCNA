@@ -3,6 +3,8 @@
 > **Dominio KCNA:** Container Orchestration (28%) · competencia *Security* · **Tiempo:** 3 h · **Prerrequisitos:** módulos 02 (arquitectura), 03 (pods y Deployments) y 04 (scheduling)
 >
 > **Lecciones equivalentes de KodeKloud:** Security Kubernetes Security Primitives · Authentication · TLS Introduction · TLS in Kubernetes · KubeConfig · API Groups · Authorization · Role Based Access Controls · Cluster Roles and Role Bindings · Service Accounts · Image Security · Security Contexts · Network Policies
+>
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -18,7 +20,9 @@ Al terminar podrás:
 
 ### Las 4C de la seguridad cloud native
 
-La documentación de Kubernetes propone pensar la seguridad como capas concéntricas: **Cloud**, **Cluster**, **Container** y **Code**. Cada capa depende de la de fuera: un código impecable no sirve de nada si alguien tiene acceso root al servidor donde corre.
+El modelo clásico de las **4C** (que la documentación de Kubernetes usó hasta la v1.28) propone pensar la seguridad como capas concéntricas: **Cloud**, **Cluster**, **Container** y **Code**. Cada capa depende de la de fuera: un código impecable no sirve de nada si alguien tiene acceso root al servidor donde corre.
+
+> La página actual de la documentación ("Cloud Native Security and Kubernetes") ya no usa las 4C: organiza los controles según las **fases del ciclo de vida** del whitepaper de seguridad de la CNCF (**Develop, Distribute, Deploy, Runtime**). Las 4C siguen siendo un modelo muy citado y útil para ubicar cada control; conoce ambos enfoques.
 
 Analogía: un banco. La **nube** es el edificio y la calle (vigilancia, cerraduras de la puerta principal); el **clúster** es la oficina y quién tiene llave de cada sala; el **contenedor** es la caja fuerte; el **código** es lo que guardas dentro y cómo lo manejas.
 
@@ -68,7 +72,7 @@ Idea clave para el examen: **Kubernetes no gestiona usuarios humanos**. No exist
 
 Las identidades de **aplicaciones** sí son objetos de Kubernetes: las **ServiceAccounts** (las veremos enseguida). Su nombre de usuario tiene la forma `system:serviceaccount:<namespace>:<nombre>`.
 
-Los mecanismos antiguos de archivo estático de contraseñas o tokens (`--basic-auth-file`, `--token-auth-file`) están obsoletos o eliminados; si aparecen en una pregunta, la respuesta es que no se recomiendan.
+La autenticación básica con archivo de contraseñas (`--basic-auth-file`) se **eliminó** en Kubernetes 1.19. El archivo estático de tokens (`--token-auth-file`) todavía existe, pero no se recomienda: los tokens no caducan y cambiarlos exige reiniciar el API server. Si aparecen en una pregunta, la respuesta es que no son buena práctica.
 
 ### TLS en Kubernetes (conceptual)
 
@@ -173,7 +177,7 @@ Tras autorizar la petición, pasa por los **admission controllers**: plugins del
 | `PodSecurity` | Aplica **Pod Security Admission** |
 | `MutatingAdmissionWebhook` / `ValidatingAdmissionWebhook` | Llaman a servicios externos (OPA Gatekeeper, Kyverno) para políticas propias |
 
-También existe **ValidatingAdmissionPolicy**, que permite escribir reglas de validación en CEL dentro del propio clúster, sin webhook.
+También existe **ValidatingAdmissionPolicy** (estable desde v1.30), que permite escribir reglas de validación en CEL dentro del propio clúster, sin webhook.
 
 ### Pod Security Admission y los Pod Security Standards
 
@@ -193,7 +197,7 @@ Los **Pod Security Standards** definen tres perfiles acumulativos:
 | `pod-security.kubernetes.io/warn=<perfil>` | Los admite pero muestra un aviso al usuario |
 | `pod-security.kubernetes.io/audit=<perfil>` | Los admite y lo anota en el log de auditoría |
 
-Detalle práctico: PSA evalúa **pods**. Si creas un Deployment que viola la política, el Deployment se crea (con un aviso), pero su ReplicaSet no logra crear ningún pod. El error aparece en los eventos del ReplicaSet.
+Detalle práctico: el modo `enforce` solo se aplica a los **pods**; `warn` y `audit` también evalúan los recursos de workload (Deployments, Jobs...). Por eso, si creas un Deployment que viola la política, el Deployment se crea (con un aviso), pero su ReplicaSet no logra crear ningún pod. El error aparece en los eventos del ReplicaSet.
 
 ### securityContext: endurecer el contenedor
 
@@ -964,7 +968,7 @@ Fíjate en que el Role usa el grupo `apps` (los Deployments no están en el grup
 
 ## Resumen para repasar
 
-- **4C**: Cloud → Cluster → Container → Code (de fuera hacia dentro); cada capa depende de la exterior.
+- **4C**: Cloud → Cluster → Container → Code (de fuera hacia dentro); cada capa depende de la exterior. La doc actual de Kubernetes usa las fases Develop / Distribute / Deploy / Runtime.
 - Cada petición al API server: **autenticación** (401 si falla) → **autorización** (403) → **admission control** (mutar y validar).
 - Kubernetes **no gestiona usuarios**: certificados X.509 (CN = usuario, O = grupo), OIDC, webhooks. Las **ServiceAccounts** son identidades de apps: `system:serviceaccount:<ns>:<sa>`.
 - Todo va por **TLS** con la **CA del clúster**; solo el API server habla con etcd (que tiene su propia CA). El **kubeconfig** agrupa clusters, users y contexts.
@@ -988,3 +992,21 @@ kubectl get clusterrole,clusterrolebinding -o name | Select-String lab-05
 ```
 
 Si no aparece nada, quedó limpio.
+
+## Fuentes oficiales
+
+- [Cloud Native Security and Kubernetes — kubernetes.io](https://kubernetes.io/docs/concepts/security/cloud-native-security/): enfoque actual por fases Develop / Distribute / Deploy / Runtime.
+- [Overview of Cloud Native Security (rama release-1.28) — github.com/kubernetes/website](https://github.com/kubernetes/website/blob/release-1.28/content/en/docs/concepts/security/overview.md): el modelo de las 4C (Cloud, Clusters, Containers, Code) y su orden.
+- [Authenticating — kubernetes.io](https://kubernetes.io/docs/reference/access-authn-authz/authentication/): Kubernetes no tiene objetos de usuario; X.509 (CN = usuario, O = grupos), tokens de ServiceAccount, OIDC, webhook, archivo estático de tokens.
+- [Remove support for basic authentication (PR #89069) — github.com/kubernetes](https://github.com/kubernetes/kubernetes/pull/89069): `--basic-auth-file` eliminado en v1.19.
+- [Authorization — kubernetes.io](https://kubernetes.io/docs/reference/access-authn-authz/authorization/): modos de autorización, evaluación en secuencia, 403 por defecto.
+- [Using RBAC Authorization — kubernetes.io](https://kubernetes.io/docs/reference/access-authn-authz/rbac/): permisos aditivos, Role/ClusterRole/bindings, roles predefinidos (`view` sin Secrets, `edit` sin RBAC).
+- [Service Accounts — kubernetes.io](https://kubernetes.io/docs/concepts/security/service-accounts/): ServiceAccount `default`, TokenRequest, tokens de corta duración, `automountServiceAccountToken` (la caducidad por defecto de 1 hora está en [Projected Volumes](https://kubernetes.io/docs/concepts/storage/projected-volumes/)).
+- [Admission Control in Kubernetes — kubernetes.io](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/): mutación antes de validación, plugins activados por defecto en v1.37, NodeRestriction, PodSecurity.
+- [Validating Admission Policy — kubernetes.io](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/): reglas en CEL, estable desde v1.30.
+- [Pod Security Standards — kubernetes.io](https://kubernetes.io/docs/concepts/security/pod-security-standards/): perfiles privileged / baseline / restricted y sus controles.
+- [Pod Security Admission — kubernetes.io](https://kubernetes.io/docs/concepts/security/pod-security-admission/): modos enforce / audit / warn, labels del namespace, enforce solo sobre pods.
+- [Configure a Security Context for a Pod or Container — kubernetes.io](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/): `runAsUser`, `fsGroup`, `allowPrivilegeEscalation` (`no_new_privs`), `readOnlyRootFilesystem`.
+- [Network Policies — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/network-policies/): requieren un plugin de red que las implemente, son aditivas, aislamiento por dirección.
+- [kind v0.24.0 release notes — github.com/kubernetes-sigs](https://github.com/kubernetes-sigs/kind/releases/tag/v0.24.0): soporte de NetworkPolicy de serie vía kube-network-policies.
+- [Encrypting Confidential Data at Rest — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/): Secrets sin cifrar por defecto, proveedores aescbc/aesgcm/secretbox/KMS, `--encryption-provider-config`.

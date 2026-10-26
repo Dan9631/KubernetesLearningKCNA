@@ -3,6 +3,7 @@
 > **Dominio KCNA:** Cloud Native Architecture (12%) → competencias *Cloud Native Ecosystem and Principles* y *Cloud Native Community and Collaboration* (+ autoscaling, que también aparece en Kubernetes Fundamentals)
 > **Tiempo estimado:** 2 h · **Prerrequisitos:** Deployments, Services y `requests`/`limits`; metrics-server funcionando (`kubectl top nodes`)
 > **Lecciones equivalentes de KodeKloud:** "Autoscaling", "Serverless", "Community and Governance", "Roles and Personas", "Open Standards"
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -19,7 +20,7 @@ Al terminar podrás:
 
 ### 1. ¿Qué significa "cloud native"?
 
-La CNCF lo define, en esencia, como construir y ejecutar aplicaciones **escalables** en entornos **dinámicos** (nube pública, privada o híbrida) usando contenedores, microservicios, service meshes, infraestructura inmutable y APIs declarativas. El objetivo: sistemas **poco acoplados**, resistentes, manejables y observables, que con buena automatización permiten cambios frecuentes y predecibles con poco esfuerzo.
+La CNCF lo define (definición v1.1, de 2024), en esencia, como prácticas que permiten desarrollar, construir y desplegar cargas de trabajo en entornos de computación **dinámicos** (nube pública, privada o híbrida) para cubrir las necesidades de la organización **a escala**, de forma **programática y repetible**. Se caracteriza por sistemas **poco acoplados** que interoperan de forma **segura, resiliente, manejable, sostenible y observable**. Las tecnologías típicas combinan contenedores, service meshes, multi-tenancy, microservicios, infraestructura inmutable, serverless y APIs declarativas; con buena automatización permiten cambios frecuentes y predecibles con poco esfuerzo.
 
 Una analogía: una aplicación tradicional es un edificio de concreto (sólido, pero cambiar una pared requiere obra). Una cloud native es un juego de bloques de construcción estandarizados: cambias o multiplicas piezas sin tirar el resto.
 
@@ -66,26 +67,26 @@ flowchart TB
 réplicas deseadas = ceil( réplicas actuales × valor actual / valor objetivo )
 ```
 
-Ejemplo: 2 réplicas al 90% de CPU con objetivo 60% → `ceil(2 × 90 / 60) = ceil(3) = 3` réplicas. Si el cociente está dentro de una **tolerancia** del 10% (entre 0,9 y 1,1), no hace nada (evita oscilaciones).
+Ejemplo: 2 réplicas al 90% de CPU con objetivo 60% → `ceil(2 × 90 / 60) = ceil(3) = 3` réplicas. Si el cociente está dentro de una **tolerancia** del 10% (entre 0,9 y 1,1), no hace nada (evita oscilaciones). Desde v1.37 (estable) la tolerancia se puede ajustar por HPA con `behavior.scaleUp/scaleDown.tolerance`.
 
-**`behavior`** controla la velocidad: por defecto escala hacia arriba de inmediato y hacia abajo espera una **ventana de estabilización de 300 s** (usa la recomendación más alta de los últimos 5 min para no "bajar y volver a subir").
+**`behavior`** controla la velocidad: por defecto escala hacia arriba de inmediato (sin ventana de estabilización; como mucho el doble de réplicas o +4 pods cada 15 s, lo que sea mayor) y hacia abajo espera una **ventana de estabilización de 300 s** (usa la recomendación más alta de los últimos 5 min para no "bajar y volver a subir").
 
 #### Vertical Pod Autoscaler (VPA)
 
-- No viene con Kubernetes: es un proyecto aparte (`kubernetes/autoscaler`) con CRD propia.
-- Observa el consumo histórico y **recomienda o aplica** nuevos `requests`/`limits`. Modos: `Off` (solo recomienda: ideal para *right-sizing*), `Initial` (solo al crear pods), `Recreate` (expulsa pods para aplicar valores) y, en versiones recientes, redimensionado en caliente aprovechando el *in-place pod resize* de Kubernetes.
-- No combines VPA y HPA sobre la **misma métrica** (CPU): se pelean.
+- No viene con Kubernetes: es un complemento aparte (`kubernetes/autoscaler`) con CRD propia, y necesita metrics-server.
+- Observa el consumo histórico y **recomienda o aplica** nuevos `requests`/`limits`. Modos: `Off` (solo recomienda: ideal para *right-sizing*), `Initial` (solo al crear pods), `Recreate` (expulsa pods para aplicar valores) y, en versiones recientes del VPA, `InPlaceOrRecreate` (intenta redimensionar en caliente aprovechando el *in-place pod resize*, estable en Kubernetes desde v1.35, y si no puede expulsa el pod). El antiguo modo `Auto` está obsoleto (equivale a `Recreate`).
+- No combines VPA y HPA sobre la **misma métrica** de recurso (CPU o memoria): se pelean. Sí se pueden combinar con métricas distintas (p. ej. VPA para memoria y HPA para CPU).
 
 #### Cluster Autoscaler y Karpenter
 
 - **Cluster Autoscaler** (CA): si hay pods `Pending` porque no caben en ningún nodo, pide al proveedor de nube un nodo más de un **grupo de nodos** predefinido (Auto Scaling Group, VMSS, MIG...). Si un nodo está infrautilizado y sus pods caben en otros, lo vacía y lo elimina.
-- **Karpenter** (nacido en AWS, hoy en `kubernetes-sigs` bajo SIG Autoscaling): no depende de grupos predefinidos; mira los pods pendientes y crea directamente el tipo de instancia más adecuado (y barato), y consolida nodos cuando sobran. Más rápido y flexible.
+- **Karpenter** (en `kubernetes-sigs`, patrocinado por SIG Autoscaling junto con el Cluster Autoscaler; no es un proyecto de la CNCF; tiene implementaciones para AWS, Azure, GCP y otros): no depende de grupos predefinidos; a partir de unas restricciones (*NodePools*) mira los pods pendientes y crea directamente las máquinas más adecuadas, y consolida nodos cuando sobran. Más rápido y flexible.
 - Ninguno de los dos escala pods: reaccionan a pods que no caben. Por eso se combinan con HPA.
 
 #### KEDA (Kubernetes Event-Driven Autoscaling)
 
 - Proyecto **graduado** de la CNCF. Escala según **eventos** externos: longitud de una cola (Kafka, RabbitMQ, SQS), una consulta de Prometheus, un cron, etc. Tiene decenas de *scalers*.
-- Defines un `ScaledObject` (o `ScaledJob`); KEDA crea y alimenta un HPA por debajo y además puede **escalar a cero** (en el HPA nativo `minReplicas` es como mínimo 1, salvo que se active la feature gate `HPAScaleToZero`, que pasó años en alpha).
+- Defines un `ScaledObject` (o `ScaledJob`); KEDA crea y alimenta un HPA por debajo (que escala de 1 a N) y su operador se encarga del paso **0 ↔ 1**, así que puede **escalar a cero** con cualquier fuente de eventos. En el HPA nativo, `minReplicas: 0` exige la feature gate `HPAScaleToZero`: estuvo en alpha de v1.16 a v1.36 y en **v1.37 pasó a beta (activada por defecto)**, pero solo funciona con métricas `Object` o `External`, no con CPU/memoria.
 
 ### 3. Serverless en Kubernetes
 
@@ -98,11 +99,11 @@ Ejemplo: 2 réplicas al 90% de CPU con objetivo 60% → `ceil(2 × 90 / 60) = ce
 | Dirigido por eventos | Se ejecuta ante HTTP, mensajes, cambios en almacenamiento, cron... |
 | Sin estado | El estado vive fuera (bases de datos, colas, almacenamiento de objetos) |
 
-**Knative** (proyecto CNCF) lleva serverless a cualquier clúster de Kubernetes:
+**Knative** (proyecto **graduado** de la CNCF desde 2025) lleva serverless a cualquier clúster de Kubernetes:
 
 - **Knative Serving**: despliega un contenedor como `Service` de Knative; crea **Revisions** inmutables, reparte tráfico entre ellas (canary, blue/green) y autoescala por concurrencia de peticiones, incluido **scale-to-zero** (el *Activator* retiene la petición mientras arranca el pod).
 - **Knative Eventing**: conecta productores y consumidores de eventos con *Brokers* y *Triggers*, usando **CloudEvents**.
-- **CloudEvents**: especificación (graduada en la CNCF) de un formato común para describir eventos (`id`, `source`, `type`, `specversion`...), para que cualquier productor y consumidor se entiendan.
+- **CloudEvents**: especificación (graduada en la CNCF en 2024) de un formato común para describir eventos (`id`, `source`, `type`, `specversion`...), para que cualquier productor y consumidor se entiendan.
 
 ### 4. Estándares abiertos: la razón por la que todo encaja
 
@@ -114,7 +115,7 @@ Kubernetes no implementa todo: define **interfaces** y deja que otros las implem
 | **CRI** (*Container Runtime Interface*) | Cómo el kubelet habla con el runtime (gRPC) | containerd, CRI-O (dockershim se eliminó en v1.24) |
 | **CNI** (*Container Network Interface*) | Cómo se conecta un pod a la red | Calico, Cilium, Flannel, kindnet |
 | **CSI** (*Container Storage Interface*) | Cómo se aprovisionan y montan volúmenes | Drivers de EBS, Azure Disk, Ceph (Rook), Longhorn |
-| **SMI** → **Gateway API (GAMMA)** | Interfaz común para service meshes. SMI se archivó en 2023; su sucesor es la iniciativa **GAMMA** de Gateway API | Istio, Linkerd, Cilium |
+| **SMI** → **Gateway API (GAMMA)** | Interfaz común para service meshes. La CNCF archivó SMI en 2023 y sus mantenedores pasaron a la iniciativa **GAMMA** de Gateway API (SIG Network) | Istio, Linkerd, Cilium |
 | **Gateway API** | Evolución de Ingress, orientada a roles | Traefik, Envoy Gateway, NGINX Gateway Fabric |
 | **OpenTelemetry** | APIs, SDKs y protocolo (OTLP) para trazas, métricas y logs | Collector de OTel, Jaeger, Prometheus, backends comerciales |
 | **CloudEvents** | Formato de eventos | Knative Eventing, Argo Events |
@@ -127,7 +128,7 @@ Kubernetes no implementa todo: define **interfaces** y deja que otros las implem
 |---|---|
 | **Governing Board** | Presupuesto, marketing, decisiones de negocio de la fundación |
 | **TOC** (*Technical Oversight Committee*) | Visión técnica; acepta proyectos y decide sus cambios de nivel de madurez |
-| **TAGs** (*Technical Advisory Groups*) | Grupos temáticos que asesoran al TOC y a los proyectos (seguridad, observabilidad, entrega de aplicaciones, etc.). En 2025 se reorganizaron en menos grupos más amplios, pero la idea es la misma |
+| **TAGs** (*Technical Advisory Groups*) | Grupos temáticos que asesoran al TOC y a los proyectos. En 2025 pasaron de 8 a 5 grupos más amplios: Developer Experience, Infrastructure, Operational Resilience (incluye observabilidad), Security and Compliance y Workloads Foundation. La idea es la misma |
 | **End User Community** | Empresas usuarias que comparten experiencias y feedback |
 
 **Niveles de madurez de un proyecto CNCF:**
@@ -137,13 +138,13 @@ flowchart LR
     S["Sandbox<br/>experimental,<br/>entrada fácil"] --> I["Incubating<br/>usado en producción,<br/>comunidad creciente"] --> G["Graduated<br/>maduro, adopción amplia,<br/>auditoría de seguridad"]
 ```
 
-Ejemplos de proyectos **graduados**: Kubernetes (el primero, 2018), Prometheus, Envoy, CoreDNS, containerd, CRI-O, etcd, Helm, Harbor, Fluentd, Jaeger, Argo, Flux, Istio, Linkerd, Cilium, Open Policy Agent (OPA), Falco, Rook, KEDA, CloudEvents, cert-manager, Dapr, SPIFFE/SPIRE, TUF, Vitess. **OpenTelemetry** es uno de los proyectos más activos de la CNCF (incubating durante años). Los niveles cambian con el tiempo: consulta el estado actual en `cncf.io/projects`.
+Ejemplos de proyectos **graduados**: Kubernetes (el primero, 2018), Prometheus, Envoy, CoreDNS, containerd, CRI-O, etcd, Helm, Harbor, Fluentd, Jaeger, Argo, Flux, Istio, Linkerd, Cilium, Open Policy Agent (OPA), Kyverno, Falco, Rook, KEDA, Knative, CloudEvents, cert-manager, Dapr, Crossplane, SPIFFE/SPIRE, TUF, Vitess y **OpenTelemetry** (uno de los proyectos más activos de la CNCF; fue incubating de 2021 a 2026 y se graduó en mayo de 2026). Ejemplos de **incubating**: Backstage, CNI, OpenCost, Thanos, Cortex, Tekton. Los niveles cambian con el tiempo: consulta el estado actual en `cncf.io/projects`.
 
 El **CNCF Landscape** (`landscape.cncf.io`) es el mapa interactivo de todo el ecosistema cloud native, organizado por categorías (runtime, orquestación, observabilidad, seguridad...), mostrando proyectos CNCF y productos comerciales.
 
 **Cómo se gobierna Kubernetes:**
 
-- **Steering Committee**: 7 miembros elegidos por la comunidad; gobierno general del proyecto (no decide detalles técnicos).
+- **Steering Committee**: 7 miembros elegidos en elecciones anuales por la comunidad; gobierno general del proyecto (delega todas las responsabilidades técnicas en los SIGs).
 - **SIGs** (*Special Interest Groups*): grupos **permanentes** dueños de un área: SIG Node, SIG Network, SIG Storage, SIG Apps, SIG Scheduling, SIG Auth, SIG Autoscaling, SIG CLI, SIG Docs, SIG Release, SIG Architecture, SIG Instrumentation, SIG Security, SIG Contributor Experience... Tienen reuniones públicas y grabadas.
 - **WGs** (*Working Groups*): grupos **temporales** entre varios SIGs para un problema concreto; se disuelven al terminar.
 - **Committees**: p. ej. Code of Conduct Committee y Security Response Committee (gestiona vulnerabilidades).
@@ -151,8 +152,8 @@ El **CNCF Landscape** (`landscape.cncf.io`) es el mapa interactivo de todo el ec
 
 **Ciclo de releases de Kubernetes:**
 
-- Versionado `MAJOR.MINOR.PATCH` (p. ej. v1.37.0). **Tres versiones menores por año** (ciclos de ~15 semanas).
-- Se mantienen las **tres últimas** versiones menores; cada una recibe parches unos **14 meses** (12 de soporte + 2 para actualizar).
+- Versionado `MAJOR.MINOR.PATCH` (p. ej. v1.37.0). Aproximadamente **tres versiones menores por año** (cada ciclo dura unas 14 semanas, más los periodos entre ciclos).
+- Se mantienen las **tres últimas** versiones menores (hoy 1.37, 1.36 y 1.35); la página de releases habla de "aproximadamente 1 año" de parches, y la política de *patch releases* lo detalla como **unos 14 meses**: 12 de periodo estándar + 2 de *maintenance mode* (solo CVEs, dependencias y fallos críticos) antes del fin de vida (EOL). Si te preguntan, "alrededor de un año (hasta ~14 meses)" es la respuesta segura.
 - Las funcionalidades maduran por etapas, controladas con **feature gates** (`--feature-gates=Nombre=true`):
 
 | Etapa | Por defecto | Garantías |
@@ -569,7 +570,7 @@ Si el último check falla, espera un minuto: el HPA tarda en recibir las primera
 
 <details><summary>Respuesta</summary>
 
-**C.** Tres versiones menores al año; se mantienen las tres más recientes, cada una con ~14 meses de parches.
+**C.** Aproximadamente tres versiones menores al año; se mantienen las tres más recientes, cada una con alrededor de un año de parches (hasta ~14 meses contando el *maintenance mode*).
 </details>
 
 **11.** By default, in which state is an **alpha** feature in Kubernetes?
@@ -600,11 +601,11 @@ Si el último check falla, espera un minuto: el HPA tarda en recibir las primera
 
 - Cloud native = contenedores + microservicios + infraestructura inmutable + APIs declarativas + automatización → sistemas resilientes, elásticos y observables.
 - HPA = réplicas (`autoscaling/v2`, cada 15 s, % sobre `requests`, necesita metrics-server). Fórmula: `ceil(actuales × actual / objetivo)`; bajada estabilizada 300 s por defecto.
-- VPA = CPU/RAM por pod (proyecto aparte; modo `Off` para recomendar). Cluster Autoscaler/Karpenter = nodos. KEDA = eventos y scale-to-zero.
+- VPA = CPU/RAM por pod (proyecto aparte; modo `Off` para recomendar). Cluster Autoscaler/Karpenter = nodos (ambos de SIG Autoscaling). KEDA (graduado) = eventos y scale-to-zero; el HPA nativo solo llega a 0 con `HPAScaleToZero` (beta en v1.37) y métricas Object/External.
 - Serverless: no gestionas servidores, scale-to-zero, cold start. Knative Serving (revisiones, autoescalado) + Eventing (CloudEvents).
 - Estándares: OCI (imágenes/runtime), CRI (kubelet↔runtime), CNI (red), CSI (almacenamiento), Gateway API/GAMMA (SMI archivado), OpenTelemetry.
 - CNCF: TOC (técnico), Governing Board (negocio), TAGs (asesoran). Madurez: Sandbox → Incubating → Graduated. Landscape = mapa del ecosistema.
-- Kubernetes: Steering Committee, SIGs (permanentes), WGs (temporales), KEPs. 3 releases/año, 3 versiones mantenidas, ~14 meses. Alpha (off) → Beta → GA, con feature gates.
+- Kubernetes: Steering Committee, SIGs (permanentes), WGs (temporales), KEPs. ~3 releases/año, 3 versiones mantenidas, ~1 año de parches (hasta ~14 meses). Alpha (off) → Beta → GA, con feature gates.
 - Contribuir: Slack, listas de correo, reuniones de SIG, `good first issue`, KubeCon, KCDs.
 - Roles: SRE (SLO/error budget), DevOps (CI/CD), Platform (IDP), DevSecOps (shift-left), FinOps (costos).
 
@@ -613,3 +614,21 @@ Si el último check falla, espera un minuto: el HPA tarda en recibir las primera
 ```powershell
 .\kcna.ps1 reset 10
 ```
+
+## Fuentes oficiales
+
+- [CNCF Cloud Native Definition v1.1 — github.com/cncf/toc](https://github.com/cncf/toc/blob/main/DEFINITION.md): definición de cloud native (poco acoplado, seguro, resiliente, manejable, sostenible, observable).
+- [Horizontal Pod Autoscaling — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/): controlador en kube-controller-manager, 15 s, fórmula, % sobre `requests`, tolerancia 0,1, `behavior` por defecto (300 s), sin DaemonSets, `HPAScaleToZero` beta en v1.37, `kubectl autoscale --cpu`.
+- [Feature Gates — kubernetes.io](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/): etapas Alpha/Beta/GA, APIs beta desactivadas desde v1.24, historial de `HPAScaleToZero`.
+- [Autoscaling Workloads — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/autoscaling/): VPA como complemento, KEDA graduado, in-place resize estable desde v1.35.
+- [Vertical Pod Autoscaling — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/autoscaling/vertical-pod-autoscale/): modos `Off`, `Initial`, `Recreate`, `InPlaceOrRecreate`, `Auto` obsoleto.
+- [Node Autoscaling — kubernetes.io](https://kubernetes.io/docs/concepts/cluster-administration/node-autoscaling/): Cluster Autoscaler (grupos de nodos) y Karpenter (auto-provisioning), patrocinados por SIG Autoscaling.
+- [KEDA Concepts — keda.sh](https://keda.sh/docs/latest/concepts/): ScaledObject/ScaledJob, scalers, el operador gestiona 0 ↔ 1 y el HPA 1 ↔ N.
+- [Knative docs — knative.dev](https://knative.dev/docs/) y [Request flow — knative.dev](https://knative.dev/docs/serving/request-flow/): Serving (revisiones, tráfico, scale-to-zero, Activator) y Eventing (Brokers, Triggers, CloudEvents).
+- [CNCF Projects — cncf.io](https://www.cncf.io/projects/): proyectos graduados e incubating actuales (OpenTelemetry, Knative, KEDA, CloudEvents graduados; Tekton, OpenCost incubating).
+- [OCI Overview — opencontainers.org](https://opencontainers.org/about/overview/): runtime-spec, image-spec y distribution-spec.
+- [CNCF archiva SMI — cncf.io](https://www.cncf.io/blog/2023/10/03/cncf-archives-the-service-mesh-interface-smi-project/): SMI archivado en 2023 y esfuerzo trasladado a GAMMA.
+- [Migrating from dockershim — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/migrating-from-dockershim/): dockershim eliminado en v1.24.
+- [CNCF TOC — github.com/cncf/toc](https://github.com/cncf/toc) y [TOC restructures technical groups — cncf.io](https://www.cncf.io/blog/2025/05/07/10-years-in-cloud-native-toc-restructures-technical-groups/): funciones del TOC y los 5 TAGs actuales.
+- [Kubernetes governance](https://github.com/kubernetes/community/blob/master/governance.md), [Steering Committee](https://github.com/kubernetes/steering) y [Community membership](https://github.com/kubernetes/community/blob/master/community-membership.md): SIGs, WGs, committees, KEPs, 7 miembros del Steering, escalera member → reviewer → approver → subproject owner.
+- [Releases](https://kubernetes.io/releases/), [Release cycle](https://kubernetes.io/releases/release/) y [Patch releases](https://kubernetes.io/releases/patch-releases/) — kubernetes.io: 3 versiones mantenidas, ~3 releases al año, ~1 año de parches (12 + 2 meses).

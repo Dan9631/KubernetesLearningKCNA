@@ -2,6 +2,8 @@
 
 > **Dominio KCNA:** Kubernetes Fundamentals (44%) · competencia *Scheduling* · **Tiempo:** 2,5-3 h · **Prerrequisitos:** módulos 02 (arquitectura) y 03 (pods y Deployments)
 >
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
+>
 > **Lecciones equivalentes de KodeKloud:** Manual Scheduling · Labels and Selectors · Taints and Tolerations · Node Selectors · Node Affinity · Taints and Tolerations vs Node Affinity · Resource Requirements and Limits · DaemonSets · Static Pods · Multiple Schedulers · Configuring Kubernetes Scheduler Profiles
 
 ## Objetivos
@@ -204,6 +206,8 @@ A partir de requests y limits, Kubernetes asigna automáticamente una **QoS clas
 
 Truco de memoria: si solo declaras `limits`, Kubernetes copia ese valor como request, así que un pod con solo limits de CPU y memoria también resulta Guaranteed.
 
+Dos matices de la documentación: cuando el desalojo se debe a presión de recursos, solo son candidatos los pods que consumen **por encima de sus requests** (por eso un Guaranteed casi nunca cae); y con los **recursos a nivel de Pod** (`spec.resources`, beta activada por defecto desde v1.34) la QoS también puede deducirse de los requests/limits del Pod entero.
+
 ### LimitRange y ResourceQuota
 
 Dos objetos *namespaced* que ponen orden en un namespace compartido. Los aplica el **admission controller** al crear los pods (rechazan o modifican el pod antes de guardarlo):
@@ -223,7 +227,7 @@ Un **DaemonSet** garantiza que corre **una copia de un pod en cada nodo** (o en 
 
 Casos típicos: agentes de logs (Fluent Bit), de monitorización (node-exporter), el plugin de red (**kindnet** en tu clúster, Calico o Cilium en otros) y **kube-proxy**.
 
-Desde hace años, los pods de un DaemonSet los coloca el scheduler normal (el controlador les añade una node affinity al nodo concreto). Por eso **sí respetan taints**: para que un DaemonSet llegue también al control plane necesita la toleration correspondiente.
+Desde hace años, los pods de un DaemonSet los coloca el scheduler normal (el controlador les añade una node affinity al nodo concreto). Por eso **sí respetan taints**: para que un DaemonSet llegue también al control plane necesita la toleration correspondiente. Matiz: el controlador añade solo algunas tolerations automáticas a sus pods (`node.kubernetes.io/not-ready` y `unreachable` con `NoExecute`, y `disk-pressure`, `memory-pressure`, `pid-pressure` y `unschedulable` con `NoSchedule`), de modo que un DaemonSet sigue funcionando en nodos acordonados (`cordon`) o con problemas; cualquier otro taint (como el del control plane o uno tuyo) hay que tolerarlo explícitamente.
 
 ### Static pods
 
@@ -1111,3 +1115,19 @@ kcna-control-plane   node-role.kubernetes.io/control-plane
 kcna-worker          <none>
 kcna-worker2         <none>
 ```
+
+## Fuentes oficiales
+
+- [Kubernetes Scheduler — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/): filtrado y puntuación, nodos *feasible*, binding y empates resueltos al azar.
+- [Scheduling Framework — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/): extension points (QueueSort, PreFilter, Filter, PostFilter, PreScore, Score, Reserve, Permit, PreBind, Bind, PostBind...).
+- [Assigning Pods to Nodes — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/): `nodeSelector`, node affinity (`required`/`preferred`, peso 1-100, terms OR / expressions AND), operadores (`Gt`/`Lt` solo en nodeAffinity), pod (anti-)affinity y limitaciones de `nodeName`.
+- [Labels and Selectors — kubernetes.io](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/): selectores de igualdad y de conjunto; Service y ReplicationController solo admiten igualdad.
+- [Taints and Tolerations — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/): efectos NoSchedule/PreferNoSchedule/NoExecute, `tolerationSeconds`, taints automáticos `node.kubernetes.io/*` y tolerations por defecto de 300 s.
+- [Pod Quality of Service Classes — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/): criterios de Guaranteed/Burstable/BestEffort, orden de desalojo y recursos a nivel de Pod.
+- [Resource Management for Pods and Containers — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/): requests y limits, unidades, throttling de CPU y OOM por memoria.
+- [Limit Ranges — kubernetes.io](https://kubernetes.io/docs/concepts/policy/limit-range/): valores por defecto y mínimos/máximos aplicados en admisión; rechazo con 403 Forbidden.
+- [Resource Quotas — kubernetes.io](https://kubernetes.io/docs/concepts/policy/resource-quotas/): topes por namespace; si la cuota controla cpu/memoria, los pods deben declararlos o se rechazan.
+- [DaemonSet — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/): planificación con node affinity por el scheduler por defecto y tolerations que se añaden automáticamente.
+- [Static Pods — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/static-pods/) y [Create static Pods — kubernetes.io](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/): `staticPodPath`, mirror pods con sufijo del nodo, borrado del archivo.
+- [Pod Priority and Preemption — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/): PriorityClass no namespaced, clases `system-cluster-critical` (2000000000) y `system-node-critical` (2000001000), `preemptionPolicy: Never`.
+- [Pod Topology Spread Constraints — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/): `maxSkew`, `topologyKey`, `whenUnsatisfiable` (`DoNotSchedule` por defecto / `ScheduleAnyway`).

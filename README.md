@@ -27,8 +27,9 @@ El sitio (carpeta [web/](web/README.md)) renderiza estos mismos módulos con sim
 
 | | |
 |---|---|
-| Formato | 60 preguntas de opción múltiple, **en inglés**, online con supervisión (PSI) |
+| Formato | Opción múltiple, online con supervisión (PSI). 60 preguntas según las instrucciones de la Linux Foundation |
 | Duración / aprobado | 90 minutos / 75% |
+| Idioma | Inglés (también existe en japonés y chino simplificado). El curso practica en inglés |
 | Tipo | Teórico (no hay terminal), por eso cada módulo combina teoría + práctica + preguntas |
 
 | Dominio oficial | Peso | Competencias | Módulos |

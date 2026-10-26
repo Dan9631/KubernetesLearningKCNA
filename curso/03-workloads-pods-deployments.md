@@ -4,6 +4,7 @@
 > **Tiempo estimado:** 3 h 30 min (1 h 30 min teoría + 2 h laboratorio)
 > **Prerrequisitos:** Módulos 00, 01 y 02
 > **Lecciones equivalentes de KodeKloud:** de "Recap Pods" hasta "Kubernetes Namespaces" (Pods, Pods with YAML, ReplicaSets, Deployments, Deployments – Update and Rollback, Namespaces)
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -39,7 +40,7 @@ Los Pods son **efímeros**: si mueren no se "reparan", se reemplazan por otros n
 | **Adapter** | Normaliza la salida del principal | Convierte métricas a formato Prometheus |
 | **Init container** | Se ejecuta **antes** y **hasta terminar**, en orden, antes de arrancar los contenedores principales | Esperar a que exista una BD, generar configuración, migraciones |
 
-Desde Kubernetes 1.33 existen además los **sidecars nativos**: init containers con `restartPolicy: Always`, que arrancan antes que los principales y siguen corriendo junto a ellos.
+Existen además los **sidecars nativos**: init containers con `restartPolicy: Always`, que arrancan antes que los principales y siguen corriendo junto a ellos (alpha en 1.28, beta activada por defecto desde 1.29 y **estable (GA) desde 1.33**).
 
 **YAML de un Pod (mínimo):**
 
@@ -93,13 +94,13 @@ Cada **contenedor** tiene además su propio estado: `Waiting`, `Running` o `Term
 | `OnFailure` | Reinicia solo si termina con error | Jobs |
 | `Never` | No reinicia nunca | Jobs, tareas puntuales |
 
-Los reinicios usan una espera exponencial (10 s, 20 s, 40 s... hasta 5 min): eso es el famoso **CrashLoopBackOff**. El kubelet reinicia el contenedor **en el mismo nodo**; no mueve el Pod. Las **probes** (liveness, readiness, startup) permiten al kubelet detectar contenedores colgados o no listos; las verás en el módulo de troubleshooting.
+Los reinicios usan una espera exponencial (10 s, 20 s, 40 s... hasta 5 min; se reinicia el contador si el contenedor aguanta 10 min sin fallar): eso es el famoso **CrashLoopBackOff**. Los sidecars nativos ignoran la `restartPolicy` del Pod (siempre se reinician) y, desde v1.35, la funcionalidad `ContainerRestartRules` (beta, activada por defecto) permite además fijar `restartPolicy` en contenedores concretos; para el examen, lo clásico es el campo del Pod. El kubelet reinicia el contenedor **en el mismo nodo**; no mueve el Pod. Las **probes** (liveness, readiness, startup) permiten al kubelet detectar contenedores colgados o no listos; las verás en el módulo de troubleshooting.
 
 ### 3. ReplicaSet: mantener N copias
 
 Un **ReplicaSet** garantiza que haya en todo momento un número de Pods idénticos. Tiene tres partes: `replicas` (cuántos), `selector` (qué Pods cuentan como suyos, por labels) y `template` (cómo crear Pods nuevos). Si sobran, borra; si faltan, crea.
 
-Detalle importante: el ReplicaSet **reconoce a sus Pods por labels**. Si creas a mano un Pod con labels que coinciden con su selector, lo "adopta" y, si sobra, lo borra (lo verás en el lab). Su antecesor, el **ReplicationController**, está obsoleto. En la práctica **no se crean ReplicaSets a mano**: los gestiona un Deployment.
+Detalle importante: el ReplicaSet **reconoce a sus Pods por labels**. Si creas a mano un Pod con labels que coinciden con su selector, lo "adopta" y, si sobra, lo borra (lo verás en el lab). Su antecesor, el **ReplicationController**, es una API heredada (*legacy*): lo recomendado es un Deployment que gestione ReplicaSets. En la práctica **no se crean ReplicaSets a mano**: los gestiona un Deployment.
 
 ### 4. Deployment: versiones y actualizaciones sin corte
 
@@ -776,7 +777,7 @@ Alternativa declarativa pura para la actualización: cambia `image:` a `nginx:1.
 
 <details><summary>Respuesta</summary>
 
-**B.** Los init containers se ejecutan en orden y deben terminar con éxito antes de que arranquen los contenedores principales (estado `Init:0/1` en el lab).
+**B.** Los init containers se ejecutan en orden y deben terminar con éxito antes de que arranquen los contenedores principales (estado `Init:0/1` en el lab). La opción A describe un sidecar: los sidecars nativos se declaran en `initContainers` con `restartPolicy: Always`, pero precisamente por eso no terminan y no son init containers "clásicos".
 
 </details>
 
@@ -928,3 +929,21 @@ Alternativa declarativa pura para la actualización: cambia `image:` a `nginx:1.
 .\kcna.ps1 reset 03
 Remove-Item $env:TEMP\web.yaml, $env:TEMP\api.yaml -ErrorAction SilentlyContinue
 ```
+
+## Fuentes oficiales
+
+- [Pods — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/): el Pod como unidad desplegable más pequeña, contenedores muy acoplados que comparten red y almacenamiento, Pods efímeros.
+- [Pod Lifecycle — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/): fases Pending/Running/Succeeded/Failed/Unknown, estados de contenedor, `restartPolicy` y backoff 10 s → 5 min, `ContainerRestartRules`.
+- [Init Containers — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/): se ejecutan en orden y hasta completarse antes de los contenedores de la app.
+- [Sidecar Containers — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/): sidecars nativos como init containers con `restartPolicy: Always` (activados por defecto desde v1.29).
+- [Feature gates — kubernetes.io](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/): `SidecarContainers` estable desde 1.33; `ContainerRestartRules` beta desde 1.35.
+- [ReplicationController — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/): API heredada; se recomienda Deployment + ReplicaSet.
+- [Deployments — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/): `maxSurge` (redondeo arriba) y `maxUnavailable` (redondeo abajo) 25% por defecto, `revisionHistoryLimit` 10, `--record` obsoleto, rollback.
+- [StatefulSets — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/): identidad estable, `volumeClaimTemplates`, Service headless obligatorio.
+- [Jobs — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/job/) y [CronJob — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/): `completions`, `parallelism`, `backoffLimit` (6 por defecto), `activeDeadlineSeconds`; `concurrencyPolicy` Allow/Forbid/Replace y límites de historial.
+- [Declarative Management with Configuration Files — kubernetes.io](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/) y [Server-Side Apply — kubernetes.io](https://kubernetes.io/docs/reference/using-api/server-side-apply/): anotación `last-applied-configuration`, `kubectl diff`, `managedFields`, conflictos y `--force-conflicts`.
+- [Namespaces — kubernetes.io](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/): los cuatro namespaces iniciales y para qué sirven.
+- [Labels and Selectors — kubernetes.io](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/): selectores de igualdad y de conjunto, `matchLabels`/`matchExpressions`.
+- [ConfigMaps — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/configmap/): límite 1 MiB, volúmenes que se actualizan solos, variables de entorno y `subPath` que no.
+- [Secrets — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/secret/): sin cifrar por defecto en etcd, base64, tipos, `stringData`, 1 MiB, `immutable`, mismo namespace.
+- [Encrypting Confidential Data at Rest — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/): `EncryptionConfiguration`, proveedores (KMS) y que `identity` no cifra.

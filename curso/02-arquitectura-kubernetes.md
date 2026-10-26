@@ -4,6 +4,7 @@
 > **Tiempo estimado:** 2 h 30 min (1 h 15 min teoría + 1 h 15 min laboratorio)
 > **Prerrequisitos:** Módulos 00 y 01
 > **Lecciones equivalentes de KodeKloud:** "Cluster Architecture", "ETCD For Beginners", "ETCD in Kubernetes", "Kube-API Server", "Kube Controller Manager", "Kube Scheduler", "Kubelet", "Kube Proxy" (y, según la versión del curso, las lecciones sobre API, kubeconfig y static pods)
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -72,7 +73,7 @@ Fíjate en una regla de oro: **todos los componentes hablan con el kube-apiserve
 | Componente | Qué hace | Cómo corre |
 |---|---|---|
 | **kubelet** | Agente del nodo: registra el nodo, observa los Pods asignados a él, pide al runtime que los arranque (vía **CRI**), ejecuta las *probes* e informa del estado | Servicio de **systemd** en el nodo, **no** es un Pod. También corre en el control plane |
-| **kube-proxy** | Implementa los **Services**: programa reglas (iptables, IPVS o nftables) para que la IP virtual de un Service reparta tráfico entre sus Pods | Normalmente un **DaemonSet** (un Pod por nodo). Algunos CNI (Cilium) pueden reemplazarlo |
+| **kube-proxy** | Implementa los **Services**: programa reglas (modo `iptables`, el de por defecto en v1.37; `nftables`, su sucesor; o `ipvs`, obsoleto desde v1.35) para que la IP virtual de un Service reparta tráfico entre sus Pods | Normalmente un **DaemonSet** (un Pod por nodo). Es opcional: algunos CNI (Cilium) pueden reemplazarlo |
 | **Container runtime** | Descarga imágenes y ejecuta contenedores | containerd o CRI-O, hablando CRI con el kubelet (módulo 01) |
 
 ### 4. Addons
@@ -90,7 +91,7 @@ Son componentes que no forman parte del "núcleo" pero casi todo clúster necesi
 
 ### 5. Static pods: cómo arranca el propio control plane
 
-Problema del huevo y la gallina: si los Pods se crean a través del API server, ¿quién crea el Pod del API server? La respuesta son los **static pods**: el kubelet vigila un directorio local (por defecto `/etc/kubernetes/manifests`, configurable con `staticPodPath`) y ejecuta directamente cualquier manifiesto de Pod que encuentre ahí, **sin pasar por el scheduler ni por el API server**.
+Problema del huevo y la gallina: si los Pods se crean a través del API server, ¿quién crea el Pod del API server? La respuesta son los **static pods**: el kubelet vigila un directorio local (el que indique `staticPodPath` en su configuración; en clústeres kubeadm es `/etc/kubernetes/manifests`) y ejecuta directamente cualquier manifiesto de Pod que encuentre ahí, **sin pasar por el scheduler ni por el API server**.
 
 - **kubeadm** (la herramienta que usa kind para montar el clúster) coloca ahí `etcd.yaml`, `kube-apiserver.yaml`, `kube-controller-manager.yaml` y `kube-scheduler.yaml`.
 - Para que los veas con `kubectl`, el kubelet crea en la API un **mirror pod** (copia de solo lectura). Su nombre lleva el sufijo del nodo (`etcd-kcna-control-plane`) y su `ownerReference` es el **Node**.
@@ -211,7 +212,7 @@ Orden de búsqueda: la opción `--kubeconfig`, si no la variable de entorno **`K
 
 - **kubeadm** inicializa clústeres "a mano" (`kubeadm init` / `join`): genera certificados, escribe los static pods y configura el kubelet. kind lo usa por dentro.
 - **Alta disponibilidad**: varios nodos de control plane detrás de un balanceador; etcd con 3 o 5 miembros (tolera 1 o 2 caídas).
-- **Versiones**: Kubernetes publica unas 3 versiones menores al año y la comunidad mantiene las 3 más recientes (~14 meses de parches cada una). Política de diferencia de versiones (*version skew*): el API server es el más nuevo; el kubelet puede ir hasta 3 versiones menores por detrás; `kubectl` admite ±1 respecto del API server.
+- **Versiones**: Kubernetes publica unas 3 versiones menores al año y la comunidad mantiene las 3 más recientes (~14 meses de parches cada una). Política de diferencia de versiones (*version skew*): el API server es el más nuevo; el kubelet (y kube-proxy) nunca puede ser más nuevo y puede ir hasta 3 versiones menores por detrás; kube-controller-manager y kube-scheduler, como mucho 1 por detrás; `kubectl` admite ±1 respecto del API server.
 - **Salud**: el API server expone `/livez` (¿está vivo?) y `/readyz` (¿puede atender?), con `?verbose` para ver cada comprobación. `/healthz` y `kubectl get componentstatuses` están obsoletos.
 - **Nodos**: `kubectl cordon`/`drain` para mantenimiento (se ve en el módulo de scheduling).
 
@@ -629,7 +630,7 @@ Para usar el contexto nuevo harías `kubectl config use-context lab02` (y volver
 
 <details><summary>Respuesta</summary>
 
-**B.** kube-proxy programa iptables/IPVS/nftables para implementar Services. Las IPs de los Pods las asigna el plugin CNI.
+**B.** kube-proxy programa reglas iptables/nftables (o IPVS, modo obsoleto desde v1.35) para implementar Services. Las IPs de los Pods las asigna el plugin CNI.
 
 </details>
 
@@ -756,3 +757,21 @@ Para usar el contexto nuevo harías `kubectl config use-context lab02` (y volver
 ```
 
 Borra el namespace `lab-02` y el contexto `lab02` del kubeconfig del lab.
+
+## Fuentes oficiales
+
+- [Kubernetes Components — kubernetes.io](https://kubernetes.io/docs/concepts/overview/components/): componentes del control plane (cloud-controller-manager opcional) y del nodo (kube-proxy opcional), addons.
+- [Cluster Architecture — kubernetes.io](https://kubernetes.io/docs/concepts/architecture/): el API server escala horizontalmente, etcd como almacén de todo el estado, controladores del controller-manager, sin cloud-controller-manager en entornos locales.
+- [Container Runtime Interface (CRI) — kubernetes.io](https://kubernetes.io/docs/concepts/architecture/cri/): el kubelet habla gRPC (CRI v1) con el runtime.
+- [Virtual IPs and Service Proxies — kubernetes.io](https://kubernetes.io/docs/reference/networking/virtual-ips/): modos de kube-proxy (`iptables` por defecto, `nftables`, `ipvs` obsoleto desde v1.35).
+- [Static Pods — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/static-pods/): static pods gestionados por el kubelet, mirror pods con sufijo del nodo que no se controlan desde la API.
+- [Implementation details (kubeadm) — kubernetes.io](https://kubernetes.io/docs/reference/setup-tools/kubeadm/implementation-details/): kubeadm usa `/etc/kubernetes/manifests` con `etcd.yaml`, `kube-apiserver.yaml`, `kube-controller-manager.yaml` y `kube-scheduler.yaml`.
+- [Controlling Access to the Kubernetes API — kubernetes.io](https://kubernetes.io/docs/concepts/security/controlling-access/): orden autenticación → autorización → admisión → validación y escritura.
+- [Objects In Kubernetes — kubernetes.io](https://kubernetes.io/docs/concepts/overview/working-with-objects/): `spec` (deseado) frente a `status` (actual, lo actualiza el sistema); campos `apiVersion`, `kind`, `metadata`, `spec`.
+- [API Overview — kubernetes.io](https://kubernetes.io/docs/reference/using-api/): niveles alpha/beta/stable y que los beta nuevos vienen desactivados por defecto.
+- [Organizing Cluster Access Using kubeconfig Files — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/): contexts, prioridad `--kubeconfig` > `KUBECONFIG` > `$HOME/.kube/config`.
+- [Version Skew Policy — kubernetes.io](https://kubernetes.io/releases/version-skew-policy/): kubelet/kube-proxy hasta 3 menores por detrás, controller-manager/scheduler hasta 1, kubectl ±1; 3 versiones mantenidas.
+- [Patch Releases — kubernetes.io](https://kubernetes.io/releases/patch-releases/): ~14 meses de soporte (12 + 2 de mantenimiento). Cadencia de ~3 versiones al año en [Release cycle](https://kubernetes.io/releases/release/).
+- [Kubernetes API health endpoints — kubernetes.io](https://kubernetes.io/docs/reference/using-api/health-checks/): `/livez` y `/readyz`; `/healthz` obsoleto desde v1.16.
+- [Ports and Protocols — kubernetes.io](https://kubernetes.io/docs/reference/networking/ports-and-protocols/): puertos 6443 (API server) y 2379-2380 (etcd).
+- [etcd FAQ — etcd.io](https://etcd.io/docs/v3.6/faq/): consenso Raft, número impar de miembros, tolerancia a fallos (3 → 1, 5 → 2).

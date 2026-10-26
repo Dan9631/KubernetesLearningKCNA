@@ -3,6 +3,7 @@
 > **Dominio KCNA:** Cloud Native Architecture (12%) → competencia *Observability*
 > **Tiempo estimado:** 2 h 30 min · **Prerrequisitos:** Deployments, Services, DaemonSets, Helm básico, `kubectl top` (módulo 10)
 > **Lecciones equivalentes de KodeKloud:** "Observability Fundamentals", "Prometheus", "Prometheus Architecture", "Node Exporter", "Prometheus Configuration", "Metric Types", "PromQL", "Container and Kubernetes Monitoring", "Grafana", "Logging", "Tracing", "Cost Management"
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -31,7 +32,7 @@ Analogía: el tablero de un auto (luces de aceite, temperatura) es monitoreo. El
 | **Logs** | Registros de eventos discretos, con marca de tiempo, en texto o JSON | `2026-10-23 ERROR pago rechazado id=123` | Fluent Bit, Fluentd, Loki, Elasticsearch/OpenSearch |
 | **Métricas** (*metrics*) | Valores numéricos agregados a lo largo del tiempo (series temporales) | `http_requests_total{code="500"} 42` | Prometheus, Grafana, Thanos, Cortex/Mimir |
 | **Trazas** (*traces*) | El recorrido de **una** petición a través de varios servicios, dividido en *spans* | checkout → pagos (120 ms) → inventario (30 ms) | OpenTelemetry, Jaeger, Zipkin, Tempo |
-| **Perfiles** (*profiles*) | Dónde gasta CPU/memoria el código (funciones) | Flame graph de un servicio lento | Pyroscope, Parca |
+| **Perfiles** (*profiles*) | Dónde gasta CPU/memoria el código (funciones). En OpenTelemetry aún está en desarrollo | Flame graph de un servicio lento | Pyroscope, Parca |
 | **Eventos** | Cambios de estado significativos | Eventos de Kubernetes (`kubectl get events`), despliegues | API de Kubernetes, exportadores de eventos |
 
 Las métricas te dicen **que** algo va mal (barato, ideal para alertas), las trazas **dónde** (qué servicio de la cadena) y los logs **por qué** (el detalle). Las herramientas modernas las enlazan: de un pico en una gráfica saltas a las trazas de ese minuto y de ahí a los logs de ese pod.
@@ -51,7 +52,7 @@ Cálculo rápido: 99% → 7,2 h/mes · 99,9% → 43,2 min/mes · 99,99% → 4,3 
 
 ### 4. Prometheus
 
-**Prometheus** es el sistema de monitoreo y base de datos de series temporales de referencia en cloud native. Fue el **segundo proyecto graduado** de la CNCF (2018), después de Kubernetes. Está pensado para métricas (no para logs ni trazas) y para fiabilidad: cada servidor es autónomo.
+**Prometheus** es el sistema de monitoreo y base de datos de series temporales de referencia en cloud native. Fue el **segundo proyecto** que acogió la CNCF (2016) y el **segundo en graduarse** (2018), en ambos casos después de Kubernetes. Está pensado para métricas (no para logs ni trazas) y para fiabilidad: cada servidor es autónomo.
 
 ```mermaid
 flowchart LR
@@ -68,7 +69,7 @@ flowchart LR
         TSDB --> HTTP["HTTP API<br/>PromQL"]
         RULES["Reglas de<br/>alerta/grabación"] --> TSDB
     end
-    RET -->|pull HTTP cada 15 s| APP
+    RET -->|pull HTTP cada scrape_interval<br/>1 min por defecto, 15 s en este chart| APP
     RET --> NE
     RET --> KSM
     RET --> KUB
@@ -84,15 +85,15 @@ flowchart LR
 | **Exporters** | Traducen métricas de algo que no habla Prometheus: **node-exporter** (Linux), blackbox (sondas HTTP/TCP), MySQL, Redis... |
 | **TSDB** | Base de datos de series temporales en disco local. Para retención larga o alta disponibilidad se usan Thanos, Cortex/Mimir |
 | **Service discovery** | Descubre targets automáticamente (Kubernetes, nubes, DNS, archivos) en vez de listarlos a mano |
-| **Pushgateway** | Para trabajos **de vida corta** (batch) que terminan antes de ser scrapeados: empujan sus métricas y Prometheus las recoge de ahí |
-| **Alertmanager** | Recibe las alertas que generan las reglas, las **deduplica, agrupa, silencia** y las **enruta** a canales de notificación |
+| **Pushgateway** | Para trabajos **de vida corta** (batch) que terminan antes de ser scrapeados: empujan sus métricas y Prometheus las recoge de ahí. No es un modo "push" general: es la excepción (pierdes la señal `up` y las series viejas no caducan solas) |
+| **Alertmanager** | Recibe las alertas que generan las reglas, las **deduplica, agrupa, silencia** (e inhibe) y las **enruta** a canales de notificación |
 | **PromQL** | Lenguaje de consulta |
 
 **Configuración** (`prometheus.yml`), simplificada:
 
 ```yaml
 global:
-  scrape_interval: 15s          # cada cuánto se scrapea
+  scrape_interval: 15s          # cada cuánto se scrapea (si no se indica: 1m)
 scrape_configs:
   - job_name: prometheus        # el propio servidor
     static_configs:
@@ -150,7 +151,7 @@ Ojo con la **cardinalidad**: un label con valores ilimitados (ID de usuario, URL
 | **cAdvisor** | CPU, memoria, red y disco **por contenedor** (`container_*`) | Integrado en el **kubelet** | Prometheus (job `kubernetes-nodes-cadvisor`) |
 | **kube-state-metrics** | **Estado de los objetos** de la API: réplicas deseadas/disponibles, fase de pods, reinicios, requests (`kube_*`) | Deployment | Prometheus |
 | **node-exporter** | Métricas del **sistema operativo** del nodo: CPU, memoria, disco, red, load (`node_*`) | **DaemonSet** (un pod por nodo) | Prometheus |
-| **metrics-server** | Solo CPU/memoria **actual** de pods y nodos, en memoria, sin historial | Deployment, expone la **Metrics API** | `kubectl top`, **HPA**, VPA |
+| **metrics-server** | Solo CPU/memoria **actual** de pods y nodos (lo mínimo para autoescalar), sin historial | Deployment, expone la **Metrics API** | `kubectl top`, **HPA**, VPA |
 | Componentes del control plane | Métricas propias en `/metrics` (apiserver, scheduler, etcd...) | Control plane | Prometheus |
 
 > **metrics-server ≠ Prometheus**: metrics-server es un agregador ligero para el autoescalado y `kubectl top`; no guarda historia, no tiene lenguaje de consultas ni alertas. Prometheus es una plataforma de monitoreo completa. Pueden (y suelen) convivir.
@@ -161,7 +162,7 @@ Ojo con la **cardinalidad**: un label con valores ilimitados (ID de usuario, URL
 
 ### 9. Logging en Kubernetes
 
-- Las aplicaciones deben escribir sus logs en **stdout/stderr** (Twelve-Factor). El runtime los guarda en archivos del nodo (`/var/log/pods/...`, enlazados en `/var/log/containers/`) y el kubelet los rota. `kubectl logs` lee esos archivos.
+- Las aplicaciones deben escribir sus logs en **stdout/stderr** (Twelve-Factor). El runtime los guarda en archivos del nodo (`/var/log/pods/...`, enlazados en `/var/log/containers/`) y el kubelet los rota (por defecto 10 MiB por archivo y 5 archivos por contenedor). `kubectl logs` lee esos archivos (solo el más reciente).
 - Si el pod se borra o el nodo muere, esos logs desaparecen. Kubernetes **no trae** logging a nivel de clúster: hay que montarlo.
 
 ```mermaid
@@ -177,20 +178,20 @@ flowchart LR
 
 | Patrón | Cómo funciona | Cuándo |
 |---|---|---|
-| **Agente a nivel de nodo** (DaemonSet) | Un agente por nodo lee los archivos de logs de todos los contenedores y los envía al backend | El más común y recomendado |
-| **Sidecar** | Un contenedor extra en el pod lee los logs de la app (p. ej. de un archivo) y los envía o los saca por stdout | Apps que escriben en archivos, formatos especiales |
+| **Agente a nivel de nodo** (DaemonSet) | Un agente por nodo lee los archivos de logs de todos los contenedores y los envía al backend | El más común; la documentación recomienda ejecutarlo como DaemonSet y no requiere cambiar las apps |
+| **Sidecar** | Un contenedor extra en el pod lee los logs de la app (p. ej. de un archivo) y los saca por su stdout (*streaming sidecar*) o los envía él mismo con un agente (*sidecar con agente*: más consumo y no se ven con `kubectl logs`) | Apps que escriben en archivos, formatos especiales |
 | **Directo desde la app** | La app envía sus logs al backend con una librería | Casos concretos; acopla la app al backend |
 
-- **Fluentd** (CNCF graduado) y **Fluent Bit** (su hermano ligero, escrito en C, ideal como agente de nodo): recogen, filtran, enriquecen (añaden labels de Kubernetes) y reenvían logs.
-- **Loki** (Grafana Labs): almacena logs indexando **solo labels** (como Prometheus), no el texto completo: barato. Se consulta con LogQL desde Grafana.
+- **Fluentd** (CNCF graduado, C y Ruby) y **Fluent Bit** (subproyecto del ecosistema Fluentd, también graduado; escrito en C y mucho más ligero, ideal como agente de nodo): recogen, filtran, enriquecen (añaden labels de Kubernetes) y reenvían logs.
+- **Loki** (Grafana Labs; no es un proyecto de la CNCF): almacena logs indexando **solo labels** (como Prometheus), no el texto completo: barato. Se consulta con LogQL desde Grafana.
 - **EFK/ELK**: Elasticsearch (u OpenSearch) + Fluentd/Logstash + Kibana: indexado completo, búsquedas potentes, más costoso.
 
 ### 10. Tracing distribuido
 
 - Una **traza** (*trace*) representa una petición de principio a fin; está formada por **spans** (cada operación: llamada HTTP, consulta SQL), con inicio, duración, atributos y relación padre-hijo.
-- El **contexto** (trace ID) viaja entre servicios en cabeceras (estándar W3C `traceparent`): eso es la **propagación de contexto**.
-- **OpenTelemetry (OTel)**: proyecto CNCF (fusión de OpenTracing y OpenCensus en 2019) que estandariza **cómo se generan y transportan** trazas, métricas y logs: APIs y SDKs por lenguaje, auto-instrumentación, el protocolo **OTLP** y el **OpenTelemetry Collector** (recibe, procesa y exporta a cualquier backend). **No almacena** datos: es neutral respecto al proveedor.
-- **Jaeger** (CNCF graduado): backend y UI para almacenar y visualizar trazas (acepta OTLP). Alternativas: Zipkin, Grafana Tempo.
+- El **contexto** (trace ID) viaja entre servicios en cabeceras (estándar W3C Trace Context, cabecera `traceparent`, el propagador por defecto de OpenTelemetry): eso es la **propagación de contexto**.
+- **OpenTelemetry (OTel)**: proyecto CNCF **graduado** (mayo de 2026; nació en 2019 de la fusión de OpenTracing y OpenCensus) que estandariza **cómo se generan y transportan** trazas, métricas y logs: APIs y SDKs por lenguaje, auto-instrumentación, el protocolo **OTLP** y el **OpenTelemetry Collector** (recibe, procesa y exporta a cualquier backend). **No almacena** datos: es neutral respecto al proveedor.
+- **Jaeger** (CNCF graduado, creado en Uber): backend y UI para almacenar y visualizar trazas; compatible con OpenTelemetry (Jaeger v2 está construido sobre el OpenTelemetry Collector). Alternativas: Zipkin, Grafana Tempo.
 - Un **service mesh** (Istio, Linkerd) puede generar spans de red sin tocar el código, pero la propagación del contexto sigue necesitando que la app reenvíe las cabeceras.
 
 ### 11. Gestión de costos (FinOps)
@@ -200,7 +201,7 @@ flowchart LR
 - En Kubernetes, lo que "ocupa" un nodo son los **`requests`**, no el uso real. Pedir 1 CPU y usar 50m es pagar 20 veces de más: el scheduler reserva ese espacio y el Cluster Autoscaler añade nodos para cumplirlo.
 - **Right-sizing**: ajustar `requests`/`limits` al uso observado (Prometheus, VPA en modo recomendación). Otras palancas: autoscaling (HPA, Cluster Autoscaler/Karpenter, escalar a cero), apagar entornos de desarrollo fuera de horario, nodos spot, limpiar volúmenes huérfanos.
 - **Showback** (mostrar a cada equipo su costo) y **chargeback** (cobrárselo), usando **labels** y namespaces para asignar costos.
-- **OpenCost**: proyecto CNCF que calcula el costo de cada namespace, Deployment, label o pod combinando las métricas del clúster con los precios del proveedor. Kubecost es un producto comercial construido sobre él.
+- **OpenCost**: proyecto CNCF (**incubating** desde 2024), neutral respecto al proveedor, que mide y asigna el costo de la infraestructura y los contenedores (por namespace, Deployment, label o pod) combinando las métricas del clúster con los precios del proveedor. Lo creó Kubecost, que es un producto comercial.
 
 ## Comandos clave
 
@@ -415,7 +416,7 @@ sum by (namespace) (container_memory_working_set_bytes{container!=""}) / 1024 / 
 ...
 ```
 
-Qué observar: MiB por namespace. Es la misma métrica (*working set*) que usa `kubectl top` y la que vigila el OOM killer.
+Qué observar: MiB por namespace. Es la misma métrica (*working set*) que usa `kubectl top` (Metrics API) y la base de la señal `memory.available` con la que el kubelet decide los desalojos por presión de memoria.
 
 **d) Estado de los pods (kube-state-metrics)**
 
@@ -710,7 +711,7 @@ Fíjate en que los labels del pod (`app`, `pod_template_hash`) y `namespace`, `p
 - PromQL: selectores `{label="x"}`, `=~` regex, rangos `[5m]`, `rate()`, `sum by ()`, `topk`, `histogram_quantile`.
 - cAdvisor (en el kubelet, contenedores) · kube-state-metrics (estado de objetos) · node-exporter (DaemonSet, SO del nodo) · metrics-server (Metrics API para HPA/top, sin historial, ≠ Prometheus).
 - Grafana = dashboards sobre muchas fuentes. Logs: stdout → agente de nodo (Fluent Bit/Fluentd) → Loki/Elasticsearch. Kubernetes no trae logging de clúster.
-- Trazas: trace = spans; OpenTelemetry (APIs/SDKs/Collector/OTLP, no almacena) + Jaeger (backend/UI).
+- Trazas: trace = spans; OpenTelemetry (CNCF graduado; APIs/SDKs/Collector/OTLP, no almacena) + Jaeger (backend/UI). Loki y Grafana son de Grafana Labs, no de la CNCF.
 - FinOps: Inform → Optimize → Operate; los nodos se llenan por `requests`; right-sizing, spot, autoscaling; OpenCost para costos por namespace/label.
 
 ## Limpieza
@@ -725,3 +726,21 @@ Fíjate en que los labels del pod (`app`, `pod_template_hash`) y `namespace`, `p
 helm uninstall prometheus -n lab-11
 .\kcna.ps1 reset 11
 ```
+
+## Fuentes oficiales
+
+- [Prometheus Overview — prometheus.io](https://prometheus.io/docs/introduction/overview/): segundo proyecto de la CNCF (2016), modelo pull por HTTP, Pushgateway, Alertmanager, almacenamiento local, servidores autónomos.
+- [Prometheus en la CNCF — cncf.io](https://www.cncf.io/projects/prometheus/) y [Kubernetes en la CNCF](https://www.cncf.io/projects/kubernetes/): graduados en agosto y marzo de 2018.
+- [Metric types — prometheus.io](https://prometheus.io/docs/concepts/metric_types/) y [Histograms and summaries](https://prometheus.io/docs/practices/histograms/): counter, gauge, histogram (cuantiles en el servidor, agregable) y summary (cuantiles en el cliente, no agregable).
+- [Configuration — prometheus.io](https://prometheus.io/docs/prometheus/latest/configuration/configuration/): `scrape_interval` por defecto 1m, `metrics_path` `/metrics`.
+- [Alertmanager — prometheus.io](https://prometheus.io/docs/alerting/latest/alertmanager/) y [When to use the Pushgateway](https://prometheus.io/docs/practices/pushing/): deduplicar, agrupar, enrutar, silenciar, inhibir; Pushgateway solo para jobs batch.
+- [Resource metrics pipeline — kubernetes.io](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/): metrics-server, Metrics API para HPA/VPA/`kubectl top`, cAdvisor en el kubelet, working set.
+- [Metrics for Kubernetes Object States — kubernetes.io](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/): kube-state-metrics y métricas `kube_*`.
+- [Logging Architecture — kubernetes.io](https://kubernetes.io/docs/concepts/cluster-administration/logging/): stdout/stderr, `/var/log/pods`, rotación 10Mi/5, sin logging de clúster nativo, agente de nodo como DaemonSet, sidecars.
+- [Fluentd and Fluent Bit — docs.fluentbit.io](https://docs.fluentbit.io/manual/about/fluentd-and-fluent-bit): Fluent Bit en C, Fluentd en C y Ruby, ambos graduados.
+- [Loki overview — grafana.com](https://grafana.com/docs/loki/latest/get-started/overview/): índice solo de labels, LogQL.
+- [What is OpenTelemetry — opentelemetry.io](https://opentelemetry.io/docs/what-is-opentelemetry/), [Signals](https://opentelemetry.io/docs/concepts/signals/) y [Context propagation](https://opentelemetry.io/docs/concepts/context-propagation/): no es un backend, trazas/métricas/logs (perfiles en desarrollo), W3C Trace Context.
+- [OpenTelemetry en la CNCF — cncf.io](https://www.cncf.io/projects/opentelemetry/) y [Jaeger docs — jaegertracing.io](https://www.jaegertracing.io/docs/latest/): OTel graduado en mayo de 2026; Jaeger graduado, compatible con OTel.
+- [Service Level Objectives — sre.google](https://sre.google/sre-book/service-level-objectives/): definiciones de SLI, SLO, SLA y error budget.
+- [OpenCost — opencost.io](https://www.opencost.io/docs/) y [OpenCost en la CNCF](https://www.cncf.io/projects/opencost/): medición y asignación de costos; incubating desde octubre de 2024.
+- [Node-pressure Eviction — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/): `memory.available` se calcula con el working set.

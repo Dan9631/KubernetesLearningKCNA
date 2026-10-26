@@ -4,6 +4,7 @@
 > **Tiempo estimado:** 2 h (1 h teoría + 1 h laboratorio; la sección opcional de Istio suma 45 min)
 > **Prerrequisitos:** módulo 06 (Services, Ingress, Gateway API). Clúster `kcna` levantado.
 > **Lecciones equivalentes en KodeKloud:** "Sidecars", "Envoy", "Monoliths amp Microservices", "Service Mesh", "Istio", "Installing Istio", "Deploying our First Application on Istio".
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -129,10 +130,10 @@ Coste: más componentes que operar, más latencia por salto (dos proxies por lla
 
 - **istiod**: su control plane en un único binario (antes eran Pilot, Citadel y Galley por separado): traduce la configuración a xDS para los proxies, actúa como CA que emite los certificados mTLS e inyecta los sidecars.
 - **Modo sidecar** (clásico): un Envoy (`istio-proxy`) en cada pod, inyectado automáticamente por un *mutating admission webhook* cuando el namespace tiene la label `istio-injection=enabled`. Las reglas iptables del pod (puestas por un init container o por el plugin CNI de Istio) redirigen todo el tráfico de la app a través de Envoy.
-- **Modo ambient** (GA desde Istio 1.24): sin sidecars.
+- **Modo ambient** (beta en Istio 1.22, ya considerada apta para producción con cautela; **GA/estable desde Istio 1.24**): sin sidecars.
   - **ztunnel**: un proxy por **nodo** (DaemonSet, escrito en Rust) que da mTLS, identidad y telemetría **L4** a todos los pods del nodo.
-  - **waypoint proxy**: un Envoy opcional (por namespace o por servicio) que se despliega solo cuando necesitas funciones **L7** (reintentos, pesos por cabecera, autorización HTTP).
-  - Se activa con la label `istio.io/dataplane-mode=ambient` en el namespace. Ventajas: menos RAM, no hay que reiniciar pods para entrar o salir del mesh.
+  - **waypoint proxy**: un Envoy opcional (normalmente por namespace; también por servicio o por workload) que se despliega solo cuando necesitas funciones **L7** (reintentos, pesos por cabecera, autorización HTTP).
+  - Se activa con la label `istio.io/dataplane-mode=ambient` en el namespace (o en un pod concreto). Ventajas: menos RAM, no hay que reiniciar pods para entrar o salir del mesh.
 - Recursos propios (CRDs): `VirtualService` y `DestinationRule` (tráfico), `PeerAuthentication` (mTLS), `AuthorizationPolicy` (autorización), `Gateway` de Istio. Hoy Istio también entiende **Gateway API** (HTTPRoute) como forma recomendada de configurar el tráfico.
 - Herramientas: `istioctl` (instalar, `istioctl analyze` para validar), addons de observabilidad: Kiali, Prometheus, Grafana, Jaeger.
 
@@ -147,8 +148,8 @@ Coste: más componentes que operar, más latencia por salto (dos proxies por lla
 
 ### 7. SMI → GAMMA: estándares para mesh
 
-- **SMI** (*Service Mesh Interface*) fue un intento de la CNCF de definir CRDs comunes para todos los mesh (tráfico, métricas, acceso). Se **archivó en 2023**.
-- Su sucesor es **GAMMA** (*Gateway API for Mesh Management and Administration*), una iniciativa dentro de Gateway API: usa los mismos recursos (`HTTPRoute`, `GRPCRoute`) pero con `parentRefs` apuntando a un **Service** en lugar de a un Gateway, para configurar el tráfico este-oeste. Así el mismo idioma sirve para la entrada al clúster ("norte-sur") y para el tráfico interno. Istio, Linkerd, Cilium y Kuma lo implementan.
+- **SMI** (*Service Mesh Interface*) fue un intento de la CNCF de definir CRDs comunes para todos los mesh (tráfico, métricas, acceso). La CNCF lo **archivó en octubre de 2023**, y sus mantenedores recomendaron sumarse a GAMMA.
+- Su sucesor es **GAMMA** (*Gateway API for Mesh Management and Administration*), una iniciativa dentro de Gateway API (forma parte del canal Standard desde Gateway API v1.1): usa los mismos recursos (`HTTPRoute`, `GRPCRoute`) pero con `parentRefs` apuntando a un **Service** en lugar de a un Gateway, para configurar el tráfico este-oeste. Así el mismo idioma sirve para la entrada al clúster ("norte-sur") y para el tráfico interno. Istio y Cilium figuran como conformes con el perfil Mesh en la lista oficial de implementaciones, y Linkerd configura su tráfico con HTTPRoutes colgadas de Services.
 
 ```yaml
 # Ejemplo GAMMA (conceptual): la ruta se cuelga de un Service, no de un Gateway
@@ -657,3 +658,21 @@ kubectl delete namespace istio-system
 ```powershell
 .\kcna.ps1 reset 07
 ```
+
+## Fuentes oficiales
+
+- [Sidecar Containers — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/): init containers con `restartPolicy: Always`, orden de arranque y parada, Jobs; estable desde v1.33.
+- [Kubernetes v1.33: Octarine — kubernetes.io/blog](https://kubernetes.io/blog/2025/04/23/kubernetes-v1-33-release/): los sidecar containers pasan a estable (KEP-753).
+- [Envoy — envoyproxy.io](https://www.envoyproxy.io/): proxy en C++ creado originalmente en Lyft.
+- [What is Envoy — envoyproxy.io](https://www.envoyproxy.io/docs/envoy/latest/intro/what_is_envoy): proxy L3/L4 con capa de filtros HTTP L7 y APIs de configuración dinámica.
+- [xDS configuration API overview — envoyproxy.io](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/operations/dynamic_configuration): LDS, RDS, CDS, EDS y SDS.
+- [CNCF Projects — cncf.io](https://www.cncf.io/projects/): Envoy, Istio, Linkerd y Cilium son proyectos graduados.
+- [Istio Architecture — istio.io](https://istio.io/latest/docs/ops/deployment/architecture/): istiod (descubrimiento, configuración, certificados) y Envoy como data plane.
+- [Introducing istiod — istio.io](https://istio.io/latest/blog/2020/istiod/): istiod unifica Pilot, Galley, Citadel y el inyector de sidecars.
+- [Installing the Sidecar — istio.io](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/): inyección automática con mutating webhook y label `istio-injection=enabled`.
+- [Ambient mode overview — istio.io](https://istio.io/latest/docs/ambient/overview/), [Announcing Istio 1.22 — istio.io](https://istio.io/latest/news/releases/1.22.x/announcing-1.22/) y [Ambient reaches GA — istio.io](https://istio.io/latest/blog/2024/ambient-reaches-ga/): ztunnel por nodo en Rust (L4), waypoint Envoy (L7); ambient beta en 1.22 y GA (estable) en Istio 1.24.
+- [Configure waypoint proxies — istio.io](https://istio.io/latest/docs/ambient/usage/waypoint/) y [Add workloads to the mesh — istio.io](https://istio.io/latest/docs/ambient/usage/add-workloads/): ámbito del waypoint, label `istio.io/dataplane-mode=ambient`, sin reiniciar pods.
+- [Linkerd architecture — linkerd.io](https://linkerd.io/2-edge/reference/architecture/) y [Automatic mTLS — linkerd.io](https://linkerd.io/2-edge/features/automatic-mtls/): linkerd2-proxy escrito en Rust; mTLS automático por defecto.
+- [Linkerd HTTPRoute reference — linkerd.io](https://linkerd.io/2-edge/reference/httproute/): HTTPRoutes con `parentRefs` a un Service.
+- [The GAMMA Initiative — gateway-api.sigs.k8s.io](https://gateway-api.sigs.k8s.io/docs/mesh/gamma/) e [Implementations — gateway-api.sigs.k8s.io](https://gateway-api.sigs.k8s.io/docs/implementations/list/): significado de GAMMA, rutas colgadas de Services, implementaciones conformes con el perfil Mesh.
+- [CNCF Archives the Service Mesh Interface (SMI) Project — cncf.io](https://www.cncf.io/blog/2023/10/03/cncf-archives-the-service-mesh-interface-smi-project/): SMI archivado en octubre de 2023 en favor de GAMMA.

@@ -1,6 +1,7 @@
 # Módulo 13 — Estrategia para aprobar la KCNA
 
 > **Dominio KCNA:** transversal (todos los dominios) · **Tiempo:** 1 h de lectura + el plan de 6 semanas · **Prerrequisitos:** ninguno; vuelve a este módulo al empezar y al final del curso · **Sin laboratorio ni check**
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -17,16 +18,17 @@ Al terminar podrás:
 | Aspecto | Detalle |
 |---|---|
 | Nombre | **KCNA — Kubernetes and Cloud Native Associate** (CNCF + Linux Foundation) |
-| Formato | **60 preguntas** de opción múltiple (una respuesta correcta entre 4, salvo que el enunciado diga lo contrario) |
+| Formato | Examen **de opción múltiple** (página oficial). **60 preguntas** según las instrucciones generales de la Linux Foundation para sus exámenes de opción múltiple; la página de la KCNA no da el número ni si hay preguntas de varias respuestas: **verifícalo en la web oficial** |
 | Duración | **90 minutos** → 1,5 minutos por pregunta |
-| Modalidad | **Online, supervisado en remoto** (*online proctored*) a través de **PSI**, desde tu ordenador, con webcam y micrófono |
-| Aprobado | **75%** (45 de 60) |
-| Idioma | Inglés |
-| Reintento | **Un retake gratuito** incluido si no apruebas el primer intento |
-| Precio de referencia | **USD 250** — cambia con frecuencia y hay descuentos habituales (Cyber Monday, KubeCon, bundles con curso). **Verifica el precio actual en la web oficial de la Linux Foundation** (training.linuxfoundation.org) |
-| Plazo | Tras la compra tienes un periodo (actualmente 12 meses) para programar y presentar ambos intentos; verifícalo en el *Candidate Handbook* |
-| Resultado | Por correo, normalmente en las 24 horas siguientes, con el porcentaje obtenido |
-| Vigencia | La certificación caduca (hoy son 2 años para la KCNA); confirma la política vigente en la web de la Linux Foundation |
+| Modalidad | **Online, supervisado en remoto** (*online proctored*), desde tu ordenador, con webcam y micrófono. Los exámenes de opción múltiple de la LF usan la plataforma **PSI Bridge** con el navegador seguro de PSI (la página de la KCNA no nombra al proveedor: verifícalo al reservar) |
+| Aprobado | **75%** (45 de 60), según el FAQ de exámenes de opción múltiple de la LF |
+| Idioma | Inglés; también existen versiones en **japonés** y **chino simplificado**, que se compran por separado |
+| Reintento | La compra incluye **dos intentos** (un *retake* si no apruebas el primero) |
+| Precio de referencia | **USD 250** solo el examen (USD 299 con el curso LFS250) — cambia con frecuencia y hay descuentos habituales (Cyber Monday, KubeCon, bundles con curso). **Verifica el precio actual en la web oficial de la Linux Foundation** (training.linuxfoundation.org) |
+| Plazo | **12 meses** desde la compra para programar y presentar el examen (y el retake si lo necesitas) |
+| Resultado | Por correo, en las 24 horas siguientes |
+| Vigencia | **2 años**. Aprobar la CKA o la CKAD renueva automáticamente la KCNA |
+| Requisitos previos | Ninguno |
 
 Es un examen **teórico**: no hay terminal ni clúster. Pero las preguntas están escritas por gente que usa Kubernetes a diario, y muchas se responden mucho más rápido si "has visto" el comportamiento en un lab (por ejemplo, qué hace `selfHeal` o qué pasa con un pod en `CrashLoopBackOff`).
 
@@ -42,7 +44,7 @@ Verifica siempre la versión actual en el *Candidate Handbook* de la Linux Found
 
 ## 2. Temario oficial y mapa con el curso
 
-Pesos vigentes desde noviembre de 2025. Comparado con el temario anterior, **Application Delivery pasó del 8% a formar parte de un dominio del 16%** y **Container Orchestration subió al 28%**: no los descuides.
+Pesos vigentes desde noviembre de 2025 (los dominios, pesos y competencias de la tabla coinciden con la página oficial del examen). Comparado con el temario anterior, **Application Delivery pasó del 8% a formar parte de un dominio del 16%** y **Container Orchestration subió al 28%**: no los descuides.
 
 | Dominio (peso) | Competencia | Módulo(s) del curso |
 |---|---|---|
@@ -105,7 +107,7 @@ Cómo usar el simulacro de la app:
 **Patrones frecuentes**
 
 - "¿Qué componente...?" → piensa en el flujo: `kubectl` → **kube-apiserver** → **etcd**; **scheduler** asigna nodo; **controller-manager** reconcilia; **kubelet** ejecuta; **kube-proxy** programa reglas de Service.
-- "¿Qué proyecto de la CNCF...?" → asocia proyecto con categoría: Prometheus (métricas), Fluentd/Fluent Bit (logs), Jaeger (trazas), OpenTelemetry (instrumentación), Envoy (proxy), Istio/Linkerd (mesh), Helm (paquetes), Argo/Flux (GitOps), Harbor (registry), containerd/CRI-O (runtime), CoreDNS (DNS), etcd (almacén), Falco (seguridad en runtime), OPA/Kyverno (políticas), Knative (serverless), Cilium/Calico (CNI), Rook (almacenamiento).
+- "¿Qué proyecto de la CNCF...?" → asocia proyecto con categoría: Prometheus (métricas), Fluentd/Fluent Bit (logs), Jaeger (trazas), OpenTelemetry (instrumentación), Envoy (proxy), Istio/Linkerd (mesh), Helm (paquetes), Argo/Flux (GitOps), Harbor (registry), containerd/CRI-O (runtime), CoreDNS (DNS), etcd (almacén), Falco (seguridad en runtime), OPA/Kyverno (políticas), Knative (serverless), KEDA (autoescalado por eventos), Cilium/Calico (CNI), Rook (almacenamiento), Tekton (pipelines CI, incubating), OpenCost (costos, incubating). Todos los citados sin nivel son graduados (Calico no es proyecto CNCF).
 - "¿Cuál es el valor por defecto...?" → Service `ClusterIP`; estrategia `RollingUpdate`; `imagePullPolicy` `IfNotPresent` (salvo `latest` → `Always`); `restartPolicy` `Always` en pods; namespace `default`.
 - Preguntas de "comunidad": niveles de madurez **Sandbox → Incubating → Graduated**; el **TOC** (Technical Oversight Committee) decide; los **TAGs** asesoran por área; los **SIGs** son los grupos de Kubernetes; los cambios grandes se proponen como **KEP**.
 
@@ -245,7 +247,7 @@ Cómo usar el simulacro de la app:
 | **CNCF Landscape** (landscape.cncf.io) | Mapa de proyectos por categoría y nivel de madurez |
 | **CNCF Glossary** (glossary.cncf.io) | Definiciones de términos cloud native (también en español) |
 | **cncf.io/projects** | Lista oficial de proyectos Graduated, Incubating y Sandbox |
-| **LFS250 — Kubernetes and Cloud Native Essentials** (Linux Foundation) | El curso oficial asociado a la KCNA. Revisa en la web si está disponible gratis o incluido en un bundle con el examen; como alternativas gratuitas seguras están **LFS158 Introduction to Kubernetes** y **LFS151 Introduction to Cloud Infrastructure Technologies** |
+| **LFS250 — Kubernetes and Cloud Native Essentials** (Linux Foundation) | El curso oficial asociado a la KCNA. Es de pago (USD 99 suelto o USD 299 en bundle con el examen; verifica el precio actual). La alternativa gratuita es **LFS158 Introduction to Kubernetes** (USD 0). LFS151 *Introduction to Cloud Infrastructure Technologies* ya no aparece en el catálogo oficial |
 | **opengitops.dev** | Los principios GitOps de primera mano |
 | **Blog de Kubernetes** (kubernetes.io/blog) y notas de versión | Novedades y funcionalidades que pasan a GA |
 | **Kubernetes Slack** (slack.k8s.io) y **CNCF Slack** | Comunidad; canales de grupos de estudio de certificaciones |
@@ -253,9 +255,21 @@ Cómo usar el simulacro de la app:
 
 ## Resumen para repasar
 
-- 60 preguntas, 90 minutos, 75% para aprobar, online con PSI, un retake incluido; precio de referencia USD 250 (verifícalo siempre).
+- 60 preguntas (instrucciones generales de la LF), 90 minutos, 75% para aprobar, online supervisado (PSI Bridge), dos intentos incluidos, 12 meses para presentarlo, vigencia 2 años; precio de referencia USD 250 (verifícalo siempre).
 - Pesos: Fundamentals 44% · Orchestration 28% · Application Delivery 16% · Architecture 12%. Fundamentals + Orchestration son unas 43 preguntas.
 - Plan: 6 semanas, 7-8 h/semana; un simulacro diagnóstico en la semana 4, y reservar fecha con 85% o más en dos simulacros seguidos.
 - Lee primero la pregunta real (última frase), vigila NOT/EXCEPT/BEST/default, descarta absolutos, marca y vuelve, nunca dejes en blanco.
 - Prepara la logística de PSI con días de antelación: navegador seguro, una pantalla, identificación, habitación despejada.
-- Domina el vocabulario en inglés: el examen no traduce nada.
+- Domina el vocabulario en inglés: el examen no traduce nada (las versiones en japonés y chino son exámenes aparte).
+
+## Fuentes oficiales
+
+- [KCNA — training.linuxfoundation.org](https://training.linuxfoundation.org/certification/kubernetes-cloud-native-associate/): precio (USD 250), opción múltiple online supervisado, 90 min, dos intentos / un retake, 12 meses de elegibilidad, vigencia 2 años, sin requisitos, dominios y pesos.
+- [Multiple Choice Exams: FAQ — docs.linuxfoundation.org](https://docs.linuxfoundation.org/tc-docs/certification/faq-mc): 75% para aprobar, resultados en 24 h, PSI Bridge, vigencia 2 años, CKA/CKAD renuevan la KCNA.
+- [Multiple Choice Exams: Important Instructions — docs.linuxfoundation.org](https://docs.linuxfoundation.org/tc-docs/certification/important-instructions-mc): 60 preguntas y 90 minutos (valores generales), supervisión remota con PSI Secure Browser.
+- [Candidate Handbook: Language — docs.linuxfoundation.org](https://docs.linuxfoundation.org/tc-docs/certification/lf-handbook2/language): KCNA en inglés, japonés y chino simplificado.
+- [Candidate Handbook: Repurchasing the exam — docs.linuxfoundation.org](https://docs.linuxfoundation.org/tc-docs/certification/lf-handbook2/repurchasing-the-exam): una orden activa con primer y segundo intento.
+- [CNCF curriculum — github.com/cncf](https://github.com/cncf/curriculum): repositorio oficial del temario (`KCNA_Curriculum.pdf`).
+- [LFS250 — training.linuxfoundation.org](https://training.linuxfoundation.org/training/kubernetes-and-cloud-native-essentials-lfs250/) y [LFS158 — training.linuxfoundation.org](https://training.linuxfoundation.org/training/introduction-to-kubernetes/): LFS250 de pago, LFS158 gratuito.
+- [CNCF Projects — cncf.io](https://www.cncf.io/projects/): niveles de madurez actuales de los proyectos citados.
+- [Glosario Cloud Native en español — glossary.cncf.io](https://glossary.cncf.io/es/): glosario oficial de la CNCF traducido.

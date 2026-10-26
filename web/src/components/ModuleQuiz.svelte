@@ -2,8 +2,9 @@
   // Preguntas del banco (quiz/preguntas.js) asociadas a un módulo, con explicación al responder.
   import preguntas from '../data/preguntas.json';
   import { progress, recordAnswer } from '../lib/progress.svelte';
+  import SourceLinks from './SourceLinks.svelte';
 
-  interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string }
+  interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[] }
   let { module }: { module: number } = $props();
 
   const pool = (preguntas as Q[]).filter((q) => q.module === module);
@@ -60,7 +61,7 @@
       {/each}
     </div>
     {#if revealed}
-      <div class="explain" class:ok={correct} class:fail={!correct}><strong>{correct ? 'Correcto.' : 'No es así.'}</strong> {q.explanation}</div>
+      <div class="explain" class:ok={correct} class:fail={!correct}><strong>{correct ? 'Correcto.' : 'No es así.'}</strong> {q.explanation}<SourceLinks source={q.source} /></div>
     {/if}
     <div class="row">
       {#if !revealed}

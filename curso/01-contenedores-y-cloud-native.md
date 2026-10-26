@@ -4,6 +4,7 @@
 > **Tiempo estimado:** 2 h (1 h teoría + 1 h laboratorio)
 > **Prerrequisitos:** Módulo 00 (clúster `kcna` encendido, Podman funcionando)
 > **Lecciones equivalentes de KodeKloud:** "What are Containers", "Demo Docker", "Container Orchestration", "Runtime CRI", "Docker vs ContainerD"
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -76,6 +77,8 @@ Un contenedor **no es una entidad del kernel**: es un proceso normal de Linux al
 | `user` | UIDs/GIDs | Permite ser "root" dentro y un usuario sin privilegios fuera (*rootless*) |
 | `cgroup` | Vista de la jerarquía de cgroups | El contenedor solo ve sus propios límites |
 
+(Linux tiene además el namespace `time`, para los relojes de arranque y monotónico; es poco habitual en contenedores.)
+
 **Control groups (cgroups) → cuánto puede *usar* el proceso.** Limitan y contabilizan CPU, memoria, número de procesos, E/S. Cuando en Kubernetes escribes `resources.limits.memory: 64Mi`, al final el kubelet y el runtime escriben `67108864` en el archivo `memory.max` del cgroup del contenedor (lo comprobarás en el laboratorio). Si el proceso supera ese límite, el kernel lo mata (**OOMKilled**).
 
 Otras piezas de seguridad del kernel que acompañan a los contenedores: **capabilities** (trocean los poderes de root), **seccomp** (filtra llamadas al sistema) y **SELinux/AppArmor**. Las verás en el módulo de seguridad.
@@ -128,7 +131,7 @@ Un **Dockerfile** (Podman y Buildah aceptan el mismo formato con el nombre **Con
 | `FROM imagen:tag [AS nombre]` | Imagen base. Toda imagen empieza aquí (`FROM scratch` = vacía) |
 | `RUN comando` | Ejecuta un comando durante el build (instalar paquetes, compilar). Crea capa |
 | `COPY origen destino` | Copia archivos del contexto de build a la imagen. Crea capa |
-| `ADD` | Como `COPY` pero además descomprime tar y acepta URLs. Preferir `COPY` salvo que lo necesites |
+| `ADD` | Como `COPY` pero además descomprime archivos tar locales y acepta URLs remotas. Preferir `COPY` salvo que lo necesites |
 | `WORKDIR /ruta` | Directorio de trabajo para las instrucciones siguientes y para el contenedor |
 | `ENV CLAVE=valor` | Variable de entorno presente en build y en ejecución |
 | `ARG nombre` | Variable solo de build (`--build-arg`) |
@@ -174,8 +177,8 @@ ENTRYPOINT ["/app"]
 
 | Nivel | Ejemplos | Qué hace |
 |---|---|---|
-| **Runtime de bajo nivel** (OCI runtime) | **runc** (referencia, de Docker/OCI), **crun** (en C, más ligero; el que usa Podman), Kata Containers, gVisor (`runsc`) | Recibe un bundle OCI y crea el proceso aislado: namespaces, cgroups, montajes. Después del arranque se aparta |
-| **Runtime de alto nivel** (gestor de contenedores) | **containerd** (graduado CNCF), **CRI-O** (incubado en CNCF, hecho para Kubernetes) | Descarga y almacena imágenes, prepara el filesystem, gestiona el ciclo de vida y llama al runtime de bajo nivel |
+| **Runtime de bajo nivel** (OCI runtime) | **runc** (el original: Docker lo donó a la OCI en 2015), **crun** (en C, más ligero; el que usa Podman por defecto), Kata Containers, gVisor (`runsc`) | Recibe un bundle OCI y crea el proceso aislado: namespaces, cgroups, montajes. Después del arranque se aparta |
+| **Runtime de alto nivel** (gestor de contenedores) | **containerd** (graduado CNCF, 2019), **CRI-O** (graduado CNCF en 2023, hecho para Kubernetes) | Descarga y almacena imágenes, prepara el filesystem, gestiona el ciclo de vida y llama al runtime de bajo nivel |
 | **Herramientas/CLI** | Docker CLI + dockerd, Podman, nerdctl, `crictl`, `ctr` | Interfaz para humanos o depuración |
 
 **CRI (Container Runtime Interface).** Es la API gRPC que el **kubelet** usa para hablar con el runtime. Cualquier runtime que implemente CRI sirve para Kubernetes: containerd (con su plugin CRI) y CRI-O son los habituales.
@@ -214,11 +217,13 @@ En tu laboratorio conviven varios: **Podman** (con **crun**) en la VM de WSL eje
 
 Ejecutar un contenedor en tu portátil es fácil. Ejecutar cientos en decenas de servidores plantea preguntas que un runtime no responde: ¿en qué servidor pongo cada contenedor? ¿Quién lo reinicia si se cae o si muere el servidor? ¿Cómo escalo de 3 a 30 copias? ¿Cómo se encuentran entre sí? ¿Cómo actualizo sin cortar el servicio? Un **orquestador** automatiza todo eso: *scheduling*, autorreparación (*self-healing*), escalado, descubrimiento de servicios y balanceo, despliegues progresivos y rollbacks, gestión de configuración y secretos.
 
-**Kubernetes** (K8s), nacido en Google a partir de su experiencia con Borg y donado en 2014-2015 como primer proyecto de la CNCF, es el estándar de facto. Otras opciones históricas o de nicho: Docker Swarm, HashiCorp Nomad, Apache Mesos.
+**Kubernetes** (K8s), nacido en Google a partir de más de 15 años de experiencia con su sistema interno Borg, se publicó como código abierto en 2014; fue el proyecto semilla de la CNCF (fundada en 2015; aceptado formalmente en 2016) y el **primer proyecto graduado** de la fundación (2018). Hoy es el estándar de facto. Otras opciones históricas o de nicho: Docker Swarm, HashiCorp Nomad, Apache Mesos.
 
 ### 8. ¿Qué significa "cloud native"?
 
-La CNCF lo resume, en esencia, así (redacción propia): las tecnologías cloud native permiten a las organizaciones **construir y ejecutar aplicaciones escalables en entornos modernos y dinámicos** (nubes públicas, privadas e híbridas). Sus piezas típicas son los **contenedores**, las **service meshes**, los **microservicios**, la **infraestructura inmutable** y las **APIs declarativas**. El objetivo es tener sistemas **débilmente acoplados**, **resilientes**, **gestionables** y **observables**, que combinados con una **automatización** sólida permiten hacer cambios importantes con frecuencia y de forma predecible.
+La CNCF lo resume en su definición oficial (versión 1.1, aprobada en 2024; redacción propia): las prácticas cloud native permiten a las organizaciones **desarrollar, construir y desplegar cargas de trabajo** en entornos de cómputo (nubes públicas, privadas e híbridas) **a escala, de forma programática y repetible**. Se caracteriza por sistemas **débilmente acoplados** que interoperan de forma **segura**, **resiliente**, **gestionable**, **sostenible** y **observable**. Sus piezas típicas (lista no exhaustiva) son los **contenedores**, las **service meshes**, la **multi-tenancy**, los **microservicios**, la **infraestructura inmutable**, el **serverless** y las **APIs declarativas**. Combinadas con una **automatización** sólida, permiten hacer cambios de alto impacto con frecuencia, de forma predecible y con un mínimo de trabajo manual (*toil*).
+
+> La versión 1.0 de la definición (la que aún citan muchos cursos) hablaba de "construir y ejecutar aplicaciones escalables en entornos modernos y dinámicos" y listaba contenedores, service meshes, microservicios, infraestructura inmutable y APIs declarativas, con sistemas débilmente acoplados, resilientes, gestionables y observables. La 1.1 conserva todo eso y añade seguridad, sostenibilidad, multi-tenancy y serverless.
 
 Ideas asociadas que el examen da por sabidas:
 
@@ -239,7 +244,7 @@ Ideas asociadas que el examen da por sabidas:
 
 Microservicios no es obligatorio para ser cloud native, pero contenedores + Kubernetes los hacen viables.
 
-**La aplicación de 12 factores (*12-factor app*)**, metodología de Heroku para apps que se ejecutan bien en la nube:
+**La aplicación de 12 factores (*12-factor app*)**, metodología escrita por Adam Wiggins a partir de la experiencia de la plataforma Heroku, para apps que se ejecutan bien en la nube:
 
 | # | Factor | En una frase |
 |---|---|---|
@@ -736,7 +741,7 @@ Si creaste el Pod antes de cargar la imagen verás `ImagePullBackOff`: carga la 
 
 <details><summary>Respuesta</summary>
 
-**B.** Es la lista de ejemplos de la definición de la CNCF. Cloud native busca sistemas débilmente acoplados, resilientes, gestionables y observables, con mucha automatización.
+**B.** Son los ejemplos que da la definición de la CNCF (la versión 1.1 añade multi-tenancy y serverless a esa lista). Cloud native busca sistemas débilmente acoplados, seguros, resilientes, gestionables, sostenibles y observables, con mucha automatización.
 
 </details>
 
@@ -763,7 +768,8 @@ Si creaste el Pod antes de cargar la imagen verás `ImagePullBackOff`: carga la 
 - Bajo nivel: **runc**, **crun**, Kata, gVisor. Alto nivel: **containerd**, **CRI-O**. El kubelet habla **CRI**; `crictl` lo depura.
 - **dockershim** se eliminó en **v1.24**; las imágenes de Docker siguen funcionando (son OCI).
 - Podman: **daemonless** y **rootless**, CLI compatible con Docker.
-- Cloud native: escalable en entornos dinámicos, contenedores + microservicios + inmutabilidad + APIs declarativas + automatización. 12-factor: config en el entorno, procesos sin estado, logs a stdout.
+- Madurez en la CNCF: **containerd** (2019) y **CRI-O** (2023) son proyectos **graduados**; Kubernetes fue el primer graduado (2018).
+- Cloud native (definición CNCF v1.1): cargas a escala de forma programática y repetible; sistemas débilmente acoplados, seguros, resilientes, gestionables, sostenibles y observables; contenedores, service meshes, microservicios, infraestructura inmutable, serverless y APIs declarativas + automatización. 12-factor: config en el entorno, procesos sin estado, logs a stdout.
 
 ## Limpieza
 
@@ -774,3 +780,21 @@ Remove-Item -Recurse -Force $env:TEMP\kcna-web-v2 -ErrorAction SilentlyContinue
 ```
 
 `reset` borra el namespace `lab-01`; las imágenes de Podman se borran aparte porque viven en tu host, no en el clúster.
+
+## Fuentes oficiales
+
+- [Cloud Native Definition v1.1 — github.com/cncf/toc](https://github.com/cncf/toc/blob/main/DEFINITION.md): definición oficial de cloud native (v1.1, 2024): características y lista de tecnologías.
+- [About the OCI — opencontainers.org](https://opencontainers.org/about/overview/): fundación de la OCI (2015, Linux Foundation), especificaciones runtime-spec, image-spec y distribution-spec; Docker donó runc (runtime de bajo nivel, ver también [github.com/opencontainers/runc](https://github.com/opencontainers/runc)).
+- [Container Runtime Interface (CRI) — kubernetes.io](https://kubernetes.io/docs/concepts/architecture/cri/): CRI como protocolo gRPC entre kubelet y runtime; el kubelet exige la API CRI `v1`.
+- [Migrating from dockershim — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/migrating-from-dockershim/): dockershim obsoleto desde 1.20 y eliminado en v1.24.
+- [Dockershim FAQ — kubernetes.io/blog](https://kubernetes.io/blog/2022/02/17/dockershim-faq/): las imágenes construidas con Docker siguen funcionando (OCI); cri-dockerd; Docker Engine usa containerd.
+- [containerd — cncf.io](https://www.cncf.io/projects/containerd/) y [CRI-O — cncf.io](https://www.cncf.io/projects/cri-o/): ambos graduados (2019 y 2023).
+- [Kubernetes, primer proyecto graduado — cncf.io](https://www.cncf.io/announcements/2018/03/06/cloud-native-computing-foundation-announces-kubernetes-first-graduated-project/): Kubernetes, primer proyecto graduado de la CNCF (2018).
+- [Overview — kubernetes.io](https://kubernetes.io/docs/concepts/overview/): Google liberó Kubernetes en 2014 a partir de más de 15 años de experiencia.
+- [Images — kubernetes.io](https://kubernetes.io/docs/concepts/containers/images/): nombres de imagen, registry por defecto, `latest` por defecto, tags mutables frente a digests inmutables, `imagePullPolicy`.
+- [Define a Command and Arguments for a Container — kubernetes.io](https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/): `command` ↔ `ENTRYPOINT`, `args` ↔ `CMD`.
+- [Dockerfile reference — docs.docker.com](https://docs.docker.com/reference/dockerfile/): ENTRYPOINT/CMD, forma exec y señales, EXPOSE no publica, ADD (tar locales, URLs), ARG frente a ENV.
+- [Storage drivers — docs.docker.com](https://docs.docker.com/engine/storage/drivers/): capas de solo lectura, capa escribible del contenedor, copy-on-write; instrucciones de metadatos (LABEL, CMD) no crean capas.
+- [namespaces(7) — man7.org](https://man7.org/linux/man-pages/man7/namespaces.7.html): tipos de namespaces de Linux.
+- [podman(1) — docs.podman.io](https://docs.podman.io/en/latest/markdown/podman.1.html): Podman sin daemon, rootless con user namespaces, crun como runtime por defecto.
+- [The Twelve-Factor App — 12factor.net](https://12factor.net/): los 12 factores.

@@ -1,6 +1,7 @@
 # Módulo 00 — Tu laboratorio de Kubernetes con Podman
 
 > **Dominio KCNA:** transversal (prepara todo lo demás) · **Tiempo:** 45 min · **Prerrequisitos:** ninguno
+> **Verificado:** 2026-10-26 contra la documentación oficial (Kubernetes v1.37). Fuentes al final del módulo.
 
 ## Objetivos
 
@@ -83,7 +84,7 @@ La máquina de Podman sale a internet a través de un proxy local de la empresa 
 
 `.\kcna.ps1 lab NN` ya precarga lo necesario. Dos consecuencias que también sirven para el examen:
 
-- Usa siempre **tags explícitos** (`nginx:1.27-alpine`), nunca `latest`. Con `latest` (o sin tag) el **imagePullPolicy** por defecto es `Always` y el kubelet intentaría descargarla siempre. Con un tag fijo es `IfNotPresent`.
+- Usa siempre **tags explícitos** (`nginx:1.27-alpine`), nunca `latest`. Con `latest` (o sin tag) el **imagePullPolicy** por defecto es `Always`: en cada arranque del contenedor el kubelet pide al runtime que consulte el registry (aunque la imagen ya esté en caché, solo se ahorra la descarga de capas), y sin salida a internet eso falla. Con un tag fijo (o un digest `@sha256:...`) el valor por defecto es `IfNotPresent`.
 - Si ves `ErrImagePull` / `ImagePullBackOff` con una imagen nueva, cárgala con `.\kcna.ps1 load <imagen>` y borra el pod para que se recree.
 
 En un clúster normal con salida a internet nada de esto hace falta.
@@ -189,3 +190,14 @@ Recomendación de ventanas: el módulo abierto en **VS Code** u **Obsidian** (ab
 - `. .\kcna-env.ps1` → kubectl apunta solo al lab (`[kcna:kind-kcna]`).
 - Tags explícitos siempre: `latest` implica `imagePullPolicy: Always`.
 - Ciclo de estudio: `lab NN` → guía → reto → `check NN` → `reset NN` → preguntas → quiz.
+
+## Fuentes oficiales
+
+- [kind — kind.sigs.k8s.io](https://kind.sigs.k8s.io/): qué es kind (clústeres locales con contenedores como nodos), pensado sobre todo para probar el propio Kubernetes; compatible con Docker, Podman o nerdctl.
+- [kind/README — github.com/kubernetes-sigs](https://github.com/kubernetes-sigs/kind): significado "Kubernetes IN Docker" y vínculo con SIG Testing.
+- [kind Quick Start — kind.sigs.k8s.io](https://kind.sigs.k8s.io/docs/user/quick-start/): clústeres multinodo con archivo de configuración, `kind load docker-image` / `image-archive`, `KIND_EXPERIMENTAL_PROVIDER=podman` y la nota sobre `:latest` e `imagePullPolicy`.
+- [Running kind with Rootless — kind.sigs.k8s.io](https://kind.sigs.k8s.io/docs/user/rootless/): requisitos de Podman rootless (cgroup v2, delegación) y limitaciones.
+- [Images — kubernetes.io](https://kubernetes.io/docs/concepts/containers/images/): reglas del `imagePullPolicy` por defecto (`:latest`/sin tag → `Always`; tag fijo o digest → `IfNotPresent`), qué hace `Always`, `ImagePullBackOff` (espera máxima 5 min).
+- [Organizing Cluster Access Using kubeconfig Files — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/): variable `KUBECONFIG`, flag `--kubeconfig` y `$HOME/.kube/config` por defecto.
+- [Headlamp — github.com/kubernetes-sigs](https://github.com/kubernetes-sigs/headlamp): Headlamp es un subproyecto de Kubernetes SIG UI (web y app de escritorio).
+- [podman(1) — docs.podman.io](https://docs.podman.io/en/latest/markdown/podman.1.html): Podman como motor sin daemon, modo rootless con user namespaces.
