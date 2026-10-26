@@ -6,7 +6,8 @@
 #>
 param(
     [Parameter(Position = 0)][string]$Command = 'help',
-    [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$Rest
+    [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$Rest,
+    [switch]$Install   # para: .\kcna.ps1 setup -Install
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,6 +21,7 @@ $Headlamp    = Join-Path $env:LOCALAPPDATA 'Programs\Headlamp\Headlamp.exe'
 $MetricsServerVersion = 'v0.9.0'
 $GatewayApiVersion    = 'v1.6.3'   # debe coincidir con la que usa Traefik (go.mod de traefik)
 $TraefikChartVersion  = '42.1.3'
+$KubectlChannel       = 'stable-1.37'   # misma version menor que kindest/node de kind 0.33
 
 # Aislamiento: este script SOLO habla con el cluster local, nunca con ~/.kube/config
 $env:KUBECONFIG = Join-Path $Root '.kube\kcna-config'
@@ -125,7 +127,131 @@ function Install-Addons {
     if ($LASTEXITCODE -eq 0) { Ok 'Traefik instalado' } else { Fail 'Traefik fallo'; $out | Select-Object -Last 5 | Write-Host }
 }
 
+# ---------------------------------------------------------------------------
+# Instalacion en una maquina nueva: .\kcna.ps1 setup [-Install]
+# Sin -Install solo diagnostica y dice que ejecutar; con -Install instala con winget.
+# ---------------------------------------------------------------------------
+$Tools = @(
+    @{ Name = 'podman'; Id = 'RedHat.Podman';      Required = $true;  Why = 'motor de contenedores (los nodos del cluster son contenedores)' },
+    @{ Name = 'kind';   Id = 'Kubernetes.kind';    Required = $true;  Why = 'crea el cluster de Kubernetes sobre Podman' },
+    @{ Name = 'helm';   Id = 'Helm.Helm';          Required = $true;  Why = 'instala Traefik y los labs de Prometheus/Argo CD' },
+    @{ Name = 'git';    Id = 'Git.Git';            Required = $true;  Why = 'clonar y actualizar el curso' },
+    @{ Name = 'k9s';    Id = 'Derailed.k9s';       Required = $false; Why = 'UI de terminal (opcional)' },
+    @{ Name = 'node';   Id = 'OpenJS.NodeJS.LTS';  Required = $false; Why = 'solo para el sitio web en web/ (opcional)' }
+)
+
+function Update-SessionPath {
+    $env:PATH = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ((Test-Path (Join-Path $KcnaBin 'kubectl.exe')) -and ($env:PATH -notlike "$KcnaBin;*")) { $env:PATH = "$KcnaBin;$env:PATH" }
+}
+
+function Install-LabKubectl {
+    # kubectl con la misma version que el cluster, en .bin\ (no toca el kubectl global)
+    $exe = Join-Path $KcnaBin 'kubectl.exe'
+    if (Test-Path $exe) { Ok "kubectl del lab: $exe"; return $true }
+    Info "Descargando kubectl ($KubectlChannel) a .bin\ desde dl.k8s.io"
+    $oldProgress = $ProgressPreference; $ProgressPreference = 'SilentlyContinue'
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $ver = (Invoke-WebRequest -UseBasicParsing "https://dl.k8s.io/release/$KubectlChannel.txt").Content.Trim()
+        $url = "https://dl.k8s.io/release/$ver/bin/windows/amd64/kubectl.exe"
+        New-Item -ItemType Directory -Force $KcnaBin | Out-Null
+        $tmp = "$exe.download"
+        Invoke-WebRequest -UseBasicParsing $url -OutFile $tmp
+        $expected = (Invoke-WebRequest -UseBasicParsing "$url.sha256").Content.Trim().ToLower()
+        $actual = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
+        if ($expected -ne $actual) { Remove-Item $tmp -Force; Fail 'El checksum de kubectl no coincide; descarga descartada'; return $false }
+        Move-Item $tmp $exe -Force
+        Update-SessionPath
+        Ok "kubectl $ver descargado y verificado (sha256)"
+        return $true
+    } catch { Fail "No se pudo descargar kubectl: $($_.Exception.Message)"; return $false }
+    finally { $ProgressPreference = $oldProgress }
+}
+
+function Invoke-Setup([switch]$Install) {
+    $problems = 0
+    Info 'Sistema'
+    $os = Get-CimInstance Win32_OperatingSystem
+    $ramGb = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
+    Ok "$($os.Caption) ($($os.Version)), RAM $ramGb GB"
+    if ($ramGb -lt 12) { Warn 'Con menos de 12 GB de RAM el cluster de 3 nodos ira justo: cierra apps pesadas mientras estudias' }
+
+    Info 'Herramientas'
+    $hasWinget = [bool](Get-Command winget -ErrorAction SilentlyContinue)
+    foreach ($t in $Tools) {
+        if (Get-Command $t.Name -ErrorAction SilentlyContinue) { Ok "$($t.Name)"; continue }
+        $cmd = "winget install --id $($t.Id) -e --source winget"
+        if ($Install -and $hasWinget) {
+            Info "Instalando $($t.Name) ($($t.Why))"
+            $null = Invoke-Native winget @('install', '--id', $t.Id, '-e', '--source', 'winget', '--silent', '--accept-package-agreements', '--accept-source-agreements')
+            Update-SessionPath
+            if (Get-Command $t.Name -ErrorAction SilentlyContinue) { Ok "$($t.Name) instalado" }
+            else { Warn "$($t.Name) instalado pero no aparece en esta terminal: abre una terminal nueva y repite setup" ; $problems++ }
+        } elseif ($t.Required) { Fail "$($t.Name) falta ($($t.Why)). Instala con:  $cmd"; $problems++ }
+        else { Warn "$($t.Name) no instalado ($($t.Why)). Opcional:  $cmd" }
+    }
+    if (-not (Test-Path $Headlamp)) { Warn 'Headlamp no instalado (UI de escritorio, opcional): winget install --id Headlamp.Headlamp -e --source winget' }
+    else { Ok 'Headlamp' }
+
+    Info 'WSL2 (Podman en Windows corre dentro de WSL)'
+    $null = Invoke-Native wsl.exe @('--status')
+    if ($LASTEXITCODE -eq 0) { Ok 'WSL disponible' }
+    else { Fail 'WSL2 no esta activo. En una terminal de administrador:  wsl --install  (y reinicia)'; $problems++ }
+
+    Info 'kubectl del laboratorio'
+    if (-not (Install-LabKubectl)) { $problems++ }
+
+    Info 'Puertos que publica el cluster en Windows (8080, 8443, 30080)'
+    if (Test-ClusterExists) { Ok 'El cluster ya existe: los puertos son suyos' }
+    else {
+        $busy = foreach ($p in 8080, 8443, 30080) {
+            $c = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($c) { "$p (proceso $((Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue).ProcessName))" }
+        }
+        if ($busy) { Fail "Puertos ocupados: $($busy -join ', '). Libera esos puertos o cambia hostPort en cluster\kind-kcna.yaml"; $problems++ }
+        else { Ok 'Libres' }
+    }
+
+    Info 'Maquina de Podman'
+    if (-not (Get-Command podman -ErrorAction SilentlyContinue)) { Warn 'Instala Podman primero' }
+    else {
+        $machines = Invoke-Native podman @('machine', 'list', '--format', '{{.Name}}')
+        if (-not ($machines | Where-Object { $_ -match '\S' })) {
+            if ($Install) {
+                Info 'Creando podman machine (rootful, necesaria para kind). Tarda unos minutos...'
+                $null = Invoke-Native podman @('machine', 'init', '--rootful', '--now')
+            } else { Fail 'No hay podman machine. Crea una con:  podman machine init --rootful --now'; $problems++ }
+        }
+        $state = "$(Invoke-Native podman @('machine', 'inspect', '--format', '{{.State}}'))"
+        $rootful = "$(Invoke-Native podman @('machine', 'inspect', '--format', '{{.Rootful}}'))"
+        if ($state -notmatch 'running') {
+            if ($Install) { $null = Invoke-Native podman @('machine', 'start'); $state = 'running' }
+            else { Warn 'La podman machine esta apagada:  podman machine start' }
+        }
+        if ($rootful -match 'true') { Ok "podman machine rootful, estado: $state" }
+        elseif ($Install) {
+            Info 'Cambiando la podman machine a rootful (kind lo necesita en Windows)'
+            $null = Invoke-Native podman @('machine', 'stop'); $null = Invoke-Native podman @('machine', 'set', '--rootful'); $null = Invoke-Native podman @('machine', 'start')
+            Ok 'podman machine ahora es rootful'
+        } else { Fail 'La podman machine no es rootful. Cambiala con:  podman machine stop; podman machine set --rootful; podman machine start'; $problems++ }
+    }
+
+    Info 'Memoria para WSL (donde corre la podman machine)'
+    $wslconfig = Join-Path $env:USERPROFILE '.wslconfig'
+    $mem = if (Test-Path $wslconfig) { (Select-String -Path $wslconfig -Pattern '^\s*memory\s*=\s*(\S+)' | Select-Object -First 1).Matches.Groups[1].Value } else { $null }
+    if ($mem) { Ok "memory=$mem en .wslconfig" } else { Ok "Sin limite en .wslconfig: WSL usa hasta el 50% de la RAM (~$([math]::Floor($ramGb / 2)) GB)" }
+
+    Info 'Aislamiento'
+    Ok "El laboratorio usa solo $env:KUBECONFIG; tu ~/.kube/config no se lee ni se modifica"
+
+    Write-Host ''
+    if ($problems -eq 0) { Write-Host '  Todo listo. Siguiente paso:  .\kcna.ps1 up' -ForegroundColor Green }
+    else { Write-Host "  Hay $problems punto(s) pendientes. Corrigelos (o ejecuta .\kcna.ps1 setup -Install) y repite." -ForegroundColor Yellow }
+}
+
 function Invoke-Up {
+    $null = Install-LabKubectl
     Info 'Verificando maquina de Podman'
     $state = Invoke-Native podman @('machine', 'inspect', '--format', '{{.State}}')
     if ("$state" -notmatch 'running') { Info 'Iniciando podman machine...'; $null = Invoke-Native podman @('machine', 'start') }
@@ -262,6 +388,10 @@ function Show-Help {
 
   KCNA Lab CLI  (cluster local kind sobre Podman, aislado de tus clusters de trabajo)
 
+  INSTALACION (maquina nueva)
+    setup              Revisa requisitos y dice que falta (no cambia nada)
+    setup -Install     Instala lo que falte con winget y prepara la podman machine
+
   CLUSTER
     up                 Crea/arranca el cluster + addons (metrics-server, Traefik, Gateway API)
     stop | start       Apaga / enciende los nodos (libera RAM sin perder nada)
@@ -295,6 +425,7 @@ function Show-Help {
 }
 
 switch ($Command.ToLower()) {
+    'setup'        { Invoke-Setup -Install:$Install }
     'up'           { Invoke-Up }
     'down'         { Info "Eliminando cluster $ClusterName"; Invoke-Native kind @('delete', 'cluster', '--name', $ClusterName) | Write-Host }
     'stop'         { Info 'Deteniendo nodos'; Invoke-Native podman (@('stop') + $Nodes) | Write-Host }

@@ -15,6 +15,8 @@ export default defineConfig({
     shikiConfig: {
       themes: { light: 'github-light', dark: 'github-dark-dimmed' },
       defaultColor: false,
+      // ```prompt en INSTALL.md: texto plano, pero conserva la etiqueta para el botón "Copiar prompt"
+      langAlias: { prompt: 'plaintext' },
     },
   },
   vite: {

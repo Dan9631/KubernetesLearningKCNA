@@ -2,7 +2,8 @@
   // Mejora el markdown renderizado: diagramas Mermaid, botón copiar y pasos del laboratorio con casilla.
   import { progress, toggleStep, toggleDone } from '../lib/progress.svelte';
 
-  let { module }: { module: string } = $props();
+  // checklist=false: páginas que no son módulos (instalación) no muestran la barra de progreso
+  let { module, checklist = true }: { module: string; checklist?: boolean } = $props();
   let root: HTMLElement | undefined;
 
   const isDark = () => document.documentElement.dataset.theme === 'dark';
@@ -34,12 +35,16 @@
   function copyButtons(prose: HTMLElement) {
     for (const pre of prose.querySelectorAll<HTMLPreElement>('pre')) {
       if (pre.querySelector('.copy')) continue;
+      // Los bloques ```prompt son para pegar en un agente: botón grande y siempre visible
+      const isPrompt = pre.dataset.language === 'prompt';
+      const label = isPrompt ? 'Copiar prompt' : 'Copiar';
+      if (isPrompt) pre.classList.add('prompt');
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'copy'; b.textContent = 'Copiar';
+      b.type = 'button'; b.className = isPrompt ? 'copy copy-prompt' : 'copy'; b.textContent = label;
       b.addEventListener('click', async () => {
         try { await navigator.clipboard.writeText((pre.querySelector('code') ?? pre).textContent ?? ''); b.textContent = 'Copiado'; b.classList.add('done'); }
         catch { b.textContent = 'No disponible'; }
-        setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('done'); }, 1600);
+        setTimeout(() => { b.textContent = label; b.classList.remove('done'); }, 1600);
       });
       pre.appendChild(b);
     }
@@ -77,7 +82,7 @@
   const steps = $derived((progress.steps[module] ?? []).length);
 </script>
 
-<div bind:this={root} class="status">
+<div bind:this={root} class="status" style:display={checklist ? null : 'none'}>
   <span class="hint">{steps ? `${steps} paso${steps === 1 ? '' : 's'} del laboratorio hechos` : 'Marca los pasos del laboratorio a medida que los completes.'}</span>
   <button type="button" class="btn small" class:primary={!done} onclick={() => toggleDone(module)}>{done ? 'Módulo terminado ✓' : 'Marcar módulo terminado'}</button>
 </div>

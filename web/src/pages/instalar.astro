@@ -1,0 +1,27 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Enhance from '../components/Enhance.svelte';
+
+const entry = (await getCollection('docs')).find((e) => e.id.toLowerCase() === 'install')!;
+const { Content } = await render(entry);
+---
+<Base title="Instalar" description="Monta el laboratorio KCNA en tu equipo con un prompt para un agente de código o paso a paso." width="read">
+  <article class="inst">
+    <header class="head">
+      <p class="kicker">Instalación</p>
+      <h1>Monta el laboratorio en tu equipo</h1>
+      <p class="lead">Un clúster de Kubernetes de 3 nodos sobre Podman, aislado de tus clústeres de trabajo. Pega el prompt en un agente de código o sigue los pasos a mano: los dos caminos usan el mismo script y llegan al mismo resultado.</p>
+    </header>
+    <Enhance client:load module="instalar" checklist={false} />
+    <div class="prose"><Content /></div>
+  </article>
+</Base>
+
+<style>
+  .inst { max-width: 860px; margin: 0 auto; padding-top: 28px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+  /* el título duplicado del markdown ya lo da la cabecera */
+  .inst :global(.prose > h1:first-child) { display: none; }
+</style>

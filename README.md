@@ -4,6 +4,8 @@ Curso práctico en español para preparar la certificación **KCNA**, construido
 
 ## Empieza aquí
 
+> **¿Equipo nuevo?** Sigue [INSTALL.md](INSTALL.md): trae un prompt para pegar en un agente de código (Claude Code, Copilot, Cursor) que instala y verifica todo, o los pasos a mano (`.\kcna.ps1 setup`).
+
 ```powershell
 cd $HOME\KubernetesLearning
 .\kcna.ps1 up          # enciende el clúster (kind, 3 nodos, sobre Podman)

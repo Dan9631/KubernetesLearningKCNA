@@ -3,6 +3,7 @@ import { getCollection, render } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import Enhance from '../components/Enhance.svelte';
 import EnvCheck from '../components/EnvCheck.svelte';
+import { url } from '../lib/modules';
 
 const entries = await getCollection('curso');
 const entry = entries.find((e) => e.id === '00-preparacion-entorno')!;
@@ -15,6 +16,7 @@ const { Content } = await render(entry);
       <h1>Tu laboratorio: Podman, kind y un clúster aislado</h1>
       <p class="lead">Todo lo que debes saber antes de practicar: cómo está montado, qué está aislado de tus clústeres de trabajo, por qué las imágenes se precargan y cómo encender y apagar el clúster.</p>
     </header>
+    <p class="install">¿Primera vez en este equipo? <a href={url('/instalar')}>Instálalo con un prompt para tu agente de código o paso a paso</a>.</p>
     <EnvCheck client:load />
     <Enhance client:load module="00" />
     <div class="prose"><Content /></div>
@@ -25,4 +27,5 @@ const { Content } = await render(entry);
   .env { max-width: 860px; margin: 0 auto; padding-top: 28px; }
   .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
   .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+  .install { margin-top: 20px; padding: 12px 14px; border-left: 3px solid var(--helm); background: var(--helm-2); border-radius: 0 var(--r-m) var(--r-m) 0; }
 </style>

@@ -7,4 +7,9 @@ const curso = defineCollection({
   loader: glob({ base: '../curso', pattern: '*.md' }),
 });
 
-export const collections = { curso };
+// Documentos de la raíz del repo que el sitio también publica (guía de instalación).
+const docs = defineCollection({
+  loader: glob({ base: '..', pattern: 'INSTALL.md' }),
+});
+
+export const collections = { curso, docs };
