@@ -3,6 +3,8 @@
   import preguntas from '../data/preguntas.json';
   import { progress, recordAnswer } from '../lib/progress.svelte';
   import SourceLinks from './SourceLinks.svelte';
+  import ReportLink from './ReportLink.svelte';
+  import { reportQuestion } from '../lib/report';
 
   interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[] }
   let { module }: { module: number } = $props();
@@ -72,7 +74,7 @@
         <span class="done">Ronda terminada: {ok} de {answered}.</span>
         <button type="button" class="btn" onclick={start}>Otra ronda</button>
       {/if}
-      <span class="hint right">Las preguntas van en inglés, como en el examen.</span>
+      <span class="hint right">{#if revealed}<ReportLink href={reportQuestion(q)} />{:else}Las preguntas van en inglés, como en el examen.{/if}</span>
     </div>
   </div>
 {/if}

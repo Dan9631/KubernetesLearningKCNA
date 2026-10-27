@@ -4,6 +4,8 @@
   import { DOMAINS, pad, url, type DomainKey } from '../../lib/modules';
   import { isCorrect, type Item } from './quiz';
   import SourceLinks from '../SourceLinks.svelte';
+  import ReportLink from '../ReportLink.svelte';
+  import { reportQuestion } from '../../lib/report';
 
   let { item, index, total, reveal = false, link = false, onpick }: {
     item: Item; index: number; total: number; reveal?: boolean; link?: boolean; onpick?: (k: number) => void;
@@ -48,6 +50,7 @@
     <div class="explain" class:ok={good} class:fail={!good} role="status">
       <strong>{good ? 'Correcto.' : item.picked.length ? 'No es así.' : 'Sin responder.'}</strong> {item.q.explanation}
       <SourceLinks source={item.q.source} />
+      <p class="rep"><ReportLink href={reportQuestion(item.q)} /> <span>· {item.q.id}</span></p>
     </div>
   {/if}
 </div>
@@ -55,6 +58,7 @@
 <style>
   .meta { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
   .topic { font-size: 0.88rem; color: var(--ink-2); }
+  .rep { margin-top: 6px; font-size: 0.82rem; color: var(--ink-3); }
   .mod { font-size: 0.82rem; color: var(--ink-3); }
   .count { margin-left: auto; font: 500 0.8rem var(--mono); color: var(--ink-3); }
   .q { font-size: 1.1rem; font-weight: 500; margin: 12px 0 14px; }

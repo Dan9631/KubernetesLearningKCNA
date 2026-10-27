@@ -1,0 +1,44 @@
+# Formulario para reportar errores del curso. El sitio abre esta plantilla con
+# "ubicacion" y "contexto" ya rellenados (parámetros de URL con el id de cada campo).
+name: Error en el contenido
+description: Algo del curso está mal, desactualizado o es ambiguo (un módulo, una pregunta o una flashcard).
+title: "[Error] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por ayudar a que el curso sea una fuente fiable. Cada corrección se comprueba contra la documentación oficial, así que la fuente es lo más útil que puedes aportar.
+  - type: input
+    id: ubicacion
+    attributes:
+      label: Dónde está el error
+      description: Módulo y sección, o el id de la pregunta (por ejemplo F012).
+      placeholder: "Pregunta O017 (módulo 06, Networking)"
+    validations:
+      required: true
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qué está mal
+      description: La frase, opción o respuesta incorrecta, y por qué.
+    validations:
+      required: true
+  - type: textarea
+    id: correccion
+    attributes:
+      label: Qué debería decir
+      description: La versión correcta, si la sabes.
+  - type: input
+    id: fuente
+    attributes:
+      label: Fuente oficial
+      description: Enlace a kubernetes.io, cncf.io o la documentación oficial del proyecto que respalda la corrección.
+      placeholder: "https://kubernetes.io/docs/..."
+    validations:
+      required: true
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto
+      description: Lo rellena el sitio automáticamente (pregunta, respuesta marcada como correcta, fuente citada, página). Puedes dejarlo tal cual.

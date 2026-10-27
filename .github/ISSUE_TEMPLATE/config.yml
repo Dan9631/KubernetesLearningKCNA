@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Registro de verificación del contenido
+    url: https://github.com/Dan9631/KubernetesLearningKCNA/blob/main/docs/VERIFICACION.md
+    about: Antes de reportar, mira si el punto ya figura en las correcciones o en las dudas abiertas.

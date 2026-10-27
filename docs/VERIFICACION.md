@@ -60,6 +60,10 @@ Puntos que no se pudieron cerrar con una fuente oficial, o donde la propia docum
 - **Terminología sin fuente oficial actual**: los patrones *Ambassador* y *Adapter* (kubernetes.io solo describe hoy el sidecar); "Kata Containers usa micro-VMs" y "Consul y Kuma usan Envoy" (sus sitios no están en la lista de fuentes aceptadas).
 - **Exit code 137 = 128 + 9**: kubernetes.io muestra el ejemplo 137/OOMKilled pero no documenta la convención 128 + señal.
 
+## Cómo reportar un error
+
+Cada módulo (en su cabecera y al final) y cada pregunta (al ver la explicación) tiene un enlace **Reportar un error**. Abre en GitHub el formulario [error-contenido](../.github/ISSUE_TEMPLATE/error-contenido.yml) con la ubicación y el contexto ya rellenados (id de la pregunta, opciones, respuesta marcada, fuente citada). Solo hay que explicar qué está mal y enlazar la fuente oficial que lo respalda. Al corregir, se sigue [VERIFICACION-GUIA.md](VERIFICACION-GUIA.md) y se cierra el issue citando el commit.
+
 ## Cómo mantenerlo
 
 - Al cambiar contenido, sigue [VERIFICACION-GUIA.md](VERIFICACION-GUIA.md): fuente oficial abierta para cada dato, preguntas nuevas al final, y `node quiz/src/build.js` + `node quiz/src/validate.js --strict`.
