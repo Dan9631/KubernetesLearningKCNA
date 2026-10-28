@@ -216,7 +216,7 @@
   .lane.v1 i { background: var(--helm); } .lane.v2 i { background: #8250df; }
   .lane span { position: relative; z-index: 1; font-size: 0.8rem; line-height: 24px; padding-left: 8px; }
   .lane.v1 span b { color: var(--helm-ink); } .lane.v2 span b { color: #8250df; }
-  .meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; }
   .meter { display: grid; gap: 4px; }
   .k { font-size: 0.82rem; color: var(--ink-2); }
   .v { font-size: 0.78rem; color: var(--ink-2); }
@@ -225,7 +225,7 @@
   .bar i.cost { background: var(--wait); }
   .meter.bad .bar i { background: var(--fail); }
   .meter.bad .bar i.cost { background: var(--fail); }
-  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 0; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 8px; margin: 0; }
   .facts div { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: var(--r-s); padding: 6px 10px; }
   .facts dt { font-size: 0.74rem; color: var(--ink-3); }
   .facts dd { margin: 0; font-size: 0.86rem; }

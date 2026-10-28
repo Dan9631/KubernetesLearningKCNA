@@ -47,7 +47,7 @@
   .bar { height: 6px; border-radius: 3px; background: var(--line-2); margin: 10px 0 16px; overflow: hidden; }
   .bar span { display: block; height: 100%; background: var(--ready); transition: width var(--dur-slow) var(--ease); }
   ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-  li { display: grid; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line-2); }
+  li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line-2); }
   li:last-child { border-bottom: 0; padding-bottom: 0; }
   label { display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 500; }
   input { width: 18px; height: 18px; accent-color: var(--ready); margin: 0; }

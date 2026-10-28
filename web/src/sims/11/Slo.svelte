@@ -103,7 +103,7 @@
   .controls { margin-bottom: 0; }
   .controls label { display: inline-flex; align-items: center; gap: 6px; }
   .controls input[type='number'] { width: 90px; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 8px; }
   .stat { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel-2); }
   .stat .k { font-size: 0.78rem; color: var(--ink-2); }
   .stat strong { font-size: 1.15rem; }
@@ -119,7 +119,7 @@
   .list li { display: flex; justify-content: space-between; gap: 10px; }
   .explain { margin-top: 0; }
   .sla { margin-top: 6px; color: var(--fail); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 10px; }
   .card { border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; background: var(--panel-2); font-size: 0.88rem; display: grid; gap: 4px; }
   .card p { color: var(--ink-2); }
 </style>

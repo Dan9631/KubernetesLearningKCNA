@@ -219,7 +219,7 @@
   pre.yaml span { display: block; padding: 0 6px; margin: 0 -6px; }
   pre.yaml span.hot { background: rgba(122, 160, 255, 0.22); color: #fff; }
   pre.yaml em { font-style: normal; font-size: 0.66rem; margin-left: 10px; padding: 0 6px; border-radius: 4px; background: var(--wait); color: #1a1a1a; font-weight: 600; }
-  .when { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+  .when { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 10px; }
   .when div { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 10px 12px; }
   .when h4 { color: var(--ink); font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
   .when ul { margin: 0; padding-left: 18px; font-size: 0.86rem; color: var(--ink-2); display: grid; gap: 3px; }

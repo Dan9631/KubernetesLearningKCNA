@@ -104,7 +104,9 @@ p { margin: 0; }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
 /* Chips de dominio: color = dominio del examen */
-.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 500; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--panel); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 500; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--panel); white-space: nowrap; max-width: 100%; }
+/* en pantallas estrechas los nombres largos de competencia parten línea dentro de la etiqueta */
+@media (max-width: 480px) { .chip { white-space: normal; border-radius: 12px; } }
 .chip.fundamentals { border-color: var(--helm); color: var(--helm-ink); background: var(--helm-2); }
 .chip.orchestration { border-color: #8250df; color: #5a2fb0; background: #efe7fb; }
 .chip.delivery { border-color: var(--wait); color: #8a5208; background: var(--wait-2); }
@@ -115,6 +117,17 @@ p { margin: 0; }
 
 /* Panel de simulación: rompe la columna de lectura */
 .sim { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 20px; margin: 28px 0; }
+/* Red de seguridad responsive: los hijos de rejillas y flex pueden encogerse por debajo de su contenido
+   (por defecto min-width:auto deja que un <pre> o una tabla ancha empuje la columna fuera de la tarjeta).
+   fieldset tiene min-width:min-content por defecto. */
+.sim :is(div, section, article, aside, figure, fieldset, form, ul, ol, li, dl, dt, dd, label, p, header, nav, details, summary) { min-width: 0; }
+.sim pre, .sim table, .sim select, .sim input { max-width: 100%; }
+/* URLs y nombres largos (mono) parten línea en vez de empujar la tarjeta; los <pre> no se ven afectados */
+.sim { overflow-wrap: anywhere; }
+.sim svg { max-width: 100%; }
+@media (max-width: 480px) {
+  .sim { padding: 16px 14px; border-radius: var(--r-m); margin: 22px 0; }
+}
 .sim > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 14px; }
 .sim > header h3 { font-size: 1.05rem; }
 .sim > header p { color: var(--ink-2); font-size: 0.95rem; }

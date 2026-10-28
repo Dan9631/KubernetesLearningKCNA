@@ -251,7 +251,7 @@
   .lbl.rep { fill: var(--helm); }
   .lbl.tgt { fill: var(--ink-2); }
   .explain { margin-top: 0; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 10px; }
   .card { border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; background: var(--panel-2); font-size: 0.88rem; display: grid; gap: 4px; }
   .card p { color: var(--ink-2); }
 </style>

@@ -86,6 +86,9 @@
   .q { font-size: 1.1rem; font-weight: 500; margin: 12px 0 14px; }
   .hint { color: var(--ink-2); font-size: 0.9rem; }
   .opts { display: grid; gap: 8px; }
+  /* opciones con comandos largos (sin espacios) parten línea en vez de salirse en móvil */
+  .opt > span:not(.l) { min-width: 0; overflow-wrap: anywhere; }
+  .q, .explain { overflow-wrap: anywhere; }
   .opt { display: flex; gap: 12px; align-items: flex-start; text-align: left; font: inherit; font-size: 0.98rem; padding: 10px 12px; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; transition: border-color var(--dur), background var(--dur); }
   .opt:not(:disabled):hover { border-color: var(--helm); }
   .opt.sel { border-color: var(--helm); background: var(--helm-2); }

@@ -1,5 +1,6 @@
 <script lang="ts">
   // Mejora el markdown renderizado: diagramas Mermaid, botón copiar y pasos del laboratorio con casilla.
+  import { untrack } from 'svelte';
   import { progress, toggleStep, toggleDone } from '../lib/progress.svelte';
 
   // checklist=false: páginas que no son módulos (instalación) no muestran la barra de progreso
@@ -50,10 +51,13 @@
     }
   }
 
-  // Los pasos del laboratorio son los h3 entre "## Laboratorio guiado" y el siguiente h2
+  // Los pasos del laboratorio son los h3 entre "## Laboratorio guiado" y el siguiente h2.
+  // Las casillas se insertan UNA vez; su estado lo actualiza el $effect de abajo.
+  let steps = $state<{ id: string; box: HTMLInputElement; h: HTMLElement }[]>([]);
   function labSteps(prose: HTMLElement) {
     const h2 = [...prose.querySelectorAll('h2')].find((h) => /laboratorio/i.test(h.textContent ?? ''));
     if (!h2) return;
+    const found: typeof steps = [];
     let el = h2.nextElementSibling;
     let n = 0;
     while (el && el.tagName !== 'H2') {
@@ -61,29 +65,42 @@
         n += 1;
         const h = el as HTMLHeadingElement;
         const id = String(n);
-        const box = document.createElement('input');
-        box.type = 'checkbox'; box.setAttribute('aria-label', `Paso ${n} hecho`);
-        const sync = () => { const done = (progress.steps[module] ?? []).includes(id); box.checked = done; h.classList.toggle('done', done); };
-        box.addEventListener('change', () => { toggleStep(module, id); sync(); });
-        h.classList.add('step'); h.prepend(box); sync();
+        let box = h.querySelector<HTMLInputElement>('input.step-box');
+        if (!box) {
+          box = document.createElement('input');
+          box.type = 'checkbox'; box.className = 'step-box'; box.setAttribute('aria-label', `Paso ${n} hecho`);
+          box.addEventListener('change', () => toggleStep(module, id));
+          h.classList.add('step'); h.prepend(box);
+        }
+        found.push({ id, box, h });
       }
       el = el.nextElementSibling;
     }
+    steps = found;
   }
 
+  // Preparación del DOM: una sola vez (untrack evita que lea `progress` y se repita en cada clic)
   $effect(() => {
     const prose = root?.closest('article')?.querySelector<HTMLElement>('.prose') ?? document.querySelector<HTMLElement>('.prose');
     if (!prose) return;
-    labSteps(prose);
-    mermaid(prose).finally(() => copyButtons(prose));
+    untrack(() => {
+      labSteps(prose);
+      mermaid(prose).finally(() => copyButtons(prose));
+    });
+  });
+
+  // Estado de las casillas: reactivo al progreso guardado
+  $effect(() => {
+    const done = progress.steps[module] ?? [];
+    for (const s of steps) { const ok = done.includes(s.id); s.box.checked = ok; s.h.classList.toggle('done', ok); }
   });
 
   const done = $derived(progress.done.includes(module));
-  const steps = $derived((progress.steps[module] ?? []).length);
+  const doneCount = $derived((progress.steps[module] ?? []).length);
 </script>
 
 <div bind:this={root} class="status" style:display={checklist ? null : 'none'}>
-  <span class="hint">{steps ? `${steps} paso${steps === 1 ? '' : 's'} del laboratorio hechos` : 'Marca los pasos del laboratorio a medida que los completes.'}</span>
+  <span class="hint">{doneCount ? `${doneCount} paso${doneCount === 1 ? '' : 's'} del laboratorio hechos` : 'Marca los pasos del laboratorio a medida que los completes.'}</span>
   <button type="button" class="btn small" class:primary={!done} onclick={() => toggleDone(module)}>{done ? 'Módulo terminado ✓' : 'Marcar módulo terminado'}</button>
 </div>
 

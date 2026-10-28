@@ -177,7 +177,7 @@ Warning: resource 'nodes' is not namespace scoped{/if}
 <style>
   .rbac { display: grid; gap: 14px; }
   .top { display: grid; gap: 10px; }
-  .query { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .query { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 8px; }
   .field { display: grid; gap: 3px; min-width: 0; }
   .field select { width: 100%; min-width: 0; }
   .cmd { white-space: pre-wrap; word-break: break-all; }

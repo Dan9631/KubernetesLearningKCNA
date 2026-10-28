@@ -210,7 +210,8 @@
   .inrow:focus-within { border-top-color: var(--helm); }
   .hint { color: var(--ink-2); font-size: 0.88rem; margin-top: 10px; }
   .side { display: grid; gap: 16px; min-width: 0; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 16px; }
+  .panel { min-width: 0; overflow-wrap: anywhere; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 16px; }
+  .missions li > * { min-width: 0; }
   .panel h2 { font-size: 1.02rem; margin-bottom: 10px; display: flex; align-items: baseline; gap: 8px; }
   .panel .hint { font-size: 0.8rem; margin-top: 8px; }
   .mhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }

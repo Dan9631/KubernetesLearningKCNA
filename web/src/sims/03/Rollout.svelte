@@ -206,7 +206,7 @@
 <style>
   .controls label { display: inline-flex; align-items: center; gap: 6px; }
   .controls input[type='range'] { width: 120px; }
-  .gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 8px; margin-bottom: 12px; }
   .g { border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel-2); padding: 8px 12px; display: grid; gap: 1px; transition: border-color var(--dur); }
   .g.bad { border-color: var(--fail); }
   .g em { font-style: normal; font-size: 0.76rem; color: var(--ink-3); }
@@ -214,7 +214,7 @@
   .g strong.small { font-size: 0.9rem; word-break: break-all; }
   .g strong.low { color: var(--fail); }
   .g .hint { font-size: 0.74rem; }
-  .outs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-top: 12px; }
+  .outs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 10px; margin-top: 12px; }
   .otitle { font: 0.74rem var(--mono); color: var(--ink-3); margin: 8px 0 4px; }
   .outs pre, .ev { font-size: 0.76rem; }
   .hist { display: grid; gap: 6px; }

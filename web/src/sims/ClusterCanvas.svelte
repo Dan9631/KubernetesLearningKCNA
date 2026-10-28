@@ -112,7 +112,7 @@
 </div>
 
 <style>
-  .cluster { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .cluster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 12px; }
   .node { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 10px 12px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; transition: border-color var(--dur), box-shadow var(--dur); }
   .node.cp { border-style: dashed; }
   .node.hl { border-color: var(--helm); box-shadow: 0 0 0 3px var(--helm-2); }

@@ -130,8 +130,8 @@
       {/each}
       {#each VERSIONS as r, i (r.v)}
         {@const s = relState(r)}
-        <rect x={mx(r.rel)} y={12 + i * 19} width={mx(r.rel + SUPPORT) - mx(r.rel)} height="14" rx="3" class="bar {s === 'soportada' ? 'ok' : s === 'futura' ? 'fut' : 'eol'}" />
-        <text x={mx(r.rel) - 4} y={23 + i * 19} class="lbl v" text-anchor="end">v{r.v}</text>
+        <rect x={Math.max(mx(r.rel), TL)} y={12 + i * 19} width={Math.max(0, mx(r.rel + SUPPORT) - Math.max(mx(r.rel), TL))} height="14" rx="3" class="bar {s === 'soportada' ? 'ok' : s === 'futura' ? 'fut' : 'eol'}" />
+        <text x={Math.max(mx(r.rel), TL) - 4} y={23 + i * 19} class="lbl v" text-anchor="end">v{r.v}</text>
       {/each}
       <line x1={mx(now)} x2={mx(now)} y1={4} y2={TH - 18} class="now" />
     </svg>

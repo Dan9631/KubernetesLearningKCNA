@@ -63,6 +63,6 @@
   .caption { min-height: 58px; }
   .caption strong { font-weight: 600; }
   .caption p { color: var(--ink-2); font-size: 0.95rem; margin-top: 2px; }
-  .nav { display: flex; gap: 8px; align-items: center; }
+  .nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .count { margin-left: auto; font-size: 0.8rem; color: var(--ink-3); font-family: var(--mono); }
 </style>

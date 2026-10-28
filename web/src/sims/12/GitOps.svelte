@@ -295,7 +295,7 @@
   .res.missing { border-color: var(--fail); color: var(--fail); border-style: dashed; }
   .res.orphan { border-color: var(--wait); color: var(--wait); }
   .events { list-style: none; margin: 0; padding: 0; font-size: 0.78rem; color: var(--ink-2); display: grid; gap: 2px; min-height: 3.2em; }
-  .pushpull { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .pushpull { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 12px; }
   .model { border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; background: var(--panel-2); display: grid; gap: 8px; }
   .model h4 { font-size: 0.92rem; }
   .flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }

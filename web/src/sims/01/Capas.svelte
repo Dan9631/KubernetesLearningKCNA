@@ -140,7 +140,8 @@
   .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
   .toggle input { accent-color: var(--helm); width: 16px; height: 16px; margin: 0; }
   .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
-  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  /* minmax(0, 1fr): sin el 0, las líneas largas del <pre> ensanchan la columna y la sacan de la tarjeta */
+  @media (max-width: 640px) { .grid { grid-template-columns: minmax(0, 1fr); } }
   .fname { font-size: 0.74rem; color: var(--ink-3); margin-bottom: 4px; }
   .cf { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 3px; }
   .line { width: 100%; text-align: left; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 8px; border-radius: var(--r-s); border: 1px solid var(--line-2); background: var(--panel-2); color: var(--ink-2); cursor: pointer; font-size: 0.8rem; transition: border-color var(--dur), background var(--dur); }

@@ -136,7 +136,7 @@
   .group input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--ready); flex: none; }
   .group input:checked ~ .text { color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1px; }
   .meta { font-size: 0.78rem; color: var(--helm-ink); padding-left: 28px; }
-  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 12px; }
   .summary section { border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; display: grid; gap: 6px; align-content: start; }
   .summary h4 { font-size: 0.95rem; }
   .res, .tips { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 0.88rem; }

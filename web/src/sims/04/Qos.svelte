@@ -153,8 +153,8 @@
     </div>
     <div class="membar" role="img" aria-label={memState.title}>
       <span class="fill {memState.k}" style={`width:${pct(usage)}%`}></span>
-      {#if eApp.rm}<i class="mark req" style={`left:${pct(eApp.rm)}%`}><b>request {eApp.rm}Mi</b></i>{/if}
-      {#if eApp.lm}<i class="mark lim" style={`left:${pct(eApp.lm)}%`}><b>limit {eApp.lm}Mi</b></i>{/if}
+      {#if eApp.rm}<i class="mark req" class:right={pct(eApp.rm) > 50} style={`left:${pct(eApp.rm)}%`}><b>request {eApp.rm}Mi</b></i>{/if}
+      {#if eApp.lm}<i class="mark lim" class:right={pct(eApp.lm) > 50} style={`left:${pct(eApp.lm)}%`}><b>limit {eApp.lm}Mi</b></i>{/if}
     </div>
     <div class="memstate">
       {#if memState.k === 'oom'}
@@ -193,7 +193,7 @@ Restart Count:  3</pre>
 
 <style>
   .qos { display: grid; gap: 14px; }
-  .containers { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .containers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px; }
   .ctr { border: 1px solid var(--line); border-radius: var(--r-m); padding: 8px 12px 10px; margin: 0; background: var(--panel-2); min-width: 0; }
   legend { font-weight: 600; font-size: 0.88rem; padding: 0 4px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -221,6 +221,8 @@ Restart Count:  3</pre>
   .mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
   .mark.lim { background: var(--fail); }
   .mark b { position: absolute; top: -16px; left: -2px; font: 500 0.66rem var(--mono); white-space: nowrap; color: var(--ink-2); }
+  /* marcas en la mitad derecha de la barra: etiqueta hacia la izquierda para que no se salga de la tarjeta */
+  .mark.right b { left: auto; right: -2px; }
   .mark.lim b { color: var(--fail); top: auto; bottom: -16px; }
   .memstate { min-height: 48px; }
   .order { display: flex; flex-wrap: wrap; gap: 6px; }
