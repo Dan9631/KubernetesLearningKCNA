@@ -2,7 +2,7 @@
 // Temario CNCF vigente desde nov-2025. Preguntas y opciones en inglés; explicaciones en español.
 // answer: índices 0-based de las opciones correctas (más de uno => multi-respuesta).
 // holdout: banco reservado para el Examen de graduación del sitio (no sale en la práctica).
-// Total: 252 preguntas.
+// Total: 292 preguntas.
 window.KCNA_QUESTIONS = [
   {
     id: "F001",
@@ -2832,18 +2832,242 @@ window.KCNA_QUESTIONS = [
     source: ["https://kubernetes.io/docs/tasks/debug/debug-cluster/#cluster-failure-modes"]
   },
   {
+    id: "O074",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A Pod uses an emptyDir volume with medium: Memory as a fast scratch cache. What should you keep in mind?",
+    options: [
+      "Files written to it count against the memory limit of the container that wrote them",
+      "It is shared with every other Pod scheduled on the same node",
+      "Its contents survive Pod deletion because they are kept in node RAM",
+      "It requires a CSI driver that supports RAM-backed volumes"
+    ],
+    answer: [0],
+    explanation: "Con medium: Memory, Kubernetes monta un tmpfs (sistema de archivos en RAM): es muy rápido, pero lo que se escribe cuenta para el límite de memoria del contenedor que lo escribió. Sigue siendo un emptyDir: vive lo que vive el Pod y no se comparte con otros Pods.",
+    source: ["https://kubernetes.io/docs/concepts/storage/volumes/#emptydir"]
+  },
+  {
+    id: "O075",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A Pod defines a generic ephemeral volume (spec.volumes[].ephemeral.volumeClaimTemplate). What happens to the PVC created for it when the Pod is deleted?",
+    options: [
+      "The PVC becomes Released and waits for an administrator",
+      "The PVC is converted into an emptyDir volume on the node",
+      "The PVC is owned by the Pod and is garbage-collected together with it",
+      "The PVC is kept so that a new Pod with the same name can reuse it"
+    ],
+    answer: [2],
+    explanation: "El Pod es el dueño (owner) del PVC que se crea para el volumen efímero genérico (con nombre <pod>-<volumen>). Al borrar el Pod, el recolector de basura borra el PVC y, con la reclaimPolicy Delete por defecto, también el volumen. Conservar el PVC para un Pod con el mismo nombre es lo que hacen los volumeClaimTemplates de un StatefulSet.",
+    source: ["https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#lifecycle-and-persistentvolumeclaim"]
+  },
+  {
+    id: "O076",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A container mounts a single file from a ConfigMap using subPath. Later the ConfigMap is edited. What does the running container see?",
+    options: [
+      "An empty file until the kubelet restarts the container",
+      "The new content immediately, because subPath mounts are live links",
+      "The new content after the next kubelet sync, like any ConfigMap volume",
+      "The old content, because subPath mounts do not receive ConfigMap updates"
+    ],
+    answer: [3],
+    explanation: "Un ConfigMap montado como volumen completo se actualiza solo (eventualmente, en el sync periódico del kubelet). Un montaje con subPath, en cambio, no recibe actualizaciones: hay que recrear el Pod para ver el cambio.",
+    source: ["https://kubernetes.io/docs/concepts/configuration/configmap/#mounted-configmaps-are-updated-automatically","https://kubernetes.io/docs/concepts/storage/volumes/#configmap"]
+  },
+  {
+    id: "O077",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A PVC sets storageClassName: \"\" in a cluster that has a default StorageClass. How is it handled?",
+    options: [
+      "It is assigned the default StorageClass and provisioned dynamically",
+      "It can bind only to PVs with no class, so dynamic provisioning is disabled for it",
+      "The API server rejects it because the class name is empty",
+      "It binds to any available PV regardless of the PV's class"
+    ],
+    answer: [1],
+    explanation: "storageClassName: \"\" pide explícitamente un PV sin clase: solo se enlaza con PVs sin clase y no dispara aprovisionamiento dinámico. La StorageClass por defecto se usa cuando se omite el campo, no cuando se deja vacío.",
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#class-1","https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass"]
+  },
+  {
+    id: "O078",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "Two Pods scheduled on the same node both mount the same PVC, whose access mode is ReadWriteOnce. What happens?",
+    options: [
+      "The scheduler moves the second Pod to a different node",
+      "Only the first Pod mounts it and the second stays in ContainerCreating",
+      "Both Pods can read and write it, because RWO limits access to one node, not one Pod",
+      "The second Pod automatically gets the volume mounted read-only"
+    ],
+    answer: [2],
+    explanation: "ReadWriteOnce permite montar el volumen en lectura-escritura desde un único nodo, y varios Pods de ese nodo pueden usarlo a la vez. Para limitar el acceso a un solo Pod en todo el clúster existe ReadWriteOncePod.",
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes"]
+  },
+  {
+    id: "O079",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A 20Gi PVC from a StorageClass with allowVolumeExpansion: true is edited to request 10Gi. What happens?",
+    options: [
+      "The change is not accepted: Kubernetes does not support shrinking a PVC below its current size",
+      "The PV is deleted and a new 10Gi volume is provisioned",
+      "The volume is shrunk and its file system is resized online",
+      "The PVC is shrunk the next time its Pod is restarted"
+    ],
+    answer: [0],
+    explanation: "La expansión solo funciona hacia arriba: Kubernetes no permite reducir un PVC por debajo de su capacidad actual (status.capacity). Si se necesita un volumen más pequeño, hay que crear un PVC nuevo.",
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#recovering-from-failure-when-expanding-volumes"]
+  },
+  {
+    id: "O080",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "You want a StatefulSet to delete the PVCs of the replicas removed when you scale it down, but keep a PVC when its Pod is merely recreated. What do you configure?",
+    options: [
+      "persistentVolumeReclaimPolicy: Delete on each PV",
+      "reclaimPolicy: Delete in the StorageClass",
+      "podManagementPolicy: Parallel in the StatefulSet",
+      "persistentVolumeClaimRetentionPolicy with whenScaled: Delete"
+    ],
+    answer: [3],
+    explanation: "persistentVolumeClaimRetentionPolicy (estable desde v1.32) tiene dos campos, whenScaled y whenDeleted, cada uno con valor Retain (defecto) o Delete. Con whenScaled: Delete solo se borran los PVCs de las réplicas que se eliminan al reducir. La reclaimPolicy decide qué pasa con el PV cuando se borra el PVC, pero no borra el PVC.",
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#persistentvolumeclaim-retention"]
+  },
+  {
+    id: "O081",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "You have a VolumeSnapshot of a database volume and need a new volume pre-populated with that data. What do you create?",
+    options: [
+      "A PV with persistentVolumeReclaimPolicy: Recycle",
+      "A new PVC whose dataSource references the VolumeSnapshot",
+      "A VolumeSnapshotContent inside the Pod's namespace",
+      "A new VolumeSnapshotClass that points to the original PV"
+    ],
+    answer: [1],
+    explanation: "Para restaurar se crea un PVC nuevo con dataSource (kind: VolumeSnapshot), y el driver CSI aprovisiona un volumen con los datos del snapshot. VolumeSnapshotContent es el snapshot real y es un recurso del clúster, como un PV, sin namespace; no es el mecanismo de restauración.",
+    source: ["https://kubernetes.io/docs/concepts/storage/volume-snapshots/#provisioning-volumes-from-snapshots","https://kubernetes.io/docs/concepts/storage/persistent-volumes/#create-persistent-volume-claim-from-volume-snapshot"]
+  },
+  {
+    id: "O082",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A Pod in namespace 'web' sets persistentVolumeClaim.claimName: data, but the PVC 'data' exists only in namespace 'db'. What is true?",
+    options: [
+      "It cannot work: a claim must exist in the same namespace as the Pod using it",
+      "It works, because PVCs are cluster-scoped just like PVs",
+      "It works as long as the PV's reclaim policy is Retain",
+      "It works if the Pod sets the PVC namespace in volumeMounts"
+    ],
+    answer: [0],
+    explanation: "Los PVC son objetos con namespace y un Pod solo puede usar claims de su propio namespace. Los que no tienen namespace (cluster-scoped) son los PV, no los PVC.",
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#claims-as-volumes"]
+  },
+  {
+    id: "O083",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "Which two volume sources can be combined into a single directory with a projected volume? (Choose 2)",
+    options: [
+      "secret",
+      "persistentVolumeClaim",
+      "serviceAccountToken",
+      "hostPath"
+    ],
+    answer: [0,2],
+    explanation: "Un volumen projected combina en un mismo directorio fuentes como secret, configMap, downwardAPI y serviceAccountToken; así se monta el token de la ServiceAccount en los Pods. persistentVolumeClaim y hostPath no son fuentes que se puedan proyectar.",
+    source: ["https://kubernetes.io/docs/concepts/storage/projected-volumes/#introduction"]
+  },
+  {
+    id: "O084",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A CSI driver's node plugin must run on every node where Pods may mount its volumes. Which workload type is typically used to deploy it?",
+    options: [
+      "A single-replica ReplicaSet",
+      "CronJob",
+      "Job",
+      "DaemonSet"
+    ],
+    answer: [3],
+    explanation: "Según la documentación de Kubernetes CSI, el componente de nodo se despliega en todos los nodos mediante un DaemonSet. El plugin de controlador, en cambio, puede ir en un Deployment o un StatefulSet en cualquier nodo.",
+    source: ["https://kubernetes-csi.github.io/docs/deploying.html#node-plugin"]
+  },
+  {
+    id: "O085",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A PVC requests 100Gi ReadWriteOnce. The only Available PVs of its class are a 50Gi RWO PV and a 150Gi RWO PV, and the class has no dynamic provisioner. What happens?",
+    options: [
+      "The 150Gi PV is split and 100Gi is given to this PVC",
+      "The PVC stays Pending because no PV matches exactly",
+      "The PVC binds to the 150Gi PV and gets the whole volume",
+      "The PVC binds to the 50Gi PV and the volume is expanded"
+    ],
+    answer: [2],
+    explanation: "El binding PV-PVC es 1:1 y el usuario siempre obtiene al menos lo que pidió, aunque el volumen puede ser mayor. Un PV más pequeño nunca sirve, y un PV no se reparte entre varios PVCs.",
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding"]
+  },
+  {
+    id: "O086",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "A user deletes a PVC that is still mounted by a running Pod. What happens?",
+    options: [
+      "The PVC is deleted at once and the Pod loses access to its data",
+      "The API server rejects the delete request with an error",
+      "The Pod is evicted immediately so that the PVC can be deleted",
+      "The PVC shows Terminating and is removed only when no Pod uses it"
+    ],
+    answer: [3],
+    explanation: "Storage Object in Use Protection añade el finalizer kubernetes.io/pvc-protection: el PVC queda en Terminating y su eliminación se pospone hasta que ningún Pod lo use activamente. La petición de borrado sí se acepta; lo que se retrasa es que se complete.",
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection"]
+  },
+  {
+    id: "O087",
+    domain: "orchestration",
+    topic: "Storage",
+    module: 8,
+    q: "Where does the kubelet keep the files of a Secret volume mounted into a Pod?",
+    options: [
+      "In tmpfs (RAM-backed), so they are never written to the node's non-volatile storage",
+      "In a directory on the node's root disk under /var/lib",
+      "Inside the writable layer of the container image",
+      "In etcd, read remotely on every file access"
+    ],
+    answer: [0],
+    explanation: "Los volúmenes secret usan tmpfs (sistema de archivos en RAM), así que su contenido nunca se escribe en el almacenamiento persistente del nodo. Además se montan siempre de solo lectura.",
+    source: ["https://kubernetes.io/docs/concepts/storage/volumes/#secret"]
+  },
+  {
     id: "D001",
     domain: "delivery",
     topic: "Application Delivery",
     module: 12,
     q: "What is the main difference between Continuous Delivery and Continuous Deployment?",
     options: [
+      "Continuous Delivery skips automated testing",
       "With Continuous Deployment every change that passes the pipeline is released to production automatically, while Continuous Delivery keeps a manual approval before production",
       "They are two names for exactly the same practice",
-      "Continuous Delivery skips automated testing",
       "Continuous Deployment only applies to infrastructure code"
     ],
-    answer: [0],
+    answer: [1],
     explanation: "En ambos casos el software está siempre listo para liberarse; la diferencia es si el paso final a producción es automático (deployment) o requiere aprobación humana (delivery).",
     source: ["https://glossary.cncf.io/continuous-delivery/","https://glossary.cncf.io/continuous-deployment/"]
   },
@@ -2870,10 +3094,10 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "In GitOps, what is the role of the Git repository?",
     options: [
-      "It stores only application source code, never configuration",
+      "It is used only to store audit logs",
       "It replaces etcd as the cluster datastore",
       "It is the versioned single source of truth for the desired state of the system",
-      "It is used only to store audit logs"
+      "It stores only application source code, never configuration"
     ],
     answer: [2],
     explanation: "El estado deseado (manifiestos, Helm values, overlays) se versiona en Git; cada cambio pasa por commits y revisiones, lo que da trazabilidad y rollback mediante git revert. etcd sigue siendo el almacén del clúster.",
@@ -2886,9 +3110,9 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "How does a pull-based GitOps agent such as Argo CD or Flux deploy changes?",
     options: [
-      "A CI server pushes manifests to the cluster using admin credentials",
-      "The kubelet pulls manifests directly from Git",
       "Developers run kubectl apply manually after each merge",
+      "The kubelet pulls manifests directly from Git",
+      "A CI server pushes manifests to the cluster using admin credentials",
       "An agent running in the cluster watches the Git repository and reconciles the cluster to match it"
     ],
     answer: [3],
@@ -2902,12 +3126,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Someone edits a Deployment manually with kubectl edit in a GitOps-managed cluster. What will a GitOps controller with self-heal enabled do?",
     options: [
-      "Detect the drift and revert the live object to the state declared in Git",
       "Delete the Deployment",
-      "Ignore the change permanently",
-      "Commit the change back to Git automatically"
+      "Commit the change back to Git automatically",
+      "Detect the drift and revert the live object to the state declared in Git",
+      "Ignore the change permanently"
     ],
-    answer: [0],
+    answer: [2],
     explanation: "La reconciliación continua detecta la deriva (drift) entre el estado real y Git y, con self-heal activado (en Argo CD no lo está por defecto), restaura lo declarado. Para cambiar algo de forma persistente hay que hacerlo en Git.",
     source: ["https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/"],
     holdout: true
@@ -2919,12 +3143,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which two tools are CNCF graduated GitOps projects for Kubernetes? (Choose 2)",
     options: [
-      "Jenkins",
-      "Argo CD (part of the Argo project)",
       "Spinnaker",
-      "Flux"
+      "Jenkins",
+      "Flux",
+      "Argo CD (part of the Argo project)"
     ],
-    answer: [1,3],
+    answer: [2,3],
     explanation: "Flux (noviembre de 2022) y Argo (diciembre de 2022) son proyectos graduados de la CNCF. Jenkins y Spinnaker no son proyectos de la CNCF y no siguen por sí mismos el modelo GitOps de reconciliación continua.",
     source: ["https://www.cncf.io/projects/argo/","https://www.cncf.io/projects/flux/"]
   },
@@ -2935,12 +3159,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "What is Helm?",
     options: [
-      "A service mesh",
-      "A continuous integration server",
       "A container runtime",
-      "A package manager for Kubernetes that templates manifests and manages releases of charts"
+      "A package manager for Kubernetes that templates manifests and manages releases of charts",
+      "A service mesh",
+      "A continuous integration server"
     ],
-    answer: [3],
+    answer: [1],
     explanation: "Helm empaqueta aplicaciones como charts (plantillas + valores), las instala como releases versionadas y permite upgrade y rollback. Es un proyecto graduado de la CNCF.",
     source: ["https://helm.sh/docs/intro/using_helm/","https://www.cncf.io/projects/helm/"],
     holdout: true
@@ -2952,12 +3176,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "In a Helm chart, which file holds the default configuration values that users can override?",
     options: [
-      "Chart.yaml",
       "values.yaml",
+      "templates/_helpers.tpl",
       "Chart.lock",
-      "templates/_helpers.tpl"
+      "Chart.yaml"
     ],
-    answer: [1],
+    answer: [0],
     explanation: "values.yaml contiene los valores por defecto que se inyectan en las plantillas; se sobrescriben con -f archivo.yaml o --set. Chart.yaml guarda los metadatos del chart (nombre, versión, dependencias).",
     source: ["https://helm.sh/docs/topics/charts/","https://helm.sh/docs/intro/using_helm/"]
   },
@@ -2968,12 +3192,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which command reverts a Helm release named web to revision 2?",
     options: [
-      "helm upgrade web --revision 2",
       "helm revert web --to 2",
-      "helm rollback web 2",
-      "helm undo web 2"
+      "helm upgrade web --revision 2",
+      "helm undo web 2",
+      "helm rollback web 2"
     ],
-    answer: [2],
+    answer: [3],
     explanation: "helm rollback <release> <revisión> vuelve a una revisión anterior; helm history web muestra las revisiones disponibles. Las otras variantes no son comandos válidos de Helm.",
     source: ["https://helm.sh/docs/intro/using_helm/"]
   },
@@ -2985,11 +3209,11 @@ window.KCNA_QUESTIONS = [
     q: "Which in-cluster server component was removed in Helm 3, simplifying its security model?",
     options: [
       "ChartMuseum",
-      "Artifact Hub",
       "Kubeapps",
-      "Tiller"
+      "Tiller",
+      "Artifact Hub"
     ],
-    answer: [3],
+    answer: [2],
     explanation: "Helm 2 necesitaba Tiller dentro del clúster, normalmente con permisos amplios. Desde Helm 3 el cliente habla directamente con el API server y sus permisos se evalúan con el kubeconfig del usuario (RBAC).",
     source: ["https://helm.sh/docs/faq/changes_since_helm2/"],
     holdout: true
@@ -3001,12 +3225,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which two statements about Kustomize are correct? (Choose 2)",
     options: [
-      "It is integrated into kubectl through the -k flag",
+      "It requires a server-side component in the cluster",
       "It uses Go templates fed by a values.yaml file",
       "It is template-free and customizes plain YAML through bases, overlays and patches",
-      "It requires a server-side component in the cluster"
+      "It is integrated into kubectl through the -k flag"
     ],
-    answer: [0,2],
+    answer: [2,3],
     explanation: "Kustomize compone una base con overlays por entorno aplicando parches sobre YAML puro, sin plantillas, y está integrado en kubectl desde la 1.14 (kubectl apply -k, kubectl kustomize). Las plantillas Go con values.yaml son propias de Helm.",
     source: ["https://kustomize.io/","https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/"]
   },
@@ -3018,9 +3242,9 @@ window.KCNA_QUESTIONS = [
     q: "Which command applies a Kustomize directory using the support built into kubectl?",
     options: [
       "kubectl apply -k ./overlays/prod",
-      "kubectl kustomize --apply prod",
+      "kubectl helm apply prod",
       "kubectl apply -f kustomization.yaml --template",
-      "kubectl helm apply prod"
+      "kubectl kustomize --apply prod"
     ],
     answer: [0],
     explanation: "kubectl apply -k procesa el kustomization.yaml del directorio y aplica el resultado. kubectl kustomize <dir> solo renderiza la salida sin aplicarla.",
@@ -3034,11 +3258,11 @@ window.KCNA_QUESTIONS = [
     q: "Which pair lists the strategy types natively supported by a Deployment's spec.strategy.type?",
     options: [
       "Rolling and Shadow",
-      "BlueGreen and Canary",
       "RollingUpdate and Recreate",
-      "Recreate and A/B"
+      "Recreate and A/B",
+      "BlueGreen and Canary"
     ],
-    answer: [2],
+    answer: [1],
     explanation: "Un Deployment solo admite RollingUpdate (por defecto) y Recreate. Blue/green y canary se implementan con varios objetos, una service mesh o herramientas como Argo Rollouts o Flagger.",
     source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy"],
     holdout: true
@@ -3050,10 +3274,10 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "A Deployment uses the Recreate strategy. What happens during an update?",
     options: [
-      "Traffic is mirrored to the new Pods",
-      "All existing Pods are terminated before new Pods are created, causing a brief downtime",
       "Only half of the Pods are updated",
-      "New Pods are created before the old ones are removed"
+      "All existing Pods are terminated before new Pods are created, causing a brief downtime",
+      "New Pods are created before the old ones are removed",
+      "Traffic is mirrored to the new Pods"
     ],
     answer: [1],
     explanation: "Recreate elimina primero todos los Pods antiguos y luego crea los nuevos; es útil cuando dos versiones no pueden coexistir, a costa de una interrupción.",
@@ -3083,12 +3307,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which deployment strategy first routes a small percentage of traffic to the new version and increases it gradually while monitoring metrics?",
     options: [
+      "Big bang",
       "Recreate",
       "Canary",
-      "Blue/green",
-      "Big bang"
+      "Blue/green"
     ],
-    answer: [1],
+    answer: [2],
     explanation: "Canary expone la nueva versión a un subconjunto de usuarios y amplía el porcentaje si las métricas son buenas, limitando el impacto de un fallo. Blue/green cambia todo el tráfico de una vez.",
     source: ["https://glossary.cncf.io/canary-deployment/"],
     holdout: true
@@ -3100,12 +3324,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which strategy runs two complete environments side by side and switches all traffic at once from the old version to the new one?",
     options: [
+      "Canary",
       "Rolling update",
       "Recreate",
-      "Blue/green",
-      "Canary"
+      "Blue/green"
     ],
-    answer: [2],
+    answer: [3],
     explanation: "En blue/green la versión nueva (green) se despliega completa junto a la actual (blue) y el tráfico se conmuta de golpe, por ejemplo cambiando el selector del Service; el rollback es volver a conmutar.",
     source: ["https://glossary.cncf.io/blue-green-deployment/"]
   },
@@ -3117,8 +3341,8 @@ window.KCNA_QUESTIONS = [
     q: "Which command shows the revision history of a Deployment named web?",
     options: [
       "kubectl rollout history deployment/web",
-      "kubectl describe rs web --revisions",
       "kubectl get deployment web --history",
+      "kubectl describe rs web --revisions",
       "kubectl logs deployment/web --history"
     ],
     answer: [0],
@@ -3133,12 +3357,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which command rolls a Deployment back to its previous revision?",
     options: [
-      "kubectl apply --undo deployment/web",
+      "kubectl rollout undo deployment/web",
       "kubectl rollback deployment/web",
-      "kubectl rollout revert deployment/web",
-      "kubectl rollout undo deployment/web"
+      "kubectl apply --undo deployment/web",
+      "kubectl rollout revert deployment/web"
     ],
-    answer: [3],
+    answer: [0],
     explanation: "kubectl rollout undo vuelve a la revisión anterior (o a una concreta con --to-revision=N) escalando de nuevo el ReplicaSet correspondiente. En un entorno GitOps, lo correcto es revertir el cambio en Git.",
     source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-to-a-previous-revision"]
   },
@@ -3149,8 +3373,8 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which projects extend Kubernetes with automated progressive delivery, such as canary analysis and blue/green, beyond what Deployments provide?",
     options: [
-      "CoreDNS and etcd",
       "Velero and Rook",
+      "CoreDNS and etcd",
       "Harbor and Notary",
       "Argo Rollouts and Flagger"
     ],
@@ -3165,12 +3389,12 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Which open source project provides Kubernetes-native CI/CD building blocks defined as custom resources, such as Task and Pipeline?",
     options: [
-      "Tekton",
+      "Envoy",
       "Prometheus",
-      "Cilium",
-      "Envoy"
+      "Tekton",
+      "Cilium"
     ],
-    answer: [0],
+    answer: [2],
     explanation: "Tekton define pipelines como CRDs que se ejecutan en Pods dentro del clúster; desde marzo de 2026 es un proyecto incubating de la CNCF. Prometheus es monitoreo, Envoy un proxy y Cilium un CNI.",
     source: ["https://www.cncf.io/projects/tekton/","https://www.cncf.io/blog/2026/03/24/tekton-becomes-a-cncf-incubating-project/"]
   },
@@ -3181,10 +3405,10 @@ window.KCNA_QUESTIONS = [
     module: 12,
     q: "Why should CI pipelines produce immutable, uniquely tagged images (for example tagged with the Git commit SHA) instead of reusing a tag such as latest?",
     options: [
-      "Registries reject the latest tag",
-      "It makes deployments reproducible and traceable and enables reliable rollbacks",
       "It reduces the image size",
-      "Kubernetes requires semantic version tags"
+      "It makes deployments reproducible and traceable and enables reliable rollbacks",
+      "Kubernetes requires semantic version tags",
+      "Registries reject the latest tag"
     ],
     answer: [1],
     explanation: "Una etiqueta única por build (o mejor aún, el digest) permite saber exactamente qué código corre y volver a una versión anterior con certeza. Reutilizar latest hace que dos despliegues 'iguales' puedan ejecutar imágenes distintas.",
@@ -3197,12 +3421,12 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "A container keeps crashing. Which command shows the logs of the previous, terminated instance of the container?",
     options: [
-      "kubectl describe logs mypod",
-      "kubectl get logs mypod",
       "kubectl logs mypod --previous",
-      "kubectl logs mypod --last"
+      "kubectl describe logs mypod",
+      "kubectl logs mypod --last",
+      "kubectl get logs mypod"
     ],
-    answer: [2],
+    answer: [0],
     explanation: "--previous (o -p) muestra los logs de la instancia anterior del contenedor, que suelen contener el error que provocó el reinicio. Los logs actuales pueden estar vacíos si acaba de arrancar.",
     source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/"]
   },
@@ -3213,9 +3437,9 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "Which command streams the logs of the container named sidecar in a multi-container Pod?",
     options: [
+      "kubectl logs sidecar/mypod",
       "kubectl exec mypod logs sidecar",
       "kubectl attach mypod --logs sidecar",
-      "kubectl logs sidecar/mypod",
       "kubectl logs mypod -c sidecar -f"
     ],
     answer: [3],
@@ -3229,8 +3453,8 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "A Pod is in CrashLoopBackOff. What does this status mean?",
     options: [
-      "The image cannot be downloaded",
       "The Pod is waiting to be assigned to a node",
+      "The image cannot be downloaded",
       "The container starts and exits repeatedly, and the kubelet waits with increasing back-off delays between restarts",
       "The Pod was evicted from its node"
     ],
@@ -3245,12 +3469,12 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "Which command is most useful to see a Pod's events, conditions, container states and restart counts in a single view?",
     options: [
+      "kubectl logs mypod",
       "kubectl describe pod mypod",
-      "kubectl top pod mypod",
       "kubectl get pod mypod",
-      "kubectl logs mypod"
+      "kubectl top pod mypod"
     ],
-    answer: [0],
+    answer: [1],
     explanation: "kubectl describe agrega el estado detallado y los eventos recientes (scheduling, pulls, probes fallidas). get da un resumen de una línea, logs muestra la salida de la aplicación y top el consumo.",
     source: ["https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/"]
   },
@@ -3261,12 +3485,12 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "Which command opens an interactive shell inside a running container?",
     options: [
-      "kubectl logs -it mypod",
       "kubectl exec -it mypod -- /bin/sh",
       "kubectl run -it mypod /bin/sh",
+      "kubectl logs -it mypod",
       "kubectl attach mypod --shell"
     ],
-    answer: [1],
+    answer: [0],
     explanation: "kubectl exec -it ejecuta un proceso dentro del contenedor existente con TTY interactivo; '--' separa las opciones de kubectl del comando. kubectl run crearía un Pod nuevo.",
     source: ["https://kubernetes.io/docs/tasks/debug/debug-application/get-shell-running-container/"]
   },
@@ -3277,10 +3501,10 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "The application image is distroless and has no shell. How can you troubleshoot inside the running Pod?",
     options: [
-      "Rebuild the production image with a shell and redeploy it",
+      "kubectl logs mypod --shell",
       "kubectl debug -it mypod --image=busybox --target=app, which adds an ephemeral container",
-      "kubectl exec -it mypod -- bash",
-      "kubectl logs mypod --shell"
+      "Rebuild the production image with a shell and redeploy it",
+      "kubectl exec -it mypod -- bash"
     ],
     answer: [1],
     explanation: "kubectl debug inyecta un ephemeral container con herramientas; con --target comparte el espacio de procesos del contenedor indicado (si el runtime lo soporta). exec fallaría porque no hay shell en la imagen.",
@@ -3310,10 +3534,10 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "A Pod is Running but shows READY 0/1, and its Service does not send traffic to it. What is the most likely reason?",
     options: [
+      "The Pod has the BestEffort QoS class",
       "The node is cordoned",
-      "The image failed to pull",
       "The readiness probe is failing",
-      "The Pod has the BestEffort QoS class"
+      "The image failed to pull"
     ],
     answer: [2],
     explanation: "Running indica que el contenedor arrancó; READY 0/1 indica que la readinessProbe no pasa, así que el controlador de EndpointSlice retira la IP del Pod de los endpoints del Service. Un fallo de pull impediría llegar a Running.",
@@ -3326,12 +3550,12 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "Which command forwards local port 8080 to port 80 of a Pod for quick testing?",
     options: [
+      "kubectl proxy pod/mypod 8080",
       "kubectl port-forward pod/mypod 8080:80",
       "kubectl forward mypod 80:8080",
-      "kubectl proxy pod/mypod 8080",
       "kubectl expose pod mypod --port=8080:80"
     ],
-    answer: [0],
+    answer: [1],
     explanation: "El formato es puerto_local:puerto_remoto y también funciona con svc/ y deploy/. kubectl expose crea un Service y kubectl proxy expone la API de Kubernetes, no un Pod.",
     source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_port-forward/"]
   },
@@ -3342,12 +3566,12 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "A Pod has been stuck in Terminating for a long time after it was deleted. What is a common cause?",
     options: [
-      "A finalizer that has not been removed, or a node that is unreachable",
+      "An ImagePullBackOff error",
       "Too many replicas in its Deployment",
-      "A missing readiness probe",
-      "An ImagePullBackOff error"
+      "A finalizer that has not been removed, or a node that is unreachable",
+      "A missing readiness probe"
     ],
-    answer: [0],
+    answer: [2],
     explanation: "El Pod queda Terminating si un finalizer no se retira o si el kubelet de su nodo no puede confirmar la terminación (nodo caído). Se investiga con kubectl get pod -o yaml (finalizers) y el estado del nodo.",
     source: ["https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers/","https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination"]
   },
@@ -3359,11 +3583,11 @@ window.KCNA_QUESTIONS = [
     q: "Which command lists recent events in a namespace sorted by time?",
     options: [
       "kubectl logs events",
+      "kubectl describe events --latest",
       "kubectl top events",
-      "kubectl get events --sort-by=.metadata.creationTimestamp",
-      "kubectl describe events --latest"
+      "kubectl get events --sort-by=.metadata.creationTimestamp"
     ],
-    answer: [2],
+    answer: [3],
     explanation: "Los eventos se ordenan con --sort-by; también existe el comando kubectl events, específico para listarlos. Por defecto el API server conserva los eventos solo una hora (--event-ttl=1h).",
     source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_events/","https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/"],
     holdout: true
@@ -3375,12 +3599,12 @@ window.KCNA_QUESTIONS = [
     module: 3,
     q: "A Pod shows the status Completed. Which two statements are true? (Choose 2)",
     options: [
+      "The Pod is still waiting to be scheduled",
       "The container was OOMKilled",
-      "Its containers exited with exit code 0",
       "This is expected for Pods created by a Job that finished its task",
-      "The Pod is still waiting to be scheduled"
+      "Its containers exited with exit code 0"
     ],
-    answer: [1,2],
+    answer: [2,3],
     explanation: "Completed (fase Succeeded) significa que todos los contenedores terminaron con éxito y no se reiniciarán; es el estado final normal de un Job. OOMKilled y Pending indican otros problemas.",
     source: ["https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase","https://kubernetes.io/docs/concepts/workloads/controllers/job/"],
     holdout: true
@@ -3392,14 +3616,430 @@ window.KCNA_QUESTIONS = [
     module: 9,
     q: "Which command prints the logs of a Pod belonging to the Deployment named web without looking up the Pod name first?",
     options: [
-      "kubectl describe deployment web --logs",
       "kubectl logs deployment/web",
+      "kubectl get logs deploy web",
       "kubectl logs web --all",
-      "kubectl get logs deploy web"
+      "kubectl describe deployment web --logs"
     ],
-    answer: [1],
+    answer: [0],
     explanation: "kubectl logs acepta referencias tipo/nombre (deployment/web, job/x) y elige uno de sus Pods. Para ver todos los Pods se usa --all-pods=true o un selector, por ejemplo -l app=web.",
     source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/"]
+  },
+  {
+    id: "D036",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 3,
+    q: "A Deployment with 10 replicas uses the default RollingUpdate settings (maxSurge and maxUnavailable both 25%). During an update, what are the limits on the number of Pods?",
+    options: [
+      "At most 12 Pods in total and at least 8 available",
+      "At most 13 Pods in total and at least 8 available",
+      "At most 13 Pods in total and at least 7 available",
+      "At most 12 Pods in total and at least 7 available"
+    ],
+    answer: [1],
+    explanation: "Para convertir el porcentaje en número de Pods, maxSurge redondea hacia arriba (2,5 → 3, máximo 13 Pods) y maxUnavailable redondea hacia abajo (2,5 → 2, mínimo 8 disponibles). Si se redondean igual los dos valores se obtiene 12 o 7, que no es lo que hace Kubernetes.",
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#max-surge","https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#max-unavailable"]
+  },
+  {
+    id: "D037",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 3,
+    q: "A CI job updates a Deployment and then runs kubectl rollout status, but the new Pods never become ready. What happens once progressDeadlineSeconds is exceeded?",
+    options: [
+      "The Deployment controller deletes the new ReplicaSet and stops retrying",
+      "Kubernetes automatically rolls the Deployment back to the previous ReplicaSet",
+      "kubectl rollout status keeps waiting and finally exits with code 0",
+      "The Deployment reports ProgressDeadlineExceeded and kubectl rollout status exits with an error"
+    ],
+    answer: [3],
+    explanation: "Cuando se supera el plazo (600 s por defecto), Kubernetes solo informa la condición Progressing=False con razón ProgressDeadlineExceeded, y kubectl rollout status termina con un código distinto de cero, así el pipeline puede fallar o hacer rollback. Kubernetes no revierte solo y el controlador sigue reintentando: el rollback lo hace una herramienta de nivel superior o una persona.",
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#failed-deployment","https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#progress-deadline-seconds"]
+  },
+  {
+    id: "D038",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "A team installs the same Helm chart twice in one cluster, under the names blog-a and blog-b. In Helm terms, what are blog-a and blog-b?",
+    options: [
+      "Two revisions of a single release",
+      "Two charts stored in the same repository",
+      "Two releases of the same chart",
+      "Two repositories that serve the same chart"
+    ],
+    answer: [2],
+    explanation: "Un release es una instancia de un chart que corre en el clúster: el mismo chart puede instalarse muchas veces y cada instalación crea un release con nombre propio. Las revisiones son versiones sucesivas de un mismo release (install, upgrade, rollback), no instalaciones separadas.",
+    source: ["https://helm.sh/docs/intro/introduction#release"]
+  },
+  {
+    id: "D039",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "A CD pipeline must deploy the Helm release web on every run: install it if it does not exist yet, or upgrade it if it does. Which command does this?",
+    options: [
+      "helm upgrade --install web ./chart",
+      "helm template web ./chart",
+      "helm install --upgrade web ./chart",
+      "helm sync web ./chart"
+    ],
+    answer: [0],
+    explanation: "La opción -i/--install de helm upgrade ejecuta un install cuando todavía no existe un release con ese nombre, así que el comando sirve igual en la primera ejecución y en las siguientes. helm template solo renderiza los manifiestos en local sin instalar nada, y helm install no tiene la opción --upgrade.",
+    source: ["https://helm.sh/docs/helm/helm_upgrade/"]
+  },
+  {
+    id: "D040",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "A chart's values.yaml sets replicaCount: 1 and the file values-prod.yaml sets replicaCount: 3. You run helm install web ./chart -f values-prod.yaml --set replicaCount=5. Which value is used?",
+    options: [
+      "The install fails because the key is set twice",
+      "3",
+      "5",
+      "1"
+    ],
+    answer: [2],
+    explanation: "Los valores de values.yaml son los valores por defecto; los archivos de -f/--values los sobrescriben, y --set se combina con mayor precedencia que --values. Por eso gana 5. Definir la misma clave en varias fuentes no es un error.",
+    source: ["https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing"]
+  },
+  {
+    id: "D041",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "The Helm release web is at revision 3 after two upgrades. You run helm rollback web 2. What does helm history web show afterwards?",
+    options: [
+      "A new revision 4 whose configuration matches revision 2",
+      "Revision 3 is deleted and revision 2 becomes the current one again",
+      "The history is reset and revision 2 is renumbered as revision 1",
+      "Revision 2 is marked as current and no new revision is created"
+    ],
+    answer: [0],
+    explanation: "Cada install, upgrade o rollback incrementa el número de revisión en 1, así que el rollback no borra historial: crea la revisión 4 con la configuración de la 2. Por eso las revisiones anteriores siguen disponibles para auditar o volver a ellas.",
+    source: ["https://helm.sh/docs/intro/using_helm/#helm-upgrade-and-helm-rollback-upgrading-a-release-and-recovering-on-failure"]
+  },
+  {
+    id: "D042",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "A team wants to store its Helm charts in the same OCI-compliant container registry that already holds its images. What does Helm support?",
+    options: [
+      "Wrapping the chart in a container image, because registries only accept images",
+      "Serving charts only from an HTTP repository that publishes an index.yaml",
+      "Uploading the chart to Artifact Hub, the only source Helm installs from",
+      "Pushing the packaged chart with helm push to an oci:// reference and installing it from there"
+    ],
+    answer: [3],
+    explanation: "Helm recomienda usar registries con soporte OCI para guardar y compartir charts: se empaqueta con helm package, se sube con helm push oci://... y se instala con helm install oci://.... El repositorio HTTP con index.yaml sigue existiendo, pero no es la única opción, y Artifact Hub es un buscador, no un almacén obligatorio.",
+    source: ["https://helm.sh/docs/topics/registries/#the-push-subcommand","https://helm.sh/docs/topics/registries/#other-subcommands"]
+  },
+  {
+    id: "D043",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "A Deployment references a ConfigMap generated by a Kustomize configMapGenerator. You change one of its values and run kubectl apply -k. What happens?",
+    options: [
+      "The existing ConfigMap is updated in place and Pods keep the old values until restarted",
+      "A ConfigMap with a new hash suffix is created and referenced, which triggers a rollout",
+      "kubectl rejects the change because generated ConfigMaps are immutable",
+      "Kustomize adds a timestamp suffix, so every apply restarts the Pods"
+    ],
+    answer: [1],
+    explanation: "Los ConfigMaps generados llevan un sufijo hash de su contenido: si el contenido cambia se genera uno nuevo, y Kustomize reemplaza su nombre en las referencias del Deployment. Un cambio en .spec.template dispara un rollout, así que los Pods toman la nueva configuración sin reiniciarlos a mano. El sufijo depende del contenido, no de la hora.",
+    source: ["https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/#configmapgenerator","https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment"]
+  },
+  {
+    id: "D044",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "Argo CD shows an Application as Synced but Degraded. What does this mean?",
+    options: [
+      "The live resources match Git, but they are not working correctly, for example failing Pods",
+      "Git and the cluster differ, and Argo CD is still applying the changes",
+      "Self-heal is disabled, so manual changes in the cluster are being kept",
+      "The Git repository is unreachable, so Argo CD cannot compare the states"
+    ],
+    answer: [0],
+    explanation: "Argo CD mide dos cosas distintas: el sync status indica si el estado real coincide con el de Git, y el health indica si la aplicación funciona y puede atender peticiones. Synced + Degraded significa que se aplicó exactamente lo que dice Git, pero eso no funciona. Si Git y el clúster difirieran, el estado sería OutOfSync.",
+    source: ["https://argo-cd.readthedocs.io/en/stable/core_concepts/","https://argo-cd.readthedocs.io/en/stable/operator-manual/health/"]
+  },
+  {
+    id: "D045",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "An Argo CD Application has automated sync enabled but not the prune option. A developer deletes a Service manifest from Git. What does Argo CD do?",
+    options: [
+      "It stops syncing the whole Application until an administrator approves",
+      "It leaves the Service in the cluster until a sync with pruning removes it",
+      "It restores the deleted manifest in the Git repository",
+      "It deletes the Service at once, because automated sync always mirrors Git exactly"
+    ],
+    answer: [1],
+    explanation: "Como medida de seguridad, el sync automático no borra por defecto los recursos que desaparecen de Git. Para eliminarlos hay que hacer un sync manual con prune o activar prune: true en la política automática. Argo CD nunca escribe cambios en el repositorio Git.",
+    source: ["https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/#automatic-pruning"]
+  },
+  {
+    id: "D046",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "In Flux, a HelmRelease installs a chart that comes from a HelmRepository. Which two controllers fetch the chart and perform the Helm install or upgrade? (Choose 2)",
+    options: [
+      "source-controller",
+      "image-reflector-controller",
+      "notification-controller",
+      "helm-controller"
+    ],
+    answer: [0,3],
+    explanation: "source-controller obtiene y empaqueta los artefactos (repositorios Git, Helm, OCI); helm-controller vigila los HelmRelease, toma el chart que produce source-controller y ejecuta install, upgrade, test o rollback. notification-controller solo envía alertas y recibe webhooks, e image-reflector-controller escanea registries de imágenes.",
+    source: ["https://fluxcd.io/flux/components/source/","https://fluxcd.io/flux/components/helm/"]
+  },
+  {
+    id: "D047",
+    domain: "delivery",
+    topic: "Application Delivery",
+    module: 12,
+    q: "A team managing applications with Argo CD needs to handle Kubernetes Secrets in a GitOps workflow. Which approach does the Argo CD documentation strongly recommend?",
+    options: [
+      "Commit plain Secret manifests, because base64 encoding of the data encrypts the values",
+      "Store the secret values as annotations on the Argo CD Application resource",
+      "Inject the secret values during manifest generation with a config management plugin",
+      "An operator in the destination cluster, such as Sealed Secrets or External Secrets, supplies them"
+    ],
+    answer: [3],
+    explanation: "Argo CD recomienda gestionar los secretos en el clúster destino con operadores como Sealed Secrets o External Secrets Operator, porque así Argo CD no necesita acceso a los valores en claro. Advierte expresamente contra inyectarlos al generar manifiestos, ya que quedan en texto plano en su caché Redis. El base64 solo ofusca, no cifra.",
+    source: ["https://argo-cd.readthedocs.io/en/stable/operator-manual/secret-management/","https://kubernetes.io/docs/concepts/configuration/secret/"]
+  },
+  {
+    id: "D048",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "A Pod crashes immediately on startup and is in CrashLoopBackOff, so you cannot keep a shell open in it with kubectl exec. How can you get an interactive shell in a Pod with the same spec, replacing the crashing command, to investigate?",
+    options: [
+      "kubectl attach myapp -it -c myapp",
+      "kubectl run myapp-debug -it --image=busybox -- sh",
+      "kubectl debug myapp -it --copy-to=myapp-debug --container=myapp -- sh",
+      "kubectl exec -it myapp --previous -- sh"
+    ],
+    answer: [2],
+    explanation: "--copy-to crea una copia del Pod y, al indicar --container, reemplaza el comando de ese contenedor por sh, así se puede revisar el sistema de archivos o lanzar el comando a mano. Sin --container, kubectl debug añadiría un contenedor nuevo; kubectl run crea un Pod distinto que no reproduce la especificación original.",
+    source: ["https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#copying-a-pod-while-changing-its-command"]
+  },
+  {
+    id: "D049",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "You debug a Deployment's Pod with kubectl debug mypod -it --copy-to=mypod-debug --container=app -- sh. The copy is running, but the Service that selects the Deployment's Pods never sends requests to it. What is the most likely reason?",
+    options: [
+      "Services never route traffic to Pods that contain an ephemeral container",
+      "Pods created by kubectl debug are always placed in the kube-system namespace",
+      "By default the copy does not keep the original Pod's labels, so the Service selector does not match it",
+      "Copies created with --copy-to get no Pod IP until the debug session ends"
+    ],
+    answer: [2],
+    explanation: "kubectl debug --copy-to no conserva por defecto los labels del Pod original (para eso existe --keep-labels), así que el selector del Service no coincide y la copia no recibe tráfico. La copia es un Pod normal en el mismo namespace y con su propia IP.",
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_debug/"]
+  },
+  {
+    id: "D050",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 3,
+    q: "A Pod's RESTARTS count keeps increasing. kubectl logs --previous shows that the application started normally with no errors, and kubectl describe shows the events 'Liveness probe failed: ... connection refused' followed by 'Container app failed liveness probe, will be restarted'. What is the most likely cause?",
+    options: [
+      "The image cannot be pulled from the registry",
+      "The readinessProbe is failing, so the kubelet keeps restarting the container",
+      "The container exceeds its memory limit and is OOMKilled",
+      "The livenessProbe checks a port or path where the application is not listening"
+    ],
+    answer: [3],
+    explanation: "Los eventos Unhealthy y Killing indican que el kubelet reinicia el contenedor porque falla la liveness; si la app arranca bien y no registra errores, lo habitual es una sonda mal configurada (puerto o ruta equivocados). Una readiness fallida no reinicia nada: solo retira la IP del Pod de los EndpointSlices, y un OOMKilled aparecería como Reason en Last State.",
+    source: ["https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-a-liveness-command","https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#readiness-probe"]
+  },
+  {
+    id: "D051",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "kubectl get pods shows a Pod with STATUS Init:CrashLoopBackOff. The Pod has an init container named db-migrate. Which command shows the output that explains why it is failing?",
+    options: [
+      "kubectl logs mypod -c db-migrate",
+      "kubectl exec -it mypod -c db-migrate -- sh",
+      "kubectl logs mypod --previous",
+      "kubectl logs mypod --init"
+    ],
+    answer: [0],
+    explanation: "Init:CrashLoopBackOff significa que un init container falla una y otra vez y los contenedores de la aplicación aún no han arrancado, así que hay que pedir sus logs por nombre con -c (se puede añadir --previous). Sin -c se consultaría el contenedor de la app, que nunca llegó a ejecutarse, y exec no es fiable en un contenedor que se cae continuamente.",
+    source: ["https://kubernetes.io/docs/tasks/debug/debug-application/debug-init-containers/#accessing-logs-from-init-containers"]
+  },
+  {
+    id: "D052",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 3,
+    q: "A Pod defines three regular init containers (no sidecars) and has shown STATUS Init:1/3 for several minutes. What does this tell you?",
+    options: [
+      "The Pod has been restarted once out of three allowed attempts",
+      "One init container has completed, the next one has not finished yet, and the app containers have not started",
+      "One init container is running in parallel with the application containers",
+      "One of three app containers is running while the other two images are still being pulled"
+    ],
+    answer: [1],
+    explanation: "Init:N/M indica que N de los M init containers ya terminaron. Se ejecutan en secuencia y los contenedores de la app no arrancan hasta que todos completan con éxito, así que conviene revisar los logs del segundo init container (a menudo espera una dependencia que no responde).",
+    source: ["https://kubernetes.io/docs/tasks/debug/debug-application/debug-init-containers/#understanding-pod-status","https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#understanding-init-containers"]
+  },
+  {
+    id: "D053",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "Which command lists the recent events related only to the Pod web-7d4f9 and then keeps printing new ones as they arrive?",
+    options: [
+      "kubectl logs pod/web-7d4f9 --events -f",
+      "kubectl get events web-7d4f9 --follow",
+      "kubectl describe pod web-7d4f9 --watch",
+      "kubectl events --for pod/web-7d4f9 --watch"
+    ],
+    answer: [3],
+    explanation: "--for filtra los eventos del recurso indicado y --watch sigue mostrando los nuevos a medida que llegan. kubectl describe muestra los eventos una sola vez y kubectl logs muestra la salida del contenedor, no los eventos.",
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_events/"]
+  },
+  {
+    id: "D054",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "A namespace contains hundreds of Normal events. Which two commands show only the Warning events? (Choose 2)",
+    options: [
+      "kubectl get events --field-selector type=Warning",
+      "kubectl logs --selector type=Warning",
+      "kubectl events --types=Warning",
+      "kubectl describe events --level=Warning"
+    ],
+    answer: [0,2],
+    explanation: "kubectl events filtra por tipo con --types, y los Events admiten el campo type en los field selectors, así que kubectl get events --field-selector type=Warning también sirve. kubectl logs lee la salida de contenedores y describe no tiene un flag --level.",
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_events/","https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/#list-of-supported-fields"]
+  },
+  {
+    id: "D055",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "An application exits with an error but never writes to /dev/termination-log, so lastState.terminated.message is empty. Which container setting makes Kubernetes use the last part of the container's log output as the termination message?",
+    options: [
+      "restartPolicy: OnFailure",
+      "terminationMessagePolicy: FallbackToLogsOnError",
+      "terminationMessagePolicy: File",
+      "terminationGracePeriodSeconds: 0"
+    ],
+    answer: [1],
+    explanation: "Con FallbackToLogsOnError, si el archivo de terminación está vacío y el contenedor terminó con error, Kubernetes usa el último fragmento del log (máximo 2048 bytes u 80 líneas). El valor por defecto, File, solo lee el archivo indicado en terminationMessagePath.",
+    source: ["https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/#customizing-the-termination-message"]
+  },
+  {
+    id: "D056",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "You try to copy a heap dump out of a container with kubectl cp mypod:/tmp/heap.hprof ./heap.hprof, but the command fails. The image is distroless. What is the most likely reason?",
+    options: [
+      "kubectl cp only works with Pods that mount a PersistentVolume",
+      "kubectl cp requires the Pod to be exposed through a Service",
+      "kubectl cp needs the tar binary to be present in the container image",
+      "kubectl cp can only copy files from your machine into a container"
+    ],
+    answer: [2],
+    explanation: "kubectl cp se apoya en tar dentro del contenedor y falla si la imagen no lo incluye, como ocurre en las imágenes distroless. Sí permite copiar en ambos sentidos (del Pod a la máquina local y al revés) y no depende de volúmenes ni Services.",
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_cp/"]
+  },
+  {
+    id: "D057",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "A developer can run kubectl get pods in a namespace, but kubectl logs on those Pods returns a Forbidden error. What must their Role additionally allow?",
+    options: [
+      "The get verb on the pods/log subresource",
+      "The create verb on the pods/exec subresource",
+      "The list verb on the events resource",
+      "The watch verb on the pods resource"
+    ],
+    answer: [0],
+    explanation: "Los logs son el subrecurso log de pods y en RBAC se escriben como pods/log; se puede comprobar con kubectl auth can-i get pods --subresource=log. pods/exec controla kubectl exec, no la lectura de logs.",
+    source: ["https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-resources","https://kubernetes.io/docs/reference/kubectl/generated/kubectl_auth/kubectl_auth_can-i/"]
+  },
+  {
+    id: "D058",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "Which two statements about ephemeral containers added to a running Pod with kubectl debug are true? (Choose 2)",
+    options: [
+      "Ephemeral containers cannot define ports, liveness probes or readiness probes",
+      "The kubelet automatically restarts an ephemeral container if it exits",
+      "An ephemeral container can be added by editing pod.spec with kubectl edit",
+      "Once added, an ephemeral container cannot be changed or removed from the Pod"
+    ],
+    answer: [0,3],
+    explanation: "Como los contenedores normales, un ephemeral container no se puede modificar ni quitar una vez añadido, y no admite ports ni sondas. Nunca se reinicia automáticamente y se crea mediante un handler especial de la API (ephemeralcontainers), por lo que no se puede añadir con kubectl edit.",
+    source: ["https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/#what-is-an-ephemeral-container"]
+  },
+  {
+    id: "D059",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "You run kubectl port-forward service/web 8080:80 against a Service backed by three Pods and send many requests to localhost:8080. Where do they go?",
+    options: [
+      "To the Service's ClusterIP, which spreads them across the Pods",
+      "To the node's NodePort, which picks a Pod for each request",
+      "To a single Pod selected automatically; the session ends if that Pod terminates",
+      "They are load-balanced across all three Pods by kube-proxy"
+    ],
+    answer: [2],
+    explanation: "Con un tipo/nombre (service/, deployment/), kubectl port-forward selecciona automáticamente un único Pod y reenvía al targetPort de ese Pod, sin repartir la carga entre réplicas. Si ese Pod termina, la sesión se corta y hay que volver a ejecutar el comando.",
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_port-forward/"]
+  },
+  {
+    id: "D060",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "A Service's EndpointSlices list the IPs of three Ready Pods. Connecting directly to a Pod IP on port 8080 works, but requests to the Service's ClusterIP on port 80 fail. The Service is defined with port: 80 and targetPort: 80. What is the most likely cause?",
+    options: [
+      "CoreDNS cannot resolve the name of the Service",
+      "The Service selector does not match the labels of the Pods",
+      "The readiness probe is failing on all three Pods",
+      "The targetPort does not match the port the container listens on (8080)"
+    ],
+    answer: [3],
+    explanation: "Si los EndpointSlices contienen las IPs de los Pods, el selector coincide y los Pods están Ready; el fallo está en el puerto: targetPort debe ser el puerto donde escucha el contenedor. El DNS no interviene porque se usa la ClusterIP directamente.",
+    source: ["https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/#is-the-service-defined-correctly","https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/#does-the-service-have-any-endpointslices"]
+  },
+  {
+    id: "D061",
+    domain: "delivery",
+    topic: "Debugging",
+    module: 9,
+    q: "A legacy application writes its logs only to /var/log/app.log inside its container. The app works, but kubectl logs shows nothing. What is the standard way to make these logs available through kubectl logs?",
+    options: [
+      "Add a sidecar container that reads the file and writes it to its own stdout",
+      "Raise the verbosity of the command with kubectl logs -v=9",
+      "Run kubectl logs with --previous so that it reads the log file",
+      "Copy the log file into a ConfigMap mounted in the Pod"
+    ],
+    answer: [0],
+    explanation: "kubectl logs solo muestra lo que el contenedor escribe en stdout/stderr, que el runtime captura en el nodo. Un sidecar de streaming (por ejemplo con tail -F del archivo) lo reenvía a su propio stdout y se lee con kubectl logs mypod -c <sidecar>. --previous muestra la instancia anterior del contenedor y -v solo cambia la verbosidad de kubectl.",
+    source: ["https://kubernetes.io/docs/concepts/cluster-administration/logging/#how-nodes-handle-container-logs","https://kubernetes.io/docs/concepts/cluster-administration/logging/#streaming-sidecar-container"]
   },
   {
     id: "A001",
@@ -3408,12 +4048,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "Besides metrics, which two signals are commonly cited as pillars of observability? (Choose 2)",
     options: [
+      "Traces",
       "Logs",
-      "Backups",
       "Firewall rules",
-      "Traces"
+      "Backups"
     ],
-    answer: [0,3],
+    answer: [0,1],
     explanation: "Métricas, logs y trazas son las tres señales clásicas de la observabilidad (OpenTelemetry soporta además baggage, y los perfiles siguen en desarrollo). Backups y reglas de firewall no son señales de telemetría.",
     source: ["https://opentelemetry.io/docs/concepts/signals/"]
   },
@@ -3425,11 +4065,11 @@ window.KCNA_QUESTIONS = [
     q: "How does Prometheus collect metrics by default?",
     options: [
       "The kubelet writes metrics into etcd for Prometheus",
-      "Prometheus parses container log files",
+      "Prometheus pulls (scrapes) metrics over HTTP from the /metrics endpoints of its targets",
       "Applications push metrics to Prometheus over SMTP",
-      "Prometheus pulls (scrapes) metrics over HTTP from the /metrics endpoints of its targets"
+      "Prometheus parses container log files"
     ],
-    answer: [3],
+    answer: [1],
     explanation: "Prometheus usa un modelo pull: descubre objetivos (por ejemplo vía la API de Kubernetes) y los consulta periódicamente. Para trabajos batch efímeros que no pueden ser 'scrapeados' existe el Pushgateway.",
     source: ["https://prometheus.io/docs/introduction/overview/"],
     holdout: true
@@ -3441,12 +4081,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "Which two statements about Prometheus are correct? (Choose 2)",
     options: [
-      "It stores data as time series identified by a metric name and key-value labels",
-      "It provides PromQL to query and aggregate time series",
       "It is primarily designed to store and index application log lines",
+      "It provides PromQL to query and aggregate time series",
+      "It stores data as time series identified by a metric name and key-value labels",
       "It is a CNCF sandbox project"
     ],
-    answer: [0,1],
+    answer: [1,2],
     explanation: "Prometheus es una base de datos de series temporales con modelo de labels y el lenguaje PromQL. No es un sistema de logs (para eso existen Loki o Elasticsearch) y es un proyecto graduado de la CNCF desde 2018.",
     source: ["https://prometheus.io/docs/introduction/overview/","https://www.cncf.io/projects/prometheus/"],
     holdout: true
@@ -3458,12 +4098,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "Which Prometheus metric type represents a value that only increases (or resets to zero on restart), such as the total number of HTTP requests?",
     options: [
-      "Gauge",
       "Counter",
-      "Summary",
-      "Histogram"
+      "Histogram",
+      "Gauge",
+      "Summary"
     ],
-    answer: [1],
+    answer: [0],
     explanation: "Un counter solo crece; se analiza con rate() o increase() para obtener tasas. Un gauge puede subir y bajar (por ejemplo memoria en uso).",
     source: ["https://prometheus.io/docs/concepts/metric_types/#counter"]
   },
@@ -3475,11 +4115,11 @@ window.KCNA_QUESTIONS = [
     q: "Which Prometheus metric type samples observations into configurable buckets so that quantiles such as p95 latency can be calculated on the server side?",
     options: [
       "Gauge",
-      "Info",
+      "Histogram",
       "Counter",
-      "Histogram"
+      "Info"
     ],
-    answer: [3],
+    answer: [1],
     explanation: "Un histogram cuenta observaciones en buckets y permite calcular percentiles en el servidor con histogram_quantile(), incluso agregando entre instancias. El summary calcula cuantiles en el cliente y no se puede agregar entre instancias.",
     source: ["https://prometheus.io/docs/concepts/metric_types/#histogram","https://prometheus.io/docs/practices/histograms/"]
   },
@@ -3506,12 +4146,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "What is OpenTelemetry?",
     options: [
-      "A CNCF project providing vendor-neutral APIs, SDKs and a Collector to generate, collect and export traces, metrics and logs",
-      "A commercial APM product",
       "A Prometheus storage backend",
-      "A Kubernetes logging driver"
+      "A Kubernetes logging driver",
+      "A commercial APM product",
+      "A CNCF project providing vendor-neutral APIs, SDKs and a Collector to generate, collect and export traces, metrics and logs"
     ],
-    answer: [0],
+    answer: [3],
     explanation: "OpenTelemetry (fusión de OpenTracing y OpenCensus) es el estándar abierto de instrumentación y no es un backend; su Collector recibe, procesa y exporta telemetría a cualquier backend. Es proyecto graduado de la CNCF desde mayo de 2026.",
     source: ["https://opentelemetry.io/docs/what-is-opentelemetry/","https://www.cncf.io/projects/opentelemetry/"]
   },
@@ -3523,11 +4163,11 @@ window.KCNA_QUESTIONS = [
     q: "Which statement correctly distinguishes SLI, SLO and SLA?",
     options: [
       "They are synonyms",
-      "The SLA is the measurement, the SLI is the contract and the SLO is the penalty",
+      "An SLI is a measured indicator such as request latency, an SLO is the target set for it, and an SLA is a contractual agreement with consequences if it is not met",
       "The SLO is set by customers and the SLI by vendors",
-      "An SLI is a measured indicator such as request latency, an SLO is the target set for it, and an SLA is a contractual agreement with consequences if it is not met"
+      "The SLA is the measurement, the SLI is the contract and the SLO is the penalty"
     ],
-    answer: [3],
+    answer: [1],
     explanation: "El SLI mide (por ejemplo, % de peticiones con éxito), el SLO fija el objetivo (99.9% en 30 días) y el SLA es el contrato con consecuencias (p. ej. penalizaciones) si no se cumplen los SLOs que incluye. Lo que queda hasta el 100% del SLO es el error budget.",
     source: ["https://sre.google/sre-book/service-level-objectives/","https://sre.google/sre-book/embracing-risk/"]
   },
@@ -3538,12 +4178,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "What is the difference between metrics-server and kube-state-metrics?",
     options: [
-      "kube-state-metrics is required by the HPA, and metrics-server is only used by Prometheus",
-      "metrics-server stores long-term metric history",
       "metrics-server provides current CPU and memory usage for autoscaling and kubectl top, while kube-state-metrics exposes the state of Kubernetes objects (such as desired versus available replicas) for Prometheus",
-      "They are two names for the same project"
+      "kube-state-metrics is required by the HPA, and metrics-server is only used by Prometheus",
+      "They are two names for the same project",
+      "metrics-server stores long-term metric history"
     ],
-    answer: [2],
+    answer: [0],
     explanation: "metrics-server alimenta la Metrics API con lo mínimo (CPU y memoria) para HPA, VPA y kubectl top; no es una solución de monitoreo con histórico. kube-state-metrics lee la API y publica métricas sobre el estado de los objetos para que Prometheus las recoja.",
     source: ["https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/","https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/"]
   },
@@ -3554,12 +4194,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "Which CNCF project provides real-time cost monitoring and allocation for Kubernetes workloads, supporting FinOps practices?",
     options: [
-      "OpenCost",
-      "Litmus",
+      "Thanos",
       "Keptn",
-      "Thanos"
+      "Litmus",
+      "OpenCost"
     ],
-    answer: [0],
+    answer: [3],
     explanation: "OpenCost (proyecto incubating de la CNCF desde octubre de 2024) da visibilidad del gasto actual e histórico de Kubernetes y lo asigna a namespaces, workloads y labels. Thanos es almacenamiento de métricas y Litmus ingeniería del caos.",
     source: ["https://www.cncf.io/projects/opencost/","https://opencost.io/"]
   },
@@ -3570,12 +4210,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "What is the recommended way for containerized applications to emit logs in Kubernetes?",
     options: [
+      "Send logs directly to etcd",
       "Write logs into a ConfigMap",
       "Write to stdout and stderr, where the runtime captures them and node-level agents can ship them",
-      "Send logs directly to etcd",
       "Write log files inside the container filesystem"
     ],
-    answer: [1],
+    answer: [2],
     explanation: "El runtime redirige stdout/stderr a archivos en el nodo, kubectl logs los lee y un agente por nodo (por ejemplo Fluent Bit como DaemonSet) los envía a un backend central. Escribir en archivos dentro del contenedor complica la recolección y se pierde al reiniciar.",
     source: ["https://kubernetes.io/docs/concepts/cluster-administration/logging/"]
   },
@@ -3587,11 +4227,11 @@ window.KCNA_QUESTIONS = [
     q: "Which autoscaler adjusts the number of Pod replicas of a Deployment based on observed metrics such as CPU utilization?",
     options: [
       "Descheduler",
-      "Cluster Autoscaler",
+      "Horizontal Pod Autoscaler",
       "Vertical Pod Autoscaler",
-      "Horizontal Pod Autoscaler"
+      "Cluster Autoscaler"
     ],
-    answer: [3],
+    answer: [1],
     explanation: "El HPA escala horizontalmente (más o menos réplicas) según métricas de recursos, personalizadas o externas. El VPA ajusta requests, el Cluster Autoscaler añade nodos y el descheduler reubica Pods.",
     source: ["https://kubernetes.io/docs/concepts/workloads/autoscaling/"],
     holdout: true
@@ -3603,12 +4243,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "An HPA that targets CPU utilization shows <unknown> as its current value. What is most likely missing?",
     options: [
+      "A PodDisruptionBudget",
       "A PersistentVolume",
-      "metrics-server (or another provider of the resource metrics API), or CPU requests on the target containers",
       "An Ingress controller",
-      "A PodDisruptionBudget"
+      "metrics-server (or another provider of the resource metrics API), or CPU requests on the target containers"
     ],
-    answer: [1],
+    answer: [3],
     explanation: "El HPA obtiene el uso de la Metrics API (metrics.k8s.io), que normalmente sirve metrics-server, y calcula la utilización como porcentaje de los requests; sin cualquiera de los dos no puede calcular la métrica.",
     source: ["https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"]
   },
@@ -3619,12 +4259,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which component adds nodes when Pods cannot be scheduled because of insufficient resources, and removes underutilized nodes?",
     options: [
-      "Cluster Autoscaler",
       "Horizontal Pod Autoscaler",
-      "kube-scheduler",
-      "Vertical Pod Autoscaler"
+      "Vertical Pod Autoscaler",
+      "Cluster Autoscaler",
+      "kube-scheduler"
     ],
-    answer: [0],
+    answer: [2],
     explanation: "El Cluster Autoscaler (o Karpenter, ambos patrocinados por SIG Autoscaling) aprovisiona nodos para Pods que no caben y consolida nodos infrautilizados, basándose en los requests. El scheduler solo coloca Pods en los nodos existentes.",
     source: ["https://kubernetes.io/docs/concepts/cluster-administration/node-autoscaling/"]
   },
@@ -3635,12 +4275,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "What does the Vertical Pod Autoscaler (VPA) adjust?",
     options: [
-      "The number of Pod replicas",
-      "The number of nodes in the cluster",
       "The CPU and memory requests (and proportionally the limits) of containers",
-      "The number of namespaces"
+      "The number of Pod replicas",
+      "The number of namespaces",
+      "The number of nodes in the cluster"
     ],
-    answer: [2],
+    answer: [0],
     explanation: "El VPA (un add-on que no viene con Kubernetes) recomienda o aplica requests adecuados según el uso; por defecto escala también los limits de forma proporcional. No debe combinarse con un HPA que escale por la misma métrica de CPU o memoria.",
     source: ["https://kubernetes.io/docs/concepts/workloads/autoscaling/vertical-pod-autoscale/","https://github.com/kubernetes/autoscaler/blob/master/vertical-pod-autoscaler/docs/known-limitations.md"]
   },
@@ -3652,11 +4292,11 @@ window.KCNA_QUESTIONS = [
     q: "Which CNCF project enables event-driven autoscaling, including scaling to zero, based on sources such as message queue length?",
     options: [
       "Harbor",
-      "KEDA",
       "Kustomize",
+      "KEDA",
       "Contour"
     ],
-    answer: [1],
+    answer: [2],
     explanation: "KEDA (Kubernetes Event-Driven Autoscaling, graduado en la CNCF en 2023) usa más de 70 'scalers' (Kafka, RabbitMQ, colas cloud, Prometheus...) y trabaja junto al HPA, extendiéndolo, lo que permite escalar de 0 a N.",
     source: ["https://keda.sh/","https://www.cncf.io/projects/keda/"],
     holdout: true
@@ -3668,12 +4308,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which project provides a serverless platform on Kubernetes with request-driven autoscaling, including scale to zero, and an eventing component?",
     options: [
-      "Longhorn",
       "Rook",
       "Knative",
-      "etcd"
+      "etcd",
+      "Longhorn"
     ],
-    answer: [2],
+    answer: [1],
     explanation: "Knative Serving ejecuta servicios que escalan según las peticiones (incluso a cero) y Knative Eventing enruta eventos CloudEvents sobre HTTP; es proyecto graduado de la CNCF desde septiembre de 2025. etcd es un almacén clave-valor y Rook/Longhorn son soluciones de almacenamiento.",
     source: ["https://knative.dev/docs/","https://www.cncf.io/projects/knative/"]
   },
@@ -3684,12 +4324,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which two statements describe serverless computing? (Choose 2)",
     options: [
-      "Developers must provision and patch the underlying virtual machines",
-      "Developers focus on code while the platform manages servers and scaling",
       "Serverless applications cannot be event-driven",
-      "Workloads can scale to zero when idle and are often billed per use"
+      "Workloads can scale to zero when idle and are often billed per use",
+      "Developers focus on code while the platform manages servers and scaling",
+      "Developers must provision and patch the underlying virtual machines"
     ],
-    answer: [1,3],
+    answer: [1,2],
     explanation: "En serverless (FaaS o contenedores gestionados) la plataforma abstrae los servidores, escala automáticamente, a menudo hasta cero, y se paga por uso. Es especialmente adecuado para cargas dirigidas por eventos.",
     source: ["https://glossary.cncf.io/serverless/","https://knative.dev/docs/"]
   },
@@ -3700,12 +4340,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which two are open interfaces that decouple Kubernetes from specific networking and storage implementations? (Choose 2)",
     options: [
+      "kubeadm",
       "Kubernetes Dashboard",
       "Container Network Interface (CNI)",
-      "kubeadm",
       "Container Storage Interface (CSI)"
     ],
-    answer: [1,3],
+    answer: [2,3],
     explanation: "CNI y CSI (junto con CRI para runtimes) son estándares que permiten conectar implementaciones de distintos proveedores sin modificar Kubernetes. El Dashboard y kubeadm son herramientas, no interfaces estándar.",
     source: ["https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/","https://kubernetes.io/docs/concepts/storage/volumes/#csi"]
   },
@@ -3748,9 +4388,9 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "What is a Kubernetes Enhancement Proposal (KEP)?",
     options: [
-      "A bug report template",
       "A security vulnerability notice",
       "A marketing announcement for a release",
+      "A bug report template",
       "A design document and process used to propose, discuss and track significant changes to Kubernetes"
     ],
     answer: [3],
@@ -3765,9 +4405,9 @@ window.KCNA_QUESTIONS = [
     q: "In the Kubernetes project, what is a Special Interest Group (SIG)?",
     options: [
       "A community group that owns and develops a specific area, such as SIG Network or SIG Node",
+      "A vendor certification program",
       "A paid support tier",
-      "The CNCF governing board",
-      "A vendor certification program"
+      "The CNCF governing board"
     ],
     answer: [0],
     explanation: "Las SIGs organizan el trabajo del proyecto por áreas (red, nodo, almacenamiento, seguridad, release...), con reuniones públicas, canales de Slack y propiedad sobre código y KEPs.",
@@ -3780,12 +4420,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which CNCF body provides technical leadership, including accepting projects and approving their moves between maturity levels?",
     options: [
-      "Governing Board",
       "Kubernetes Steering Committee",
       "Technical Oversight Committee (TOC)",
+      "Governing Board",
       "End User Technical Advisory Board"
     ],
-    answer: [2],
+    answer: [1],
     explanation: "El TOC define la visión técnica de la CNCF y vota la aceptación y graduación de proyectos. El Governing Board gestiona presupuesto y asuntos de negocio, y el Steering Committee gobierna solo el proyecto Kubernetes.",
     source: ["https://www.cncf.io/about/who-we-are/","https://github.com/cncf/toc"],
     holdout: true
@@ -3797,12 +4437,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "What is the role of the CNCF Technical Advisory Groups (TAGs)?",
     options: [
-      "They organize KubeCon venues",
-      "They cut Kubernetes releases",
       "They sell CNCF memberships",
-      "They support the TOC with domain expertise, for example in security or operational resilience, and help evaluate projects"
+      "They cut Kubernetes releases",
+      "They support the TOC with domain expertise, for example in security or operational resilience, and help evaluate projects",
+      "They organize KubeCon venues"
     ],
-    answer: [3],
+    answer: [2],
     explanation: "Los TAGs (por ejemplo TAG Security and Compliance o TAG Operational Resilience) reúnen expertos que asesoran al TOC, revisan proyectos y publican guías para la comunidad. Las versiones de Kubernetes las publica SIG Release.",
     source: ["https://github.com/cncf/toc"]
   },
@@ -3813,12 +4453,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which role applies software engineering to operations and uses SLOs and error budgets to balance reliability with feature velocity?",
     options: [
-      "Product owner",
-      "Site Reliability Engineer (SRE)",
+      "Scrum Master",
       "Database administrator",
-      "Scrum Master"
+      "Product owner",
+      "Site Reliability Engineer (SRE)"
     ],
-    answer: [1],
+    answer: [3],
     explanation: "SRE, popularizado por Google, automatiza la operación, reduce el trabajo repetitivo (toil) y usa el error budget para decidir cuándo priorizar estabilidad frente a nuevas funcionalidades.",
     source: ["https://sre.google/sre-book/introduction/"]
   },
@@ -3829,12 +4469,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "What is the main goal of platform engineering?",
     options: [
-      "Managing physical data center hardware",
       "Building an internal developer platform with self-service capabilities and golden paths that reduce cognitive load for application teams",
       "Replacing application developers with automation",
-      "Writing Kubernetes core code"
+      "Writing Kubernetes core code",
+      "Managing physical data center hardware"
     ],
-    answer: [1],
+    answer: [0],
     explanation: "Un equipo de plataforma ofrece capacidades (despliegue, observabilidad, entornos) como producto interno de autoservicio, por ejemplo con un portal como Backstage, para que los equipos de aplicación entreguen más rápido.",
     source: ["https://tag-app-delivery.cncf.io/whitepapers/platforms/"]
   },
@@ -3861,12 +4501,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which statement about Kubernetes Working Groups (WGs) is correct?",
     options: [
-      "They are temporary groups that facilitate collaboration across SIGs and do not own code, which stays with the sponsoring SIGs",
       "They replace SIGs once a KEP reaches GA",
+      "They are temporary groups that facilitate collaboration across SIGs and do not own code, which stays with the sponsoring SIGs",
       "They are permanent groups that own repositories and subprojects",
       "They are elected by the CNCF Governing Board"
     ],
-    answer: [0],
+    answer: [1],
     explanation: "Un WG es temporal: se disuelve al cumplir su objetivo, sirve para temas que cruzan varias SIGs y no posee código ni repositorios (eso queda en las SIGs patrocinadoras).",
     source: ["https://github.com/kubernetes/community/blob/master/committee-steering/governance/wg-governance.md"],
     holdout: true
@@ -3878,8 +4518,8 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which body oversees the overall governance of the Kubernetes project, resolving escalations between SIGs and chartering committees?",
     options: [
-      "The Release Team",
       "The CNCF Technical Oversight Committee",
+      "The Release Team",
       "SIG Architecture",
       "The Kubernetes Steering Committee"
     ],
@@ -3894,8 +4534,8 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which group, embedded in SIG Release, does the day-to-day work of shipping each Kubernetes minor release, with roles such as Enhancements, Release Signal, Docs and Communications?",
     options: [
-      "The Security Response Committee",
       "The Steering Committee",
+      "The Security Response Committee",
       "The Release Team",
       "CNCF TAG Infrastructure"
     ],
@@ -3911,11 +4551,11 @@ window.KCNA_QUESTIONS = [
     q: "In the Kubernetes community, who is responsible for enforcing the community Code of Conduct and handling reports of violations?",
     options: [
       "SIG Docs",
+      "The Code of Conduct Committee",
       "The CNCF Governing Board",
-      "The Security Response Committee",
-      "The Code of Conduct Committee"
+      "The Security Response Committee"
     ],
-    answer: [3],
+    answer: [1],
     explanation: "El Code of Conduct Committee aplica y mantiene el código de conducta de Kubernetes; los incidentes se reportan en privado (conduct@kubernetes.io). El Security Response Committee gestiona vulnerabilidades, no conducta.",
     source: ["https://github.com/kubernetes/community/tree/master/committee-code-of-conduct","https://github.com/kubernetes/community/blob/master/sig-list.md"]
   },
@@ -3926,12 +4566,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which two are required for a CNCF project to move to the Graduated maturity level? (Choose 2)",
     options: [
-      "Maintainers from at least two organizations",
+      "The project must be written in Go",
       "A completed third-party security review",
-      "Approval by the Kubernetes Steering Committee",
-      "The project must be written in Go"
+      "Maintainers from at least two organizations",
+      "Approval by the Kubernetes Steering Committee"
     ],
-    answer: [0,1],
+    answer: [1,2],
     explanation: "La solicitud de graduación exige, entre otros, una revisión de seguridad de un tercero, mantenedores de al menos dos organizaciones y el badge OpenSSF Best Practices (passing); la aprueba el TOC con mayoría de 2/3. El Steering Committee solo gobierna Kubernetes.",
     source: ["https://github.com/cncf/toc/blob/main/.github/ISSUE_TEMPLATE/template-graduation-application.md","https://github.com/cncf/toc/blob/main/process/README.md"]
   },
@@ -3942,10 +4582,10 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "A project is listed at the CNCF Sandbox maturity level. What does this indicate?",
     options: [
+      "It is a commercial product certified by the CNCF",
       "It has demonstrated broad production adoption and passed a security audit",
-      "It is inactive and no longer supported by the TOC",
       "It is an early-stage, experimental project whose production use is decided case by case",
-      "It is a commercial product certified by the CNCF"
+      "It is inactive and no longer supported by the TOC"
     ],
     answer: [2],
     explanation: "Sandbox es el punto de entrada para proyectos experimentales o tempranos; Graduated indica madurez demostrada en producción y Archived, proyectos inactivos que el TOC ya no respalda.",
@@ -3958,12 +4598,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "What is KubeCon + CloudNativeCon?",
     options: [
-      "The CNCF's flagship conference, held in several regions, that brings together adopters, maintainers and technologists of cloud native projects",
+      "A managed Kubernetes service offered by the CNCF",
       "A Kubernetes SIG responsible for community events",
       "The certification exam required to become a Kubernetes maintainer",
-      "A managed Kubernetes service offered by the CNCF"
+      "The CNCF's flagship conference, held in several regions, that brings together adopters, maintainers and technologists of cloud native projects"
     ],
-    answer: [0],
+    answer: [3],
     explanation: "KubeCon + CloudNativeCon es la conferencia insignia de la CNCF (Norteamérica y Europa, además de ediciones en China, Japón e India). No es una certificación, una SIG ni un servicio.",
     source: ["https://www.cncf.io/kubecon-cloudnativecon-events/"],
     holdout: true
@@ -3975,12 +4615,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which three specifications are maintained by the Open Container Initiative (OCI)?",
     options: [
-      "Gateway, HTTPRoute and GRPCRoute",
       "Runtime, image and distribution specifications",
+      "Gateway, HTTPRoute and GRPCRoute",
       "Helm chart, Kustomize and OLM formats",
       "CNI, CSI and CRI"
     ],
-    answer: [1],
+    answer: [0],
     explanation: "La OCI, bajo la Linux Foundation, mantiene la runtime-spec, la image-spec y la distribution-spec, que permiten que imágenes y runtimes de distintos proveedores sean intercambiables. CNI/CSI/CRI son interfaces del ecosistema Kubernetes.",
     source: ["https://opencontainers.org/"]
   },
@@ -3991,12 +4631,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "Which interface does the kubelet use to talk to container runtimes such as containerd or CRI-O?",
     options: [
+      "The Container Runtime Interface (CRI), a gRPC protocol",
       "The Container Storage Interface (CSI), a gRPC protocol",
-      "The Container Network Interface (CNI), a REST API",
       "The OCI distribution specification over HTTP",
-      "The Container Runtime Interface (CRI), a gRPC protocol"
+      "The Container Network Interface (CNI), a REST API"
     ],
-    answer: [3],
+    answer: [0],
     explanation: "El CRI es la interfaz de plugins (gRPC) entre el kubelet y el runtime, que permite usar distintos runtimes sin recompilar Kubernetes. CNI es para red, CSI para almacenamiento y la distribution-spec para registros.",
     source: ["https://kubernetes.io/docs/concepts/architecture/cri/"]
   },
@@ -4007,12 +4647,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "The CNCF archived the Service Mesh Interface (SMI) project in 2023. Where did its maintainers consolidate the effort to standardize service mesh configuration on Kubernetes?",
     options: [
-      "The GAMMA initiative of Gateway API (Kubernetes SIG Network)",
+      "The Container Network Interface specification",
       "The OpenTelemetry project",
-      "The Open Container Initiative",
-      "The Container Network Interface specification"
+      "The GAMMA initiative of Gateway API (Kubernetes SIG Network)",
+      "The Open Container Initiative"
     ],
-    answer: [0],
+    answer: [2],
     explanation: "Los mantenedores de SMI se unieron a GAMMA (Gateway API for Mesh Management and Administration) en 2022, y la CNCF archivó SMI en 2023. GAMMA define cómo usar Gateway API para configurar una service mesh (tráfico este-oeste).",
     source: ["https://www.cncf.io/blog/2023/10/03/cncf-archives-the-service-mesh-interface-smi-project/","https://gateway-api.sigs.k8s.io/docs/mesh/gamma/"]
   },
@@ -4023,12 +4663,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "What is CloudEvents?",
     options: [
-      "A Kubernetes API for cluster events such as Pod scheduling",
+      "A managed serverless service offered by the CNCF",
       "A Prometheus exporter for cloud provider metrics",
-      "A CNCF graduated specification for describing event data in a common way, used for example by Knative Eventing",
-      "A managed serverless service offered by the CNCF"
+      "A Kubernetes API for cluster events such as Pod scheduling",
+      "A CNCF graduated specification for describing event data in a common way, used for example by Knative Eventing"
     ],
-    answer: [2],
+    answer: [3],
     explanation: "CloudEvents estandariza los metadatos comunes de los eventos para facilitar su identificación y enrutado; se graduó en la CNCF en enero de 2024 y Knative Eventing lo usa sobre HTTP. No tiene relación con los objetos Event de Kubernetes.",
     source: ["https://www.cncf.io/projects/cloudevents/","https://knative.dev/docs/"]
   },
@@ -4039,12 +4679,12 @@ window.KCNA_QUESTIONS = [
     module: 10,
     q: "According to the CNCF Cloud Native Definition, which two statements describe cloud native systems? (Choose 2)",
     options: [
-      "They require a single vendor's public cloud",
       "They are built as tightly coupled monoliths on long-lived, manually configured servers",
-      "Combined with robust automation, they allow frequent, predictable high-impact changes with minimal toil",
-      "They are loosely coupled systems that are resilient, manageable and observable"
+      "They are loosely coupled systems that are resilient, manageable and observable",
+      "They require a single vendor's public cloud",
+      "Combined with robust automation, they allow frequent, predictable high-impact changes with minimal toil"
     ],
-    answer: [2,3],
+    answer: [1,3],
     explanation: "La definición de la CNCF habla de sistemas débilmente acoplados, seguros, resilientes, gestionables, sostenibles y observables (contenedores, service meshes, microservicios, infraestructura inmutable, APIs declarativas) que, con automatización, permiten cambios frecuentes y predecibles en nubes públicas, privadas o híbridas.",
     source: ["https://github.com/cncf/toc/blob/main/DEFINITION.md"]
   },
@@ -4055,10 +4695,10 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "Which OpenTelemetry component is a vendor-agnostic proxy that receives, processes and exports telemetry data to one or more backends?",
     options: [
-      "The OpenTelemetry API",
+      "kube-state-metrics",
       "The OpenTelemetry Collector",
-      "Alertmanager",
-      "kube-state-metrics"
+      "The OpenTelemetry API",
+      "Alertmanager"
     ],
     answer: [1],
     explanation: "El Collector se compone de receivers, processors y exporters (entre otros) y envía la telemetría a backends open source o comerciales. La API solo define cómo instrumentar el código.",
@@ -4072,9 +4712,9 @@ window.KCNA_QUESTIONS = [
     q: "In distributed tracing with OpenTelemetry, what is a span?",
     options: [
       "A unit of work or operation within a trace, carrying a span context with the trace ID",
-      "The total retention period of trace data",
+      "A Prometheus label used to group time series",
       "A log file rotated by the kubelet",
-      "A Prometheus label used to group time series"
+      "The total retention period of trace data"
     ],
     answer: [0],
     explanation: "Una traza se compone de spans enlazados (padre-hijo); cada span representa una operación y lleva un span context con el trace ID y su propio ID, que se propaga entre servicios para unirlos en la misma traza.",
@@ -4087,12 +4727,12 @@ window.KCNA_QUESTIONS = [
     module: 11,
     q: "A service has an availability SLO of 99.9% over 30 days. Approximately how much unavailability does its error budget allow in that period?",
     options: [
-      "About 3 days",
       "About 7 hours",
       "About 43 minutes",
+      "About 3 days",
       "About 4 minutes"
     ],
-    answer: [2],
+    answer: [1],
     explanation: "El error budget es 100% menos el SLO: 0,1% de 30 días (43.200 minutos) son unos 43 minutos. Si se agota, se prioriza la fiabilidad frente a nuevos lanzamientos.",
     source: ["https://sre.google/sre-book/embracing-risk/","https://sre.google/sre-book/introduction/"]
   }

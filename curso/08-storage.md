@@ -73,7 +73,7 @@ Un **volume** de Kubernetes se declara en `spec.volumes` del pod y cada contened
 | **downwardAPI** | — | Exponer labels, anotaciones, nombre del pod como archivos | |
 | **projected** | — | Combinar en **un solo directorio** configMap + secret + downwardAPI + token de ServiceAccount | Así se monta el token de la ServiceAccount en cada pod |
 | **persistentVolumeClaim** | **Independiente del pod** | Datos de aplicación que deben persistir | Ver PV/PVC |
-| (CSI efímero, `ephemeral`) | Lo que dure el pod | Volúmenes temporales aprovisionados por un driver CSI | |
+| **ephemeral** (volumen efímero genérico) | Lo que dure el pod | Espacio temporal aprovisionado por una StorageClass, con las funciones de un PVC (tamaño, snapshots) | El pod es el **dueño** del PVC que se crea: al borrar el pod, el PVC se borra con él |
 
 ### 5. PersistentVolume y PersistentVolumeClaim
 
@@ -96,6 +96,8 @@ flowchart LR
   SC[StorageClass standard<br/>rancher.io/local-path] -.aprovisiona.-> PV
   PV --> D[("Almacenamiento real:<br/>carpeta en kcna-worker2")]
 ```
+
+**Protección en uso**: si borras un PVC que un pod todavía usa, queda en `Terminating` (finalizer `kubernetes.io/pvc-protection`) y no desaparece hasta que ningún pod lo use; lo mismo para un PV enlazado.
 
 Fases de un PV: **Available** (libre) → **Bound** (enlazado a un PVC) → **Released** (el PVC se borró pero los datos siguen y el PV aún recuerda a su antiguo PVC) → (**Failed** si falla la reclamación automática).
 
@@ -717,7 +719,8 @@ La reclaim policy del PV dinámico la hereda de la StorageClass. Si borras el PV
 
 - [Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/volumes/): emptyDir (ciclo de vida, `medium: Memory`, `sizeLimit`), riesgos de hostPath, configMap de solo lectura y `subPath`, volúmenes CSI efímeros, plugins in-tree migrados a CSI.
 - [Projected Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/projected-volumes/): fuentes combinables (secret, configMap, downwardAPI, serviceAccountToken...).
-- [Persistent Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/persistent-volumes/): binding 1:1, access modes (RWOP estable desde v1.29, solo CSI), reclaim policies (Recycle obsoleto), fases, expansión sin reducción, `storageClassName: ""`.
+- [Persistent Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/persistent-volumes/): binding 1:1, access modes (RWOP estable desde v1.29, solo CSI), reclaim policies (Recycle obsoleto), fases, expansión sin reducción, `storageClassName: ""`, protección de PVCs en uso (`kubernetes.io/pvc-protection`).
+- [Ephemeral Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/): volúmenes efímeros genéricos; el Pod es dueño del PVC y se borra con él.
 - [PersistentVolume API reference — kubernetes.io](https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-v1/): Retain por defecto en PVs creados a mano, Delete en dinámicos.
 - [Storage Classes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/storage-classes/): `reclaimPolicy` por defecto Delete, `allowVolumeExpansion`, clase por defecto por anotación, `volumeBindingMode`.
 - [Volume Attributes Classes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/): modificar atributos de un volumen existente; solo CSI con `ModifyVolume`; GA en v1.34.

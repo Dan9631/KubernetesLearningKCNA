@@ -21,6 +21,10 @@ Ninguna pregunta tipo examen dentro de los módulos tenía dos respuestas defend
 
 Las preguntas nuevas cubren los huecos que mostró el [mapa de cobertura](../web/src/pages/cobertura.astro): el módulo 07 (service mesh) pasó de 2 a 10 preguntas; *Cloud Native Community and Collaboration* de 8 a 15; *Cloud Native Ecosystem and Principles* de 9 a 14; Observability de 11 a 14; Troubleshooting de 12 a 15.
 
+### Ampliación del 2026-10-29
+
+Al reservar 60 preguntas para el Examen de graduación se añadieron 40 preguntas verificadas en las competencias con menos material: Storage (+14), Application Delivery (+12) y Debugging (+14). El banco pasa de 252 a **292 preguntas** (232 para practicar y 60 reservadas). Detalle y fuentes en [verificacion/preguntas-ampliacion-2026-10-29.md](verificacion/preguntas-ampliacion-2026-10-29.md).
+
 ## Correcciones más relevantes
 
 Datos que estaban mal o desactualizados y que el examen puede preguntar:

@@ -21,7 +21,7 @@ web/
   src/components/Lector.svelte    "Escuchar este módulo" párrafo a párrafo (salta código y diagramas)
   src/components/Escuchar.svelte  botón Escuchar/Detener; preguntas en inglés, explicaciones en español
   src/components/VozAjustes.svelte voz en español, voz en inglés y velocidad (localStorage)
-  src/data/preguntas.json         220 preguntas (generado por scripts/sync-data.mjs)
+  src/data/preguntas.json         292 preguntas, 60 reservadas (generado por scripts/sync-data.mjs)
   src/data/flashcards.json        150 términos
   src/pages/index.astro           portada
   src/pages/modulos/[id].astro    página de módulo (no tocar salvo acuerdo)
