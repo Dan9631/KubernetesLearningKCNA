@@ -22,6 +22,8 @@ export interface Progress {
   ready: string[];
   /** marcador de lectura por módulo: última posición y la más lejana (ver lib/lectura.ts) */
   reading: Record<string, { last: ReadPos; far: ReadPos }>;
+  /** fecha del último "Borrar mi progreso": al sincronizar, lo anterior a esa fecha se descarta en todos los dispositivos */
+  resetAt?: number;
 }
 
 /** Posición de lectura: índice del bloque (párrafo, encabezado o viñeta), total de bloques, fecha y el inicio del texto para reencontrarlo */
@@ -47,22 +49,27 @@ export const DAY = 86_400_000;
 export const INTERVALS = [0, 1, 3, 7, 16, 35];
 
 const KEY = 'kcna.progress.v1';
-const empty = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [], reading: {} });
+export const emptyProgress = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [], reading: {} });
 
 function load(): Progress {
-  if (typeof localStorage === 'undefined') return empty();
+  if (typeof localStorage === 'undefined') return emptyProgress();
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...empty(), ...JSON.parse(raw) } : empty();
+    return raw ? { ...emptyProgress(), ...JSON.parse(raw) } : emptyProgress();
   } catch {
-    return empty();
+    return emptyProgress();
   }
 }
 
 export const progress = $state<Progress>(load());
 
+// Avisos tras cada guardado (la sincronización se engancha aquí sin que este módulo la conozca)
+const listeners = new Set<() => void>();
+export function onSave(fn: () => void) { listeners.add(fn); return () => listeners.delete(fn); }
+
 export function save() {
   try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch { /* sin almacenamiento: la sesión sigue funcionando */ }
+  for (const fn of listeners) fn();
 }
 
 export function toggleStep(mod: string, step: string) {
@@ -124,6 +131,6 @@ export function toggleReady(id: string) {
 }
 
 export function resetProgress() {
-  Object.assign(progress, empty());
+  Object.assign(progress, emptyProgress(), { resetAt: Date.now() });
   save();
 }

@@ -7,6 +7,7 @@
   import { EXAM_DOMAINS, EXAM_SECONDS, PASS, fmt, fmtDate, isCorrect, pct, prep, shuffle, togglePick, type Item, type Q } from './quiz';
   import Pregunta from './Pregunta.svelte';
   import VozAjustes from '../VozAjustes.svelte';
+  import { sync, syncNow } from '../../lib/sync.svelte';
   import Preparacion from './Preparacion.svelte';
   import { PRACTICE, HOLDOUT, priority, dueToday, endOfToday } from '../../lib/preparacion';
 
@@ -163,7 +164,8 @@
     }
   }
 
-  function doReset() { resetProgress(); askReset = false; }
+  // con sincronización activa el borrado viaja (resetAt) y se aplica también en los otros dispositivos
+  function doReset() { resetProgress(); askReset = false; if (sync.code) syncNow(); }
 
   // Entrada directa por URL (solo en el navegador; onMount no vuelve a ejecutarse al cambiar el estado)
   onMount(() => {
@@ -267,7 +269,7 @@
 
     <div class="reset">
       {#if askReset}
-        <span>Se borran estadísticas, simulacros, flashcards dominadas y pasos de laboratorio marcados.</span>
+        <span>Se borran estadísticas, simulacros, flashcards dominadas y pasos de laboratorio marcados{sync.code ? ', también en tus otros dispositivos sincronizados' : ''}.</span>
         <button type="button" class="btn small" onclick={doReset}>Sí, borrar todo</button>
         <button type="button" class="btn small" onclick={() => (askReset = false)}>Cancelar</button>
       {:else}

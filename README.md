@@ -93,6 +93,8 @@ cluster/               Definición del clúster kind y valores de Traefik
 curso/                 Módulos 00-13
 labs/NN-tema/          Manifiestos, imágenes y verificación de cada lab
 quiz/                  App de estudio (abrir index.html)
+web/                   Sitio interactivo (Astro + Svelte), publicado en GitHub Pages
+sync/                  Worker opcional de Cloudflare para sincronizar el progreso cifrado (docs/SINCRONIZACION.md)
 docs/CONVENCIONES.md   Cómo está organizado el curso (para ampliarlo)
 ```
 

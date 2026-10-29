@@ -1,6 +1,8 @@
 <script lang="ts">
   // "Seguir en otro dispositivo": enlace con las posiciones de lectura y su código QR para abrirlo en el teléfono.
   import { shareUrl } from '../lib/lectura';
+  import { syncAvailable, sync } from '../lib/sync.svelte';
+  import { url } from '../lib/modules';
 
   // boton=false: sin botón propio; otro componente abre el diálogo con open() (bind:this)
   let { label = 'Seguir en el teléfono', boton = true }: { label?: string; boton?: boolean } = $props();
@@ -42,7 +44,11 @@
     <div class="qr" role="img" aria-label="Código QR del enlace">{@html svg}</div>
     <label class="url"><span class="visually-hidden">Enlace</span><input readonly value={link.href} onfocus={(e) => e.currentTarget.select()} /></label>
     {#if link.local}<p class="note">Estás en una copia local del curso, así que el enlace apunta al sitio publicado, que sí abre desde el teléfono.</p>{/if}
-    <p class="note">Solo lleva las posiciones de lectura; tus estadísticas de práctica se quedan en este navegador.</p>
+    {#if syncAvailable && !sync.code}
+      <p class="note">Solo lleva las posiciones de lectura. Para llevar también tu práctica y tus repasos, <a href={url('/sincronizar/')}>activa la sincronización</a>.</p>
+    {:else if !syncAvailable}
+      <p class="note">Solo lleva las posiciones de lectura; tus estadísticas de práctica se quedan en este navegador.</p>
+    {/if}
     <div class="row">
       <button type="button" class="btn small primary" onclick={copy}>{copied ? 'Copiado' : 'Copiar enlace'}</button>
       <button type="button" class="btn small" onclick={() => dlg?.close()}>Cerrar</button>

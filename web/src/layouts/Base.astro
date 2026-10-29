@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { url } from '../lib/modules';
 import ThemeToggle from '../components/ThemeToggle.svelte';
+import SyncEstado from '../components/SyncEstado.svelte';
 
 interface Props {
   title: string;
@@ -46,6 +47,7 @@ const rel = path.startsWith(base) ? path.slice(base.length) || '/' : path;
       <nav aria-label="Secciones">
         {nav.map((n) => <a href={n.href} aria-current={n.match.test(rel) ? 'page' : undefined}>{n.label}</a>)}
       </nav>
+      <SyncEstado client:load />
       <ThemeToggle client:load />
     </header>
     <main id="main" class:list={['main', width]}>

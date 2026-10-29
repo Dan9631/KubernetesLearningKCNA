@@ -1,0 +1,16 @@
+{
+  "name": "kcna-sync",
+  "private": true,
+  "type": "module",
+  "description": "Worker de Cloudflare para sincronizar el progreso cifrado del curso KCNA (ver docs/SINCRONIZACION.md)",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "db:local": "wrangler d1 execute kcna-sync --local --file=./schema.sql",
+    "db:remote": "wrangler d1 execute kcna-sync --remote --file=./schema.sql",
+    "deploy": "wrangler deploy",
+    "test": "node test/api.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.0"
+  }
+}

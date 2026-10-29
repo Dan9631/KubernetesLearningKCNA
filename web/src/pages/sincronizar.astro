@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import SyncPanel from '../components/SyncPanel.svelte';
+---
+<Base title="Sincronizar" description="Mantén tu progreso del curso KCNA igual en todos tus dispositivos, cifrado y sin cuentas." width="read">
+  <article class="sync">
+    <header class="head">
+      <p class="kicker">Sincronización</p>
+      <h1>Tu progreso en todos tus dispositivos</h1>
+      <p class="lead">Practica en la PC y repasa en el teléfono: preguntas, repasos del día, lectura y laboratorios se mantienen al día, sin crear una cuenta.</p>
+    </header>
+    <SyncPanel client:load />
+  </article>
+</Base>
+
+<style>
+  .sync { max-width: 860px; margin: 0 auto; padding-top: 28px; }
+  .head { margin-bottom: 20px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+</style>

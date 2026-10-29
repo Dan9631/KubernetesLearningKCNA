@@ -1,0 +1,37 @@
+// Pruebas de la API contra `npm run dev` (o SYNC_URL=https://... para el Worker desplegado)
+import { randomBytes, createHash } from 'node:crypto';
+const BASE = process.env.SYNC_URL ?? 'http://127.0.0.1:8787';
+const hex = (n) => randomBytes(n).toString('hex');
+const id = hex(32), token = hex(32), other = hex(32);
+const auth = (t = token) => ({ Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' });
+const put = (body, t) => fetch(`${BASE}/v1/sync/${id}`, { method: 'PUT', headers: auth(t), body: JSON.stringify(body) });
+const iv = randomBytes(12).toString('base64'), data = randomBytes(2000).toString('base64');
+let fails = 0;
+const check = (ok, msg) => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${msg}`); if (!ok) fails++; };
+
+check((await (await fetch(`${BASE}/v1/health`)).json()).ok, 'health');
+check((await fetch(`${BASE}/v1/sync/${id}`)).status === 401, 'sin token: 401');
+check((await fetch(`${BASE}/v1/sync/${id}`, { headers: auth() })).status === 404, 'registro nuevo: 404');
+check((await fetch(`${BASE}/v1/sync/xyz`, { headers: auth() })).status === 404, 'id inválido: 404');
+let r = await put({ rev: 0, iv, data });
+check(r.status === 200 && (await r.json()).rev === 1, 'primer PUT crea rev 1');
+r = await fetch(`${BASE}/v1/sync/${id}`, { headers: auth() });
+const got = await r.json();
+check(r.status === 200 && got.data === data && got.iv === iv && got.rev === 1, 'GET devuelve el bloque');
+r = await put({ rev: 0, iv, data });
+check(r.status === 409 && (await r.json()).rev === 1, 'PUT con versión vieja: 409 con la actual');
+r = await put({ rev: 1, iv, data: data.slice(4) });
+check(r.status === 200 && (await r.json()).rev === 2, 'PUT con la versión correcta: rev 2');
+check((await fetch(`${BASE}/v1/sync/${id}`, { headers: auth(other) })).status === 401, 'otro token: 401 al leer');
+check((await put({ rev: 2, iv, data }, other)).status === 401, 'otro token: 401 al escribir');
+check((await put({ rev: 2, iv, data: 'no es base64!' })).status === 400, 'datos no base64: 400');
+check((await put({ rev: 2, iv, data: 'A'.repeat(100 * 1024) })).status === 413, 'más de 96 KB: 413');
+r = await fetch(`${BASE}/v1/sync/${id}`, { method: 'OPTIONS', headers: { Origin: 'https://dan9631.github.io', 'Access-Control-Request-Method': 'PUT' } });
+check(r.status === 204 && r.headers.get('access-control-allow-origin') === 'https://dan9631.github.io', 'CORS: origen permitido');
+r = await fetch(`${BASE}/v1/sync/${id}`, { method: 'OPTIONS', headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'PUT' } });
+check(!r.headers.get('access-control-allow-origin'), 'CORS: origen ajeno sin permiso');
+check((await fetch(`${BASE}/v1/sync/${id}`, { method: 'DELETE', headers: auth(other) })).status === 401, 'borrar con otro token: 401');
+check((await fetch(`${BASE}/v1/sync/${id}`, { method: 'DELETE', headers: auth() })).status === 204, 'DELETE: 204');
+check((await fetch(`${BASE}/v1/sync/${id}`, { headers: auth() })).status === 404, 'tras borrar: 404');
+console.log(fails ? `\n${fails} fallos` : '\nTodo OK');
+process.exitCode = fails ? 1 : 0;

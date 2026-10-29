@@ -11,6 +11,8 @@ web/
   src/lib/modules.ts              metadatos de los 14 módulos, DOMAINS, url(), pad()
   src/lib/progress.svelte.ts      progreso del alumno en localStorage (runas)
   src/lib/motion.ts               ms(n) / wait(n): respetan prefers-reduced-motion
+  src/lib/sync.svelte.ts          sincronización opcional y cifrada con el Worker (sync/); PUBLIC_SYNC_URL al compilar
+  src/lib/lectura.ts              marcador de lectura, enlace ?r= y QR
   src/lib/voz.svelte.ts           lectura en voz alta (Web Speech API): play/pause/stop, voces, preferencias
   src/sims/ClusterCanvas.svelte   lienzo de clúster compartido (nodos + pods animados)
   src/sims/Stepper.svelte         reproductor por etapas (anterior / siguiente / reproducir)
