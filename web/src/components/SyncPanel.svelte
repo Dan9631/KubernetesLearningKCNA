@@ -1,7 +1,8 @@
 <script lang="ts">
   // Página /sincronizar: activar la sincronización, conectar otro dispositivo (código o QR) y gestionarla.
   import { onMount } from 'svelte';
-  import { sync, syncAvailable, newCode, normalizeCode, prettyCode, connect, disconnect, deleteRemote, syncNow, connectUrl } from '../lib/sync.svelte';
+  import { sync, syncAvailable, newCode, normalizeCode, prettyCode, connect, disconnect, deleteRemote, syncNow, connectUrl, markSaved } from '../lib/sync.svelte';
+  import { recoverySheet, SHEET_FILE } from '../lib/hoja';
   import { fmtDate } from './practica/quiz';
 
   let input = $state('');
@@ -23,7 +24,8 @@
 
   async function run(fn: () => Promise<void>) { busy = true; try { await fn(); } finally { busy = false; } }
   const activate = () => run(() => connect(newCode())).then(() => reveal());
-  const join = (code: string) => run(() => connect(code)).then(() => { fromLink = ''; input = ''; });
+  // quien conecta con un código existente ya lo tiene guardado en otro lado
+  const join = (code: string) => run(() => connect(code, true)).then(() => { fromLink = ''; input = ''; });
 
   async function reveal() {
     if (!sync.code) return;
@@ -35,7 +37,30 @@
     showCode = true;
   }
   async function copy() {
-    try { await navigator.clipboard.writeText(prettyCode(sync.code)); copied = true; setTimeout(() => (copied = false), 1600); } catch { /* sin portapapeles */ }
+    try { await navigator.clipboard.writeText(prettyCode(sync.code)); copied = true; markSaved(); setTimeout(() => (copied = false), 1600); } catch { /* sin portapapeles */ }
+  }
+
+  // Hoja de recuperación: la misma página HTML se descarga o se imprime
+  const sheet = () => recoverySheet(prettyCode(sync.code), connectUrl(sync.code).href, svg);
+  function download() {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([sheet()], { type: 'text/html' }));
+    a.download = SHEET_FILE;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    markSaved();
+  }
+  function print() {
+    const frame = document.createElement('iframe');
+    frame.className = 'hoja-print';
+    frame.style.cssText = 'position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0;';
+    document.body.append(frame);
+    const doc = frame.contentDocument!;
+    doc.open(); doc.write(sheet()); doc.close();
+    markSaved();
+    frame.contentWindow!.addEventListener('afterprint', () => frame.remove());
+    frame.contentWindow!.focus();
+    frame.contentWindow!.print();
   }
 </script>
 
@@ -83,6 +108,10 @@
       <button type="button" class="btn primary" disabled={sync.status === 'syncing'} onclick={() => syncNow()}>Sincronizar ahora</button>
       <button type="button" class="btn" onclick={() => (showCode ? (showCode = false) : reveal())}>{showCode ? 'Ocultar código' : 'Conectar otro dispositivo'}</button>
     </div>
+    {#if !sync.saved}
+      <p class="warn remind">Aún no guardas tu código. Si pierdes este dispositivo, lo necesitas para recuperar tu progreso.
+        {#if !showCode}<button type="button" class="link" onclick={reveal}>Guardarlo ahora</button>{/if}</p>
+    {/if}
 
     {#if showCode}
       <div class="code">
@@ -90,8 +119,13 @@
         <div>
           <p>Escanéalo con el teléfono, o escribe el código en <em>Sincronizar › Ya tengo un código</em>:</p>
           <p class="big mono">{prettyCode(sync.code)}</p>
-          <button type="button" class="btn small" onclick={copy}>{copied ? 'Copiado' : 'Copiar código'}</button>
-          <p class="warn">Guárdalo en un lugar seguro, como tu gestor de contraseñas. Es la única llave de tus datos: el servidor no puede leerlos ni recuperarlos. Quien tenga el código puede ver y cambiar tu progreso.</p>
+          <div class="row">
+            <button type="button" class="btn small primary" onclick={download}>Descargar hoja de recuperación</button>
+            <button type="button" class="btn small" onclick={print}>Imprimir</button>
+            <button type="button" class="btn small" onclick={copy}>{copied ? 'Copiado' : 'Copiar código'}</button>
+          </div>
+          <p class="muted">La hoja trae el código, el enlace y el QR. Ábrela en cualquier navegador para conectar otro dispositivo.</p>
+          <p class="warn">Guárdala en un lugar seguro, como tu gestor de contraseñas o tu carpeta de documentos. Es la única llave de tus datos: el servidor no puede leerlos ni recuperarlos. Quien tenga el código puede ver y cambiar tu progreso.</p>
           {#if connectUrl(sync.code).local}<p class="muted">Estás en una copia local: el QR apunta al sitio publicado, que sí abre desde el teléfono.</p>{/if}
         </div>
       </div>
@@ -138,6 +172,8 @@
   .muted { color: var(--ink-3); font-size: 0.86rem; }
   .warn { color: var(--wait); font-size: 0.88rem; }
   .status.err { color: var(--fail); }
+  .remind { margin-top: 12px; }
+  .link { background: none; border: 0; padding: 0; color: var(--helm); text-decoration: underline; cursor: pointer; font: inherit; }
   .code { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-2); }
   .qr { background: #fff; border-radius: var(--r-m); padding: 8px; }
   .qr :global(svg) { display: block; width: 100%; height: auto; }

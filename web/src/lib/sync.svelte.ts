@@ -12,17 +12,18 @@ export const syncAvailable = !!SYNC_URL;
 const KEY = 'kcna.sync.v1';
 const PUSH_DELAY = 30_000; // tras practicar, sube como mucho cada 30 s
 
-interface Stored { code: string; rev: number; last: number }
+interface Stored { code: string; rev: number; last: number; saved: boolean } // saved: el alumno ya copió, descargó o imprimió el código
 function load(): Stored {
-  const def = { code: '', rev: 0, last: 0 };
+  const def = { code: '', rev: 0, last: 0, saved: false };
   if (typeof localStorage === 'undefined') return def;
   try { return { ...def, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }; } catch { return def; }
 }
 
 export const sync = $state({ ...load(), status: 'idle' as 'idle' | 'syncing' | 'error', error: '' });
 function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify({ code: sync.code, rev: sync.rev, last: sync.last })); } catch { /* sin almacenamiento */ }
+  try { localStorage.setItem(KEY, JSON.stringify({ code: sync.code, rev: sync.rev, last: sync.last, saved: sync.saved })); } catch { /* sin almacenamiento */ }
 }
+export function markSaved() { sync.saved = true; persist(); }
 
 // ---------- código de sincronización: 128 bits en base32 de Crockford (sin I, L, O, U) ----------
 const ALPH = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -152,16 +153,16 @@ export function syncNow(): Promise<void> {
   return running;
 }
 
-/** Activa la sincronización en este dispositivo con un código nuevo o uno existente */
-export async function connect(code: string) {
-  sync.code = code; sync.rev = 0; sync.last = 0;
+/** Activa la sincronización en este dispositivo con un código nuevo o uno existente (saved: ya lo tiene guardado en otro lado) */
+export async function connect(code: string, saved = false) {
+  sync.code = code; sync.rev = 0; sync.last = 0; sync.saved = saved;
   persist();
   await syncNow();
 }
 
 /** Olvida el código en este dispositivo (los datos del servidor siguen ahí) */
 export function disconnect() {
-  sync.code = ''; sync.rev = 0; sync.last = 0; sync.status = 'idle'; sync.error = '';
+  sync.code = ''; sync.rev = 0; sync.last = 0; sync.saved = false; sync.status = 'idle'; sync.error = '';
   persist();
 }
 

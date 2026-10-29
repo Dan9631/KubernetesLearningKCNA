@@ -24,7 +24,7 @@ Opcional. Sin ella, el sitio funciona igual que siempre: el progreso vive en el 
 
 El sitio no maneja vouchers, pagos ni credenciales del examen, y no debe hacerlo nunca.
 
-**El riesgo que asume el alumno:** si pierde el código, nadie puede recuperar los datos del servidor, ni siquiera el dueño del sitio. Por eso la página de sincronización lo muestra junto con su QR para guardarlo, como los códigos de recuperación de la verificación en dos pasos. Su progreso local sigue intacto.
+**El riesgo que asume el alumno:** si pierde el código, nadie puede recuperar los datos del servidor, ni siquiera el dueño del sitio. Por eso la página de sincronización lo muestra junto con su QR y ofrece una **hoja de recuperación** para descargar o imprimir, como los códigos de recuperación de la verificación en dos pasos. La hoja es una página HTML autónoma con el código, el enlace `/sincronizar/#c=…` y el QR; se genera en el navegador y nunca pasa por el servidor. Mientras el alumno no copie, descargue ni imprima el código, la página le recuerda guardarlo. Su progreso local sigue intacto.
 
 ## Cómo se combinan dos dispositivos
 
