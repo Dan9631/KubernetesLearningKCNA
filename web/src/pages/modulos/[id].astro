@@ -3,6 +3,7 @@ import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Ruta from '../../components/Ruta.svelte';
 import Enhance from '../../components/Enhance.svelte';
+import Lector from '../../components/Lector.svelte';
 import SimHost from '../../components/SimHost.svelte';
 import ModuleQuiz from '../../components/ModuleQuiz.svelte';
 import { MODULES, DOMAINS, byId, pad, titleFromBody, moduleUrl } from '../../lib/modules';
@@ -62,6 +63,7 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
       )}
 
       <Enhance client:load module={pad(meta.n)} />
+      <Lector client:load module={pad(meta.n)} />
 
       <div class="prose">
         <Content />

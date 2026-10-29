@@ -6,6 +6,8 @@
   import { progress, toggleKnown } from '../../lib/progress.svelte';
   import { ms } from '../../lib/motion';
   import SourceLinks from '../SourceLinks.svelte';
+  import Escuchar from '../Escuchar.svelte';
+  import VozAjustes from '../VozAjustes.svelte';
 
   interface Card { term: string; def: string; domain: string; module: number; source?: string }
   const FC = flashcards as Card[];
@@ -81,6 +83,7 @@
     </select>
     <label class="chk"><input type="checkbox" bind:checked={onlyPending} onchange={build} /> Solo pendientes</label>
     <span class="count" aria-live="polite">{knownCount} de {FC.length} dominadas</span>
+    <VozAjustes />
   </div>
 
   {#if mode === 'tarjetas'}
@@ -104,6 +107,7 @@
       <div class="row">
         <button type="button" class="btn" onclick={prev} aria-label="Tarjeta anterior">Anterior</button>
         <button type="button" class="btn" onclick={next} aria-label="Tarjeta siguiente">Siguiente</button>
+        <Escuchar key="fc-{cur.term}" parts={() => [{ text: cur.term, lang: 'en' }, ...(flipped ? [{ text: cur.def, lang: 'es' as const }] : [])]} />
         <button type="button" class="btn right" class:primary={!isKnown(cur.term)} aria-pressed={isKnown(cur.term)} onclick={know}>{isKnown(cur.term) ? 'Quitar de dominadas' : 'La domino'}</button>
       </div>
       <p class="keys">Atajos: <kbd>Espacio</kbd> voltear, <kbd>←</kbd> <kbd>→</kbd> cambiar de tarjeta.</p>

@@ -7,6 +7,7 @@
   import { progress, recordAnswer, resetProgress, save } from '../../lib/progress.svelte';
   import { EXAM_DOMAINS, EXAM_SECONDS, PASS, fmt, fmtDate, isCorrect, pct, prep, shuffle, togglePick, type Item, type Q } from './quiz';
   import Pregunta from './Pregunta.svelte';
+  import VozAjustes from '../VozAjustes.svelte';
 
   const QS = preguntas as Q[];
   const PRACTICE_N = 20;
@@ -262,6 +263,7 @@
     <div class="top">
       <span class="title">{practiceTitle}</span>
       <span class="stat" aria-live="polite">{okCount} correctas de {doneCount}</span>
+      <VozAjustes />
     </div>
     <div class="card">
       <Pregunta item={cur} index={idx} total={items.length} reveal={cur.done} onpick={cur.done ? undefined : pick} />
@@ -300,6 +302,7 @@
       <span class="title">Simulacro</span>
       <span class="timer" class:low={left < 300} role="timer" aria-label="Tiempo restante">{fmt(left)}</span>
       <span class="stat">{answeredCount}/{items.length} respondidas</span>
+      <VozAjustes />
     </div>
     <div class="card">
       <Pregunta item={cur} index={idx} total={items.length} onpick={pick} />
@@ -375,6 +378,7 @@
     <div class="top">
       <span class="title">Revisión del simulacro</span>
       <span class="stat">{items.filter(isCorrect).length} de {items.length} correctas</span>
+      <VozAjustes />
     </div>
     <div class="card">
       <Pregunta item={cur} index={idx} total={items.length} reveal link />

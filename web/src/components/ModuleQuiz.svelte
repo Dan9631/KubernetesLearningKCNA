@@ -5,6 +5,8 @@
   import SourceLinks from './SourceLinks.svelte';
   import ReportLink from './ReportLink.svelte';
   import { reportQuestion } from '../lib/report';
+  import Escuchar from './Escuchar.svelte';
+  import { questionParts, answerParts } from '../lib/voz.svelte';
 
   interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[] }
   let { module }: { module: number } = $props();
@@ -51,6 +53,7 @@
   <div class="quiz">
     <div class="meta">
       <span class="chip {q.domain}">{q.topic}</span>
+      <Escuchar key="mq-{q.id}" label="Pregunta" parts={() => questionParts(q.q, q.options, q.answer.length, true)} />
       <span class="count">{i + 1} / {order.length} · {ok} correctas</span>
     </div>
     <p class="q">{q.q}</p>
@@ -63,7 +66,7 @@
       {/each}
     </div>
     {#if revealed}
-      <div class="explain" class:ok={correct} class:fail={!correct}><strong>{correct ? 'Correcto.' : 'No es así.'}</strong> {q.explanation}<SourceLinks source={q.source} /></div>
+      <div class="explain" class:ok={correct} class:fail={!correct}><strong>{correct ? 'Correcto.' : 'No es así.'}</strong> {q.explanation}<SourceLinks source={q.source} /><p class="voz"><Escuchar key="mqe-{q.id}" label="Explicación" parts={() => answerParts(q.options, q.answer, q.explanation, true)} /></p></div>
     {/if}
     <div class="row">
       {#if !revealed}
@@ -81,7 +84,9 @@
 
 <style>
   .quiz { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--panel); padding: 20px; max-width: 760px; }
-  .meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .meta .count { margin-left: auto; }
+  .voz { margin-top: 8px; }
   .count { font: 500 0.8rem var(--mono); color: var(--ink-3); }
   .q { font-size: 1.1rem; font-weight: 500; margin: 12px 0 14px; }
   .hint { color: var(--ink-2); font-size: 0.9rem; }

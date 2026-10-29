@@ -11,12 +11,16 @@ web/
   src/lib/modules.ts              metadatos de los 14 módulos, DOMAINS, url(), pad()
   src/lib/progress.svelte.ts      progreso del alumno en localStorage (runas)
   src/lib/motion.ts               ms(n) / wait(n): respetan prefers-reduced-motion
+  src/lib/voz.svelte.ts           lectura en voz alta (Web Speech API): play/pause/stop, voces, preferencias
   src/sims/ClusterCanvas.svelte   lienzo de clúster compartido (nodos + pods animados)
   src/sims/Stepper.svelte         reproductor por etapas (anterior / siguiente / reproducir)
   src/sims/registry.ts            registro módulo -> simulaciones (AQUÍ se registran)
   src/sims/<NN>/*.svelte          simulaciones de cada módulo
   src/components/SimHost.svelte   carga perezosa + marca el progreso (no tocar)
   src/components/Enhance.svelte   mermaid, copiar, pasos del lab (no tocar)
+  src/components/Lector.svelte    "Escuchar este módulo" párrafo a párrafo (salta código y diagramas)
+  src/components/Escuchar.svelte  botón Escuchar/Detener; preguntas en inglés, explicaciones en español
+  src/components/VozAjustes.svelte voz en español, voz en inglés y velocidad (localStorage)
   src/data/preguntas.json         220 preguntas (generado por scripts/sync-data.mjs)
   src/data/flashcards.json        150 términos
   src/pages/index.astro           portada

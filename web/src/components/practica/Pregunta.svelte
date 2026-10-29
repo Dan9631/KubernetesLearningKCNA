@@ -6,6 +6,8 @@
   import SourceLinks from '../SourceLinks.svelte';
   import ReportLink from '../ReportLink.svelte';
   import { reportQuestion } from '../../lib/report';
+  import Escuchar from '../Escuchar.svelte';
+  import { questionParts, answerParts } from '../../lib/voz.svelte';
 
   let { item, index, total, reveal = false, link = false, onpick }: {
     item: Item; index: number; total: number; reveal?: boolean; link?: boolean; onpick?: (k: number) => void;
@@ -26,6 +28,7 @@
       </span>
     {/if}
     <span class="count">{index + 1} / {total}</span>
+    <Escuchar key="q-{item.q.id}" label="Pregunta" parts={() => questionParts(item.q.q, item.options, item.answer.length)} />
   </div>
   <p class="q">{item.q.q}</p>
   {#if multi}<p class="hint">Elige {item.answer.length}.</p>{/if}
@@ -50,6 +53,7 @@
     <div class="explain" class:ok={good} class:fail={!good} role="status">
       <strong>{good ? 'Correcto.' : item.picked.length ? 'No es así.' : 'Sin responder.'}</strong> {item.q.explanation}
       <SourceLinks source={item.q.source} />
+      <p class="voz"><Escuchar key="qe-{item.q.id}" label="Explicación" parts={() => answerParts(item.options, item.answer, item.q.explanation)} /></p>
       <p class="rep"><ReportLink href={reportQuestion(item.q)} /> <span>· {item.q.id}</span></p>
     </div>
   {/if}
@@ -58,6 +62,7 @@
 <style>
   .meta { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
   .topic { font-size: 0.88rem; color: var(--ink-2); }
+  .voz { margin-top: 8px; }
   .rep { margin-top: 6px; font-size: 0.82rem; color: var(--ink-3); }
   .mod { font-size: 0.82rem; color: var(--ink-3); }
   .count { margin-left: auto; font: 500 0.8rem var(--mono); color: var(--ink-3); }
