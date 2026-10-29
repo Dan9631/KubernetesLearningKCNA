@@ -76,7 +76,7 @@ Referencia rápida de comandos: [CHEATSHEET.md](CHEATSHEET.md).
 | Herramienta | Uso | Comando |
 |---|---|---|
 | `kcna.ps1` | CLI del curso: clúster, labs, checks, imágenes | `.\kcna.ps1 help` |
-| **App de quiz** | Simulacro de examen (60 preguntas / 90 min), práctica por dominio o módulo, repaso de falladas, flashcards | `.\kcna.ps1 quiz` |
+| **App de quiz** | Simulacro de examen (60 preguntas / 90 min), práctica por dominio o módulo, repaso de falladas, flashcards (el sitio web añade además repaso espaciado y examen de graduación) | `.\kcna.ps1 quiz` |
 | **Headlamp** | UI de escritorio oficial de Kubernetes | `.\kcna.ps1 ui` |
 | **k9s** | UI de terminal | `.\kcna.ps1 k9s` |
 | **Podman Desktop** | Contenedores, imágenes y vista de Kubernetes | Ver módulo 00 |

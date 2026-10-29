@@ -1,7 +1,10 @@
 <script lang="ts">
   // Preguntas del banco (quiz/preguntas.js) asociadas a un módulo, con explicación al responder.
   import preguntas from '../data/preguntas.json';
-  import { progress, recordAnswer } from '../lib/progress.svelte';
+  import { progress, recordAnswer, type Conf } from '../lib/progress.svelte';
+  import { priority, endOfToday } from '../lib/preparacion';
+  import Confianza from './Confianza.svelte';
+  import Repaso from './Repaso.svelte';
   import SourceLinks from './SourceLinks.svelte';
   import ReportLink from './ReportLink.svelte';
   import { reportQuestion } from '../lib/report';
@@ -19,13 +22,14 @@
   let revealed = $state(false);
   let ok = $state(0);
   let answered = $state(0);
+  let conf = $state<Conf>('d');
 
   function shuffle<T>(a: T[]) { a = a.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
   function start() {
-    // primero las nunca vistas o falladas
-    const w = (q: Q) => { const s = progress.quiz[q.id]; return !s ? 2 : s.last ? 0 : 3; };
-    order = shuffle(pool.map((_, k) => k)).sort((a, b) => w(pool[b]) - w(pool[a])).slice(0, 8);
-    i = 0; picked = []; revealed = false; ok = 0; answered = 0;
+    // primero fallos con seguridad y repasos vencidos, luego las nunca vistas
+    const eod = endOfToday();
+    order = shuffle(pool.map((_, k) => k)).sort((a, b) => priority(progress.quiz[pool[b].id], eod) - priority(progress.quiz[pool[a].id], eod)).slice(0, 8);
+    i = 0; picked = []; revealed = false; ok = 0; answered = 0; conf = 'd';
   }
   start();
   const q = $derived(pool[order[i]]);
@@ -42,9 +46,9 @@
     revealed = true; answered += 1;
     const good = picked.length === q.answer.length && picked.every((p) => q.answer.includes(p));
     if (good) ok += 1;
-    recordAnswer(q.id, good);
+    recordAnswer(q.id, good, conf);
   }
-  function next() { if (i + 1 < order.length) { i += 1; picked = []; revealed = false; } }
+  function next() { if (i + 1 < order.length) { i += 1; picked = []; revealed = false; conf = 'd'; } }
   const letters = 'ABCDE';
 </script>
 
@@ -66,8 +70,9 @@
         </button>
       {/each}
     </div>
+    {#if !revealed}<Confianza value={conf} onchange={(c) => (conf = c)} />{/if}
     {#if revealed}
-      <div class="explain" class:ok={correct} class:fail={!correct}><strong>{correct ? 'Correcto.' : 'No es así.'}</strong> {q.explanation}<SourceLinks source={q.source} /><p class="voz"><Escuchar key="mqe-{q.id}" label="Explicación" parts={() => answerParts(q.options, q.answer, q.explanation, true)} /></p></div>
+      <div class="explain" class:ok={correct} class:fail={!correct}><strong>{correct ? 'Correcto.' : 'No es así.'}</strong> {q.explanation}<SourceLinks source={q.source} /><Repaso id={q.id} {conf} correct={correct} /><p class="voz"><Escuchar key="mqe-{q.id}" label="Explicación" parts={() => answerParts(q.options, q.answer, q.explanation, true)} /></p></div>
     {/if}
     <div class="row">
       {#if !revealed}

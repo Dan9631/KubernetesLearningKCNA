@@ -2,7 +2,8 @@
   // Panel "Preparación real": tres señales para decidir cuándo reservar fecha sin engañarse
   // por haber memorizado el banco. Cálculo en lib/preparacion.ts.
   import { progress } from '../../lib/progress.svelte';
-  import { READY, HOLDOUT, readiness } from '../../lib/preparacion';
+  import { READY, HOLDOUT, CONF_LABEL, readiness } from '../../lib/preparacion';
+  import type { Conf } from '../../lib/progress.svelte';
   import { DOMAINS, type DomainKey } from '../../lib/modules';
   import { fmtDate, pct } from './quiz';
 
@@ -10,12 +11,15 @@
   const r = $derived(readiness(progress));
   const covered = $derived(r.rows.filter((x) => x.seen >= x.need).length);
   let ask = $state(false);
+  const step2 = $derived(r.firstReady && r.sureMisses.length === 0);
+  const calibRows = $derived((['s', 'd', 'a'] as Conf[]).filter((k) => r.calib[k].n > 0));
 
   const next = $derived(
     r.ready ? 'Listo para reservar fecha. Mantén el ritmo con simulacros hasta el día del examen.'
     : !r.coverOk ? 'Siguiente paso: practica las competencias que faltan.'
     : !r.firstReady ? 'Siguiente paso: sube tu acierto en preguntas nuevas antes de gastar el examen de graduación.'
     : !r.final ? 'Siguiente paso: haz el examen de graduación.'
+    : r.finalOk && r.sureMisses.length ? 'Siguiente paso: corrige tus fallos con seguridad en el Repaso del día.'
     : 'Siguiente paso: repasa los dominios flojos del examen de graduación; tu estimación no mejorará repitiéndolo.'
   );
 </script>
@@ -50,14 +54,27 @@
       </div>
     </li>
 
-    <li class:ok={r.firstReady}>
-      <span class="mark" aria-hidden="true">{r.firstReady ? '✓' : '2'}</span>
+    <li class:ok={step2}>
+      <span class="mark" aria-hidden="true">{step2 ? '✓' : '2'}</span>
       <div>
-        <h3>Acierto en preguntas nuevas</h3>
+        <h3>Acierto real</h3>
         {#if r.recent.n >= READY.recent}
           <p>Aciertas el <strong>{r.recent.pct} %</strong> de tus últimas {READY.recent} preguntas vistas por primera vez (meta: {READY.firstPass} %).</p>
         {:else}
           <p>Llevas {r.recent.n} de {READY.recent} preguntas nuevas{r.recent.n ? `, con ${r.recent.pct} % de acierto` : ''}. Solo cuenta la primera vez que respondes cada una: repetirlas mide memoria, no conocimiento.</p>
+        {/if}
+        <p class:bad={r.sureMisses.length > 0}>
+          {#if r.sureMisses.length}
+            {r.sureMisses.length} {r.sureMisses.length === 1 ? 'fallo' : 'fallos'} con seguridad {r.sureMisses.length === 1 ? 'pendiente' : 'pendientes'}: respondiste «Seguro» y fallaste. Salen primero en el Repaso del día y se resuelven al acertarlas con al menos 3 días de por medio.
+          {:else}
+            Sin fallos con seguridad pendientes.
+          {/if}
+        </p>
+        {#if calibRows.length}
+          <p class="calib">
+            {#each calibRows as k, i}{#if i} · {/if}Con «{CONF_LABEL[k]}» aciertas <strong class:bad={k === 's' && pct(r.calib.s.ok, r.calib.s.n) < 90}>{pct(r.calib[k].ok, r.calib[k].n)} %</strong> <span class="muted">({r.calib[k].n})</span>{/each}
+          </p>
+          {#if r.calib.s.n >= 10 && pct(r.calib.s.ok, r.calib.s.n) < 90}<p class="muted">Cuando dices «Seguro» deberías acertar casi siempre: hoy hay exceso de confianza. Revisa la explicación completa de esas preguntas, no solo la respuesta.</p>{/if}
         {/if}
       </div>
     </li>
@@ -112,6 +129,8 @@
   .muted { color: var(--ink-3); font-size: 0.85rem; }
   .pass { color: var(--ready); }
   .fail { color: var(--fail); }
+  li p.bad, strong.bad { color: var(--fail); }
+  .calib { font-size: 0.88rem; }
   .act { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
   .confirm { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-m); background: var(--wait-2); border-left: 3px solid var(--wait); }
   .confirm p { color: var(--ink); margin: 0; }

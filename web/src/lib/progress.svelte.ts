@@ -22,7 +22,24 @@ export interface Progress {
   ready: string[];
 }
 
-export interface QuizStat { seen: number; ok: number; last: boolean; first?: boolean; at?: number }
+/** Confianza declarada al responder: Seguro, Dudo, Adivino */
+export type Conf = 's' | 'd' | 'a';
+
+export interface QuizStat {
+  seen: number; ok: number; last: boolean;
+  /** resultado y fecha del primer intento */
+  first?: boolean; at?: number;
+  /** aciertos y fallos por confianza declarada: { s: [ok, mal], ... } */
+  conf?: Partial<Record<Conf, [number, number]>>;
+  /** fecha de un fallo marcado como "Seguro", pendiente hasta acertarla de nuevo pasados 3 días */
+  sureMiss?: number;
+  /** repetición espaciada (cajas de Leitner): caja 0-5 y fecha del próximo repaso */
+  box?: number; due?: number;
+}
+
+export const DAY = 86_400_000;
+/** días hasta el próximo repaso según la caja */
+export const INTERVALS = [0, 1, 3, 7, 16, 35];
 
 const KEY = 'kcna.progress.v1';
 const empty = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [] });
@@ -58,11 +75,26 @@ export function touchSim(id: string) {
   if (!progress.sims.includes(id)) { progress.sims = [...progress.sims, id]; save(); }
 }
 
-export function recordAnswer(qid: string, correct: boolean) {
+export function recordAnswer(qid: string, correct: boolean, conf?: Conf) {
+  const now = Date.now();
   const s = progress.quiz[qid];
-  progress.quiz[qid] = s
+  const n: QuizStat = s
     ? { ...s, seen: s.seen + 1, ok: s.ok + (correct ? 1 : 0), last: correct }
-    : { seen: 1, ok: correct ? 1 : 0, last: correct, first: correct, at: Date.now() };
+    : { seen: 1, ok: correct ? 1 : 0, last: correct, first: correct, at: now };
+  if (conf) {
+    const c = { ...n.conf }, [ok, bad] = c[conf] ?? [0, 0];
+    c[conf] = correct ? [ok + 1, bad] : [ok, bad + 1];
+    n.conf = c;
+  }
+  // Un fallo con "Seguro" revela una idea equivocada: queda pendiente hasta acertarla con días de por medio
+  if (!correct && conf === 's') n.sureMiss = now;
+  else if (correct && n.sureMiss && now - n.sureMiss >= 3 * DAY) delete n.sureMiss;
+  // Leitner: el fallo vuelve a la caja 1 (mañana); el acierto sube de caja, salvo si fue adivinando
+  let box = n.box ?? (s ? (s.last ? 2 : 1) : 0);
+  box = !correct ? 1 : conf === 'a' ? Math.max(1, box) : Math.min(box + 1, INTERVALS.length - 1);
+  n.box = box;
+  n.due = now + INTERVALS[box] * DAY;
+  progress.quiz[qid] = n;
   save();
 }
 

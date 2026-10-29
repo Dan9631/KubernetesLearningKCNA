@@ -75,16 +75,19 @@ Rutina de cada módulo: leer *Conceptos* → `.\kcna.ps1 lab NN` → laboratorio
 |---|---|---|---|---|
 | **1** | 7 | [00](00-preparacion-entorno.md), [01](01-contenedores-y-cloud-native.md), [02](02-arquitectura-kubernetes.md) | Montar el entorno; labs 01 y 02 completos | *Práctica* por módulo al terminar cada uno. Empieza las *Flashcards* (10 min/día) |
 | **2** | 8 | [03](03-workloads-pods-deployments.md), [04](04-scheduling.md) | Labs 03 y 04; repite el reto 03 sin mirar la solución | *Práctica* por módulo + *Práctica* del dominio Kubernetes Fundamentals |
-| **3** | 8 | [05](05-seguridad.md), [06](06-networking-services.md), [07](07-service-mesh-microservicios.md) | Labs 05, 06 y 07 | *Práctica* por módulo; *Repasar falladas* el fin de semana |
+| **3** | 8 | [05](05-seguridad.md), [06](06-networking-services.md), [07](07-service-mesh-microservicios.md) | Labs 05, 06 y 07 | *Práctica* por módulo; *Repaso del día* el fin de semana |
 | **4** | 8 | [08](08-storage.md), [09](09-troubleshooting-debugging.md), [11](11-observabilidad.md) | Labs 08, 09 y 11 | *Práctica* del dominio Container Orchestration. Fin de semana: **primer simulacro** completo como diagnóstico (no importa la nota, importa ver huecos) |
 | **5** | 8 | [10](10-arquitectura-cloud-native.md), [12](12-application-delivery-gitops.md) | Labs 10 y 12 (incluida la parte de Argo CD) | *Práctica* de los dominios Application Delivery y Architecture. **Segundo simulacro** el domingo |
-| **6** | 7 | 13 (este) + repaso | Repite 3-4 retos al azar desde cero (`reset` + `lab` + reto + `check`) | **Simulacros 3 y 4** en condiciones reales (90 min, sin interrupciones, sin apuntes). Entre medias, *Repasar falladas* y *Flashcards*. Lee los *Resumen para repasar* de los 13 módulos. **Examen de graduación** cuando el panel *Preparación real* lo recomiende |
+| **6** | 7 | 13 (este) + repaso | Repite 3-4 retos al azar desde cero (`reset` + `lab` + reto + `check`) | **Simulacros 3 y 4** en condiciones reales (90 min, sin interrupciones, sin apuntes). Entre medias, *Repaso del día* y *Flashcards*. Lee los *Resumen para repasar* de los 13 módulos. **Examen de graduación** cuando el panel *Preparación real* lo recomiende |
 
-Cuándo reservar fecha: cuando el panel **Preparación real** de la *Práctica* esté en verde. Pide tres cosas a la vez:
+Cuándo reservar fecha: cuando el panel **Preparación real** de la *Práctica* esté en verde. Pide cuatro cosas a la vez:
 
 1. **Cobertura**: has practicado las 13 competencias del temario, con al menos 8 preguntas distintas en cada una.
 2. **Acierto en preguntas nuevas**: 75% o más en las últimas 40 preguntas que respondiste por primera vez. Repetir una pregunta mide memoria, no conocimiento, así que solo cuenta el primer intento.
 3. **Examen de graduación**: 80% o más y ningún dominio por debajo del 70%. Son 60 preguntas reservadas que nunca salen en la práctica ni en los simulacros, y solo cuenta el primer intento. El margen sobre el 75% absorbe los nervios, las preguntas con redacción rara y el error de medir con 60 preguntas.
+4. **Sin fallos con seguridad pendientes**: antes de responder en la práctica marcas *Seguro*, *Dudo* o *Adivino*. Fallar algo de lo que estabas seguro revela una idea equivocada, que es lo que más conviene corregir; queda pendiente hasta que la aciertes con al menos 3 días de por medio.
+
+El *Repaso del día* usa repetición espaciada: cada pregunta acertada vuelve a salir en 1, 3, 7, 16 y 35 días, y cada fallo vuelve al día siguiente. Unos minutos al día rinden más que una sesión larga el fin de semana.
 
 Los simulacros normales siguen siendo la mejor forma de entrenar el ritmo y encontrar huecos, pero tras unos cuantos ya has visto casi todo el banco de práctica: una nota alta ahí puede ser memoria. Reserva al inicio de la semana 5 para tener una fecha que te comprometa; puedes reprogramar con antelación si hace falta.
 

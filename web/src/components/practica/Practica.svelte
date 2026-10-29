@@ -8,7 +8,7 @@
   import Pregunta from './Pregunta.svelte';
   import VozAjustes from '../VozAjustes.svelte';
   import Preparacion from './Preparacion.svelte';
-  import { PRACTICE, HOLDOUT } from '../../lib/preparacion';
+  import { PRACTICE, HOLDOUT, priority, dueToday, endOfToday } from '../../lib/preparacion';
 
   // la práctica, los repasos y los simulacros nunca usan el banco reservado (Examen de graduación)
   const QS = PRACTICE;
@@ -37,7 +37,10 @@
   const doneCount = $derived(items.filter((it) => it.done).length);
 
   // ---------- inicio ----------
-  const wrongPool = $derived(QS.filter((q) => progress.quiz[q.id]?.last === false));
+  // repetición espaciada: lo que vence hoy, con los fallos con seguridad primero
+  const duePool = $derived(dueToday(progress));
+  const sureCount = $derived(duePool.filter((q) => progress.quiz[q.id]?.sureMiss).length);
+  const DUE_N = 30;
   const lastExams = $derived(progress.exams.slice(-6).reverse());
   function domainStats(d: DomainKey) {
     const qs = QS.filter((q) => q.domain === d);
@@ -62,20 +65,20 @@
     if (s.startsWith('m:')) { const m = examMods.find((x) => String(x.n) === s.slice(2)); return m ? `Módulo ${pad(m.n)} · ${m.title}` : 'Práctica'; }
     return 'Todo el temario';
   }
-  // primero las nunca vistas y las falladas; después las que menos se dominan
-  const weightOf = (q: Q) => { const s = progress.quiz[q.id]; if (!s) return 2; return s.last === false ? 3 : 1 - s.ok / (s.seen + 1); };
+  // primero fallos con seguridad y repasos vencidos, luego las nunca vistas y las menos dominadas
 
   function startPractice(pool: Q[], n: number, title: string) {
     stopTimer();
-    const chosen = shuffle(pool).sort((a, b) => weightOf(b) - weightOf(a)).slice(0, Math.min(n, pool.length));
+    const eod = endOfToday();
+    const chosen = shuffle(pool).sort((a, b) => priority(progress.quiz[b.id], eod) - priority(progress.quiz[a.id], eod)).slice(0, Math.min(n, pool.length));
     items = chosen.map(prep); idx = 0; practiceTitle = title;
     view = items.length ? 'practice' : 'practice-end';
   }
   function startScoped() { startPractice(poolFor(scope), PRACTICE_N, titleFor(scope)); }
-  function startWrong() { startPractice(wrongPool, 999, 'Repaso de falladas'); }
+  function startDue() { startPractice(duePool, DUE_N, 'Repaso del día'); }
   function confirmPractice() {
     const it = cur; if (!it || it.done || !it.picked.length) return;
-    it.done = true; recordAnswer(it.q.id, isCorrect(it));
+    it.done = true; recordAnswer(it.q.id, isCorrect(it), it.conf);
   }
   function nextPractice() { if (idx + 1 < items.length) idx += 1; else view = 'practice-end'; }
 
@@ -147,6 +150,7 @@
     if ((e.key === 'Enter' || e.key === ' ') && /^(BUTTON|A)$/.test(tag)) return;
     if (view === 'practice' && cur) {
       if (/^[1-5]$/.test(e.key) && !cur.done && +e.key <= cur.options.length) { pick(+e.key - 1); e.preventDefault(); }
+      else if (/^[sda]$/i.test(e.key) && !cur.done) { cur.conf = e.key.toLowerCase() as Item['conf']; e.preventDefault(); }
       else if (e.key === 'Enter') { e.preventDefault(); cur.done ? nextPractice() : confirmPractice(); }
     } else if (view === 'exam' && cur) {
       if (/^[1-5]$/.test(e.key) && +e.key <= cur.options.length) { pick(+e.key - 1); e.preventDefault(); }
@@ -171,7 +175,7 @@
       if (d && EXAM_DOMAINS.includes(d as DomainKey)) scope = `d:${d}`;
       else if (m && examMods.some((x) => String(x.n) === String(+m))) scope = `m:${+m}`;
       startScoped();
-    } else if (modo === 'falladas') startWrong();
+    } else if (modo === 'repaso' || modo === 'falladas') startDue();
     return () => stopTimer();
   });
 </script>
@@ -210,10 +214,10 @@
       </li>
       <li class="mode">
         <div class="txt">
-          <h2>Repasar falladas</h2>
-          <p>{#if wrongPool.length}{wrongPool.length} {wrongPool.length === 1 ? 'pregunta cuyo último intento fue incorrecto' : 'preguntas cuyo último intento fue incorrecto'}.{:else}Aquí aparecerán las preguntas que falles en la práctica o en el simulacro.{/if}</p>
+          <h2>Repaso del día</h2>
+          <p>{#if duePool.length}{duePool.length} {duePool.length === 1 ? 'pregunta pendiente' : 'preguntas pendientes'} hoy{#if sureCount}, {sureCount} {sureCount === 1 ? 'de ellas es un fallo' : 'de ellas son fallos'} con seguridad{/if}. Cada acierto la aleja más (1, 3, 7, 16 y 35 días); cada fallo la trae de vuelta mañana.{:else}Nada pendiente hoy. Las preguntas que respondas volverán solas justo antes de que las olvides: 1, 3, 7, 16 y 35 días.{/if}</p>
         </div>
-        <div class="act"><button type="button" class="btn" onclick={startWrong} disabled={!wrongPool.length}>Repasar {wrongPool.length || ''}</button></div>
+        <div class="act"><button type="button" class="btn" class:primary={sureCount > 0} onclick={startDue} disabled={!duePool.length}>Repasar {Math.min(duePool.length, DUE_N) || ''}</button></div>
       </li>
       <li class="mode">
         <div class="txt">
@@ -257,7 +261,7 @@
         {:else}
           <p class="muted">Todavía no has entregado ningún simulacro. El primero te dirá en qué punto estás.</p>
         {/if}
-        <p class="keys">Atajos: <kbd>1</kbd> a <kbd>5</kbd> elegir opción, <kbd>Enter</kbd> responder o siguiente, <kbd>←</kbd> <kbd>→</kbd> moverse en el simulacro, <kbd>F</kbd> marcar para revisar.</p>
+        <p class="keys">Atajos: <kbd>1</kbd> a <kbd>5</kbd> elegir opción, <kbd>S</kbd> <kbd>D</kbd> <kbd>A</kbd> seguro, dudo o adivino, <kbd>Enter</kbd> responder o siguiente, <kbd>←</kbd> <kbd>→</kbd> moverse en el simulacro, <kbd>F</kbd> marcar para revisar.</p>
       </section>
     </div>
 
@@ -280,7 +284,7 @@
       <VozAjustes />
     </div>
     <div class="card">
-      <Pregunta item={cur} index={idx} total={items.length} reveal={cur.done} onpick={cur.done ? undefined : pick} />
+      <Pregunta item={cur} index={idx} total={items.length} reveal={cur.done} onpick={cur.done ? undefined : pick} onconf={(c) => (cur.conf = c)} />
       <div class="row">
         {#if cur.done}
           <button type="button" class="btn primary" onclick={nextPractice}>{idx + 1 < items.length ? 'Siguiente' : 'Ver resultado'}</button>
@@ -300,12 +304,12 @@
       <p class="score" class:pass={pct(okCount, doneCount) >= PASS} class:fail={doneCount > 0 && pct(okCount, doneCount) < PASS}>{pct(okCount, doneCount)} %</p>
       <p>{okCount} de {doneCount} correctas{#if doneCount < items.length}{' · '}{items.length - doneCount} sin responder{/if}</p>
       <div class="row">
-        <button type="button" class="btn primary" onclick={() => (practiceTitle === 'Repaso de falladas' ? startWrong() : startScoped())}>Otra ronda</button>
+        <button type="button" class="btn primary" onclick={() => (practiceTitle === 'Repaso del día' ? startDue() : startScoped())}>Otra ronda</button>
         <button type="button" class="btn" onclick={home}>Volver al inicio</button>
       </div>
     {:else}
       <h2>No hay preguntas para esta selección</h2>
-      <p class="muted">Elige otro dominio o módulo, o practica primero para tener falladas que repasar.</p>
+      <p class="muted">Elige otro dominio o módulo. Si buscabas el repaso del día, hoy no te queda nada pendiente.</p>
       <div class="row"><button type="button" class="btn primary" onclick={home}>Volver al inicio</button></div>
     {/if}
   </div>

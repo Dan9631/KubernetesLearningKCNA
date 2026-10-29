@@ -8,9 +8,13 @@
   import { reportQuestion } from '../../lib/report';
   import Escuchar from '../Escuchar.svelte';
   import { questionParts, answerParts } from '../../lib/voz.svelte';
+  import Confianza from '../Confianza.svelte';
+  import Repaso from '../Repaso.svelte';
+  import type { Conf } from '../../lib/progress.svelte';
 
-  let { item, index, total, reveal = false, link = false, onpick }: {
-    item: Item; index: number; total: number; reveal?: boolean; link?: boolean; onpick?: (k: number) => void;
+  // onconf: muestra "¿Qué tan seguro estás?" (solo en la práctica, no en el simulacro)
+  let { item, index, total, reveal = false, link = false, onpick, onconf }: {
+    item: Item; index: number; total: number; reveal?: boolean; link?: boolean; onpick?: (k: number) => void; onconf?: (c: Conf) => void;
   } = $props();
 
   const multi = $derived(item.answer.length > 1);
@@ -49,10 +53,12 @@
       </button>
     {/each}
   </div>
+  {#if onconf && !reveal}<Confianza value={item.conf} onchange={onconf} keys />{/if}
   {#if reveal}
     <div class="explain" class:ok={good} class:fail={!good} role="status">
       <strong>{good ? 'Correcto.' : item.picked.length ? 'No es así.' : 'Sin responder.'}</strong> {item.q.explanation}
       <SourceLinks source={item.q.source} />
+      <Repaso id={item.q.id} conf={item.conf} correct={good} />
       <p class="voz"><Escuchar key="qe-{item.q.id}" label="Explicación" parts={() => answerParts(item.options, item.answer, item.q.explanation)} /></p>
       <p class="rep"><ReportLink href={reportQuestion(item.q)} /> <span>· {item.q.id}</span></p>
     </div>
