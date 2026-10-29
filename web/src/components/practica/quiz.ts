@@ -1,7 +1,7 @@
 // Utilidades compartidas por la práctica, el simulacro y la revisión.
 import { DOMAINS, type DomainKey } from '../../lib/modules';
 
-export interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[] }
+export interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[]; holdout?: boolean }
 
 /** Pregunta preparada para una ronda: opciones barajadas y respuesta remapeada. */
 export interface Item { q: Q; options: string[]; answer: number[]; picked: number[]; flagged: boolean; done: boolean }

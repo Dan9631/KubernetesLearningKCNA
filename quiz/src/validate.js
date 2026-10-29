@@ -39,11 +39,25 @@ fc.forEach((c, i) => {
   else if (!OFFICIAL.test(c.source)) errs.push('flashcard ' + c.term + ' source no oficial: ' + c.source);
   fdom[c.domain] = (fdom[c.domain] || 0) + 1;
 });
+// Banco reservado: tantas como el simulacro por dominio, al menos una por competencia y todas existentes
+const HOLD = require(require('path').join(__dirname, 'reservadas.js'));
+const EXAM = { fundamentals: 26, orchestration: 17, delivery: 10, architecture: 7 };
+const holdQs = q.filter(x => x.holdout);
+if (new Set(HOLD).size !== HOLD.length) errs.push('reservadas.js: ids duplicados');
+for (const id of HOLD) if (!ids.has(id)) errs.push('reservadas.js: no existe ' + id);
+if (holdQs.length !== HOLD.length) errs.push('preguntas.js desactualizado: ' + holdQs.length + ' reservadas en vez de ' + HOLD.length + ' (ejecuta build.js)');
+for (const d of DOM) { const n = holdQs.filter(x => x.domain === d).length; if (n !== EXAM[d]) errs.push('reservadas ' + d + ': ' + n + ' (deben ser ' + EXAM[d] + ')'); }
+for (const t of new Set(q.map(x => x.topic))) {
+  const all = q.filter(x => x.topic === t).length, h = holdQs.filter(x => x.topic === t).length;
+  if (!h) errs.push('reservadas: ninguna de ' + t);
+  if (all - h < 10) errs.push('reservadas: ' + t + ' deja solo ' + (all - h) + ' para practicar (mínimo 10)');
+}
 const terms = fc.map(c => c.term.toLowerCase());
 if (new Set(terms).size !== terms.length) errs.push('duplicate flashcard terms');
 console.log('Questions:', q.length, 'unique ids:', ids.size);
 console.log('By domain:', byDom);
 console.log('By topic:'); Object.entries(byTopic).forEach(([k, v]) => console.log('  ' + k + ': ' + v));
+console.log('Reservadas (Examen de graduación):', holdQs.length, '· para practicar:', q.length - holdQs.length);
 console.log('Multi-answer:', multi, '(' + (100 * multi / q.length).toFixed(1) + '%)');
 console.log('Answer positions A-D (single):', pos.single.join(' / '));
 console.log('Answer positions A-D (multi, per index):', pos.multi.join(' / '));

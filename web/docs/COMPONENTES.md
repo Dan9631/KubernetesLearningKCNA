@@ -103,6 +103,8 @@ El Stepper ya pinta la barra de etapas, el título/texto de la etapa y los boton
 
 `import preguntas from '../data/preguntas.json'` → `{ id, domain, topic, module, q, options, answer: number[], explanation }[]`. `import flashcards from '../data/flashcards.json'` → `{ term, def, domain, module }[]`. `progress.quiz`, `recordAnswer()`, `progress.exams`, `toggleKnown()` están en `lib/progress.svelte.ts`.
 
+**Banco reservado.** Las preguntas con `holdout: true` (lista en `quiz/src/reservadas.js`, 26/17/10/7) solo salen en el Examen de graduación. Cualquier componente que saque preguntas para practicar debe excluirlas (usa `PRACTICE` de `lib/preparacion.ts`). `recordAnswer()` guarda además `first`/`at` (resultado y fecha del primer intento), que alimentan el panel *Preparación real*.
+
 ## Verificación (sin tocar el servidor de desarrollo)
 
 Hay un servidor `astro dev` ya corriendo en `http://127.0.0.1:4321` con recarga en caliente; **no lo arranques, pares ni reinicies**, y no abras otro. Para comprobar tu trabajo:

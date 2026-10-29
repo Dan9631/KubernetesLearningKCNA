@@ -2,14 +2,16 @@
 import Base from '../layouts/Base.astro';
 import Practica from '../components/practica/Practica.svelte';
 import preguntas from '../data/preguntas.json';
-const total = (preguntas as unknown[]).length;
+const all = preguntas as { holdout?: boolean }[];
+const total = all.filter((q) => !q.holdout).length;
+const reserved = all.length - total;
 ---
 <Base title="Práctica" description="Simulacro de examen KCNA, práctica por dominio o módulo, repaso de falladas y flashcards." width="wide">
   <section class="practica">
     <header class="head">
       <p class="kicker">Práctica</p>
       <h1>Pon a prueba lo que sabes</h1>
-      <p class="lead">{total} preguntas en inglés, como en el examen, con la explicación en español y el enlace a la documentación oficial que la respalda. Practica por dominio, repasa lo que fallas y mide tu nivel con un simulacro cronometrado.</p>
+      <p class="lead">{total} preguntas en inglés, como en el examen, con la explicación en español y el enlace a la documentación oficial que la respalda. Practica por dominio, repasa lo que fallas, mide tu nivel con un simulacro cronometrado y, cuando estés listo, haz el examen de graduación con {reserved} preguntas reservadas que nunca salen en la práctica.</p>
     </header>
     <Practica client:load />
   </section>

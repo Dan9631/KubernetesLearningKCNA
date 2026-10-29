@@ -1,6 +1,7 @@
 // Banco de preguntas de práctica KCNA (Kubernetes and Cloud Native Associate)
 // Temario CNCF vigente desde nov-2025. Preguntas y opciones en inglés; explicaciones en español.
 // answer: índices 0-based de las opciones correctas (más de uno => multi-respuesta).
+// holdout: banco reservado para el Examen de graduación del sitio (no sale en la práctica).
 // Total: 252 preguntas.
 window.KCNA_QUESTIONS = [
   {
@@ -33,7 +34,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Usuarios, componentes del clúster (scheduler, controllers, kubelets) y clientes externos se comunican a través del kube-apiserver, que es quien persiste el estado en etcd. La documentación recomienda que idealmente solo el API server tenga acceso a etcd, porque acceder a etcd equivale a ser root en el clúster.",
-    source: ["https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#securing-etcd-clusters","https://kubernetes.io/docs/concepts/overview/kubernetes-api/#persistence"]
+    source: ["https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#securing-etcd-clusters","https://kubernetes.io/docs/concepts/overview/kubernetes-api/#persistence"],
+    holdout: true
   },
   {
     id: "F003",
@@ -97,7 +99,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "El cloud-controller-manager separa la lógica específica del proveedor cloud (controladores de nodos, rutas y servicios/load balancers) del núcleo de Kubernetes, para que cada proveedor evolucione su integración de forma independiente.",
-    source: ["https://kubernetes.io/docs/concepts/architecture/cloud-controller/#design"]
+    source: ["https://kubernetes.io/docs/concepts/architecture/cloud-controller/#design"],
+    holdout: true
   },
   {
     id: "F007",
@@ -129,7 +132,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "El Pod es la unidad mínima: uno o más contenedores que comparten red y almacenamiento y se programan juntos en el mismo nodo. Kubernetes no gestiona contenedores sueltos.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/pods/#what-is-a-pod"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/pods/#what-is-a-pod"],
+    holdout: true
   },
   {
     id: "F009",
@@ -209,7 +213,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "Un Job crea Pods que se ejecutan hasta completarse y reintenta según backoffLimit (6 por defecto). CronJob es para ejecuciones programadas recurrentes y Deployment mantiene procesos de larga duración que nunca 'terminan'.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/job/","https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-backoff-failure-policy"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/job/","https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-backoff-failure-policy"],
+    holdout: true
   },
   {
     id: "F014",
@@ -225,7 +230,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "CronJob crea Jobs según una programación en formato cron (por ejemplo '0 2 * * *'). Un Job no admite restartPolicy: Always y no tiene programación propia.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax","https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-template"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax","https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-template"],
+    holdout: true
   },
   {
     id: "F015",
@@ -241,7 +247,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "Por defecto los Secrets se guardan sin cifrar en etcd; los valores de data solo están codificados en base64, lo cual no es cifrado. Para protegerlos hay que habilitar el cifrado en reposo y restringir el acceso con RBAC. Los Secrets son namespaced y pueden montarse como volumen, como variables o usarse para descargar imágenes.",
-    source: ["https://kubernetes.io/docs/concepts/configuration/secret/"]
+    source: ["https://kubernetes.io/docs/concepts/configuration/secret/"],
+    holdout: true
   },
   {
     id: "F016",
@@ -273,7 +280,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1,2],
     explanation: "Node y PersistentVolume son recursos de ámbito de clúster. PVC y ConfigMap pertenecen a un namespace. Puede verificarse con kubectl api-resources --namespaced=false.",
-    source: ["https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#not-all-objects-are-in-a-namespace"]
+    source: ["https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/#not-all-objects-are-in-a-namespace"],
+    holdout: true
   },
   {
     id: "F018",
@@ -513,7 +521,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "kubectl explain obtiene del servidor el esquema OpenAPI y documenta cada campo (por ejemplo kubectl explain pods.spec.containers). kubectl describe muestra el estado de un objeto concreto, no la documentación del esquema.",
-    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_explain/"]
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_explain/"],
+    holdout: true
   },
   {
     id: "F033",
@@ -593,7 +602,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "El quórum es la mayoría (⌊n/2⌋ + 1). Con 3 miembros se necesitan 2, así que tolera 1 fallo; con 5 tolera 2. Por eso se recomienda un número impar de miembros: pasar a un número par no añade tolerancia.",
-    source: ["https://etcd.io/docs/v3.6/faq/#what-is-failure-tolerance","https://etcd.io/docs/v3.6/faq/#why-an-odd-number-of-cluster-members"]
+    source: ["https://etcd.io/docs/v3.6/faq/#what-is-failure-tolerance","https://etcd.io/docs/v3.6/faq/#why-an-odd-number-of-cluster-members"],
+    holdout: true
   },
   {
     id: "F038",
@@ -641,7 +651,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0,1],
     explanation: "Un Job solo admite Never u OnFailure, ya que Always contradiría la idea de ejecutar hasta completarse. UntilSuccess no existe.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-template"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-template"],
+    holdout: true
   },
   {
     id: "F041",
@@ -769,7 +780,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "kubeadm init crea el control plane y kubeadm join añade nodos al clúster. minikube y kind crean clústeres locales de desarrollo, y kubectl es el cliente de la API.",
-    source: ["https://kubernetes.io/docs/reference/setup-tools/kubeadm/"]
+    source: ["https://kubernetes.io/docs/reference/setup-tools/kubeadm/"],
+    holdout: true
   },
   {
     id: "F049",
@@ -833,7 +845,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "kubectl api-resources imprime los tipos de recurso que soporta el servidor, con shortnames, grupo/versión API y si son namespaced. api-versions solo lista grupos/versiones, y 'get all' muestra solo algunos tipos de objetos existentes.",
-    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_api-resources/"]
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_api-resources/"],
+    holdout: true
   },
   {
     id: "F053",
@@ -881,7 +894,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "--dry-run=client -o yaml imprime el objeto que se enviaría sin enviarlo al servidor. kubectl get ya no tiene la opción --export y explain solo muestra documentación.",
-    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/kubectl_create_deployment/","https://kubernetes.io/docs/reference/kubectl/conventions/#kubectl-run"]
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_create/kubectl_create_deployment/","https://kubernetes.io/docs/reference/kubectl/conventions/#kubectl-run"],
+    holdout: true
   },
   {
     id: "F056",
@@ -929,7 +943,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "Con un control plane gestionado, el proveedor se encarga de su escalado, disponibilidad, parches y upgrades; el usuario gestiona sus cargas de trabajo y, según el modo, también los nodos.",
-    source: ["https://kubernetes.io/docs/setup/production-environment/#production-considerations"]
+    source: ["https://kubernetes.io/docs/setup/production-environment/#production-considerations"],
+    holdout: true
   },
   {
     id: "F059",
@@ -945,7 +960,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Las versiones vX sin sufijo (v1, v2) son estables y siguen disponibles en todas las versiones futuras dentro de la versión mayor. Las alpha están deshabilitadas por defecto y pueden desaparecer sin aviso; las beta nuevas también están deshabilitadas por defecto y sus detalles aún pueden cambiar.",
-    source: ["https://kubernetes.io/docs/reference/using-api/#api-versioning"]
+    source: ["https://kubernetes.io/docs/reference/using-api/#api-versioning"],
+    holdout: true
   },
   {
     id: "F060",
@@ -961,7 +977,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "nodeSelector es la forma más simple recomendada: exige que el nodo tenga todos los labels indicados. Las tolerations solo permiten tolerar taints, priorityClassName define la prioridad y topologySpreadConstraints reparte réplicas.",
-    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector"]
+    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector"],
+    holdout: true
   },
   {
     id: "F061",
@@ -1073,7 +1090,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "topologySpreadConstraints limita la diferencia (maxSkew) de Pods entre dominios de topología definidos por un topologyKey, por ejemplo topology.kubernetes.io/zone.",
-    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/#spread-constraint-definition"]
+    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/#spread-constraint-definition"],
+    holdout: true
   },
   {
     id: "F068",
@@ -1089,7 +1107,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "El kube-scheduler usa los requests para decidir en qué nodo cabe el Pod, comparando su suma con la capacidad asignable del nodo. Los limits los aplica el kubelet en ejecución y no se usan para decidir la colocación.",
-    source: ["https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-requests-are-scheduled"]
+    source: ["https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#how-pods-with-resource-requests-are-scheduled"],
+    holdout: true
   },
   {
     id: "F069",
@@ -1137,7 +1156,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Un PriorityClass (objeto sin namespace) asigna un valor entero de prioridad; si un Pod de alta prioridad no cabe, el scheduler puede desalojar (preempt) Pods de menor prioridad.",
-    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass"]
+    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass"],
+    holdout: true
   },
   {
     id: "F072",
@@ -1217,7 +1237,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "DRA permite reclamar dispositivos de forma flexible mediante ResourceClaims y DeviceClasses, con filtrado por atributos y dispositivos compartidos. Su API principal (resource.k8s.io/v1) pasó a GA en v1.34 y complementa al modelo clásico de device plugins con recursos extendidos (por ejemplo nvidia.com/gpu).",
-    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/","https://kubernetes.io/blog/2025/09/01/kubernetes-v1-34-dra-updates/"]
+    source: ["https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/","https://kubernetes.io/blog/2025/09/01/kubernetes-v1-34-dra-updates/"],
+    holdout: true
   },
   {
     id: "F077",
@@ -1249,7 +1270,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Los contenedores son procesos aislados que comparten el sistema operativo (kernel) del host, por lo que son ligeros. Cada VM es una máquina completa con su propio sistema operativo sobre hardware virtualizado.",
-    source: ["https://kubernetes.io/docs/concepts/overview/#going-back-in-time"]
+    source: ["https://kubernetes.io/docs/concepts/overview/#going-back-in-time"],
+    holdout: true
   },
   {
     id: "F079",
@@ -1297,7 +1319,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "runc es la herramienta de línea de comandos (donada por Docker a la OCI) que crea y ejecuta contenedores en Linux según la especificación OCI. containerd y CRI-O son runtimes de alto nivel que implementan CRI y delegan la creación del contenedor en runc (u otro runtime OCI como crun).",
-    source: ["https://github.com/opencontainers/runc","https://opencontainers.org/about/overview/"]
+    source: ["https://github.com/opencontainers/runc","https://opencontainers.org/about/overview/"],
+    holdout: true
   },
   {
     id: "F082",
@@ -1457,7 +1480,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "RuntimeClass mapea un nombre a un handler configurado en el runtime del nodo; los Pods lo seleccionan con spec.runtimeClassName para obtener, por ejemplo, el aislamiento reforzado de runtimes sandbox como gVisor o Kata Containers.",
-    source: ["https://kubernetes.io/docs/concepts/containers/runtime-class/#usage","https://kubernetes.io/blog/2018/10/10/kubernetes-v1.12-introducing-runtimeclass/"]
+    source: ["https://kubernetes.io/docs/concepts/containers/runtime-class/#usage","https://kubernetes.io/blog/2018/10/10/kubernetes-v1.12-introducing-runtimeclass/"],
+    holdout: true
   },
   {
     id: "F092",
@@ -1473,7 +1497,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Imágenes mínimas reducen vulnerabilidades, no-root (runAsNonRoot) limita el impacto de un compromiso y un proceso por contenedor simplifica logs, probes y escalado. El estado y la configuración deben vivir fuera de la imagen (config separada del código).",
-    source: ["https://kubernetes.io/docs/concepts/security/application-security-checklist/#security-context-pod","https://12factor.net/config","https://12factor.net/processes"]
+    source: ["https://kubernetes.io/docs/concepts/security/application-security-checklist/#security-context-pod","https://12factor.net/config","https://12factor.net/processes"],
+    holdout: true
   },
   {
     id: "F093",
@@ -1553,7 +1578,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "Si no se indica registry, Kubernetes asume el registro público de Docker (configurable en el runtime), y si no hay etiqueta usa latest; por eso busybox equivale a docker.io/library/busybox:latest.",
-    source: ["https://kubernetes.io/docs/concepts/containers/images/#image-names"]
+    source: ["https://kubernetes.io/docs/concepts/containers/images/#image-names"],
+    holdout: true
   },
   {
     id: "F098",
@@ -1585,7 +1611,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "Las versiones GA pueden marcarse como obsoletas pero no eliminarse dentro de una versión mayor. Las beta dejan de servirse 9 meses o 3 versiones menores después de su deprecación, y las alpha pueden eliminarse en cualquier versión sin aviso previo.",
-    source: ["https://kubernetes.io/docs/reference/using-api/deprecation-policy/#deprecating-parts-of-the-api","https://kubernetes.io/docs/reference/using-api/#api-versioning"]
+    source: ["https://kubernetes.io/docs/reference/using-api/deprecation-policy/#deprecating-parts-of-the-api","https://kubernetes.io/docs/reference/using-api/#api-versioning"],
+    holdout: true
   },
   {
     id: "F100",
@@ -1633,7 +1660,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "El modelo de red de Kubernetes exige una red plana: cada Pod tiene su propia IP y puede comunicarse con cualquier otro Pod sin NAT. Los contenedores de un Pod comparten IP, y el aislamiento por namespace solo se logra con NetworkPolicies.",
-    source: ["https://kubernetes.io/docs/concepts/services-networking/#the-kubernetes-network-model"]
+    source: ["https://kubernetes.io/docs/concepts/services-networking/#the-kubernetes-network-model"],
+    holdout: true
   },
   {
     id: "O002",
@@ -1713,7 +1741,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Con clusterIP: None no se asigna IP virtual ni hay balanceo de kube-proxy; el DNS devuelve directamente las IPs de los Pods. Es lo que usan los StatefulSets para nombres estables por Pod. 'Headless' no es un valor válido de type.",
-    source: ["https://kubernetes.io/docs/concepts/services-networking/service/#headless-services"]
+    source: ["https://kubernetes.io/docs/concepts/services-networking/service/#headless-services"],
+    holdout: true
   },
   {
     id: "O007",
@@ -1793,7 +1822,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "Gateway API (GA desde v1.0, octubre de 2023) es el sucesor de Ingress: se instala como CRDs, separa responsabilidades por rol, es más expresivo (cabeceras, pesos, gRPC, TLS) y, como Ingress, necesita una implementación que la controle.",
-    source: ["https://kubernetes.io/docs/concepts/services-networking/gateway/","https://kubernetes.io/blog/2023/10/31/gateway-api-ga/"]
+    source: ["https://kubernetes.io/docs/concepts/services-networking/gateway/","https://kubernetes.io/blog/2023/10/31/gateway-api-ga/"],
+    holdout: true
   },
   {
     id: "O012",
@@ -1921,7 +1951,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "Un Role define reglas (verbos sobre recursos) en un namespace concreto. ClusterRole es de ámbito de clúster, ClusterRoleBinding asigna permisos en todo el clúster y una ServiceAccount es una identidad, no un permiso.",
-    source: ["https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole"]
+    source: ["https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole"],
+    holdout: true
   },
   {
     id: "O020",
@@ -2001,7 +2032,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "Privileged no impone restricciones, Baseline evita escaladas de privilegio conocidas y Restricted aplica las mejores prácticas de endurecimiento (no-root, sin capabilities, seccomp, etc.).",
-    source: ["https://kubernetes.io/docs/concepts/security/pod-security-standards/"]
+    source: ["https://kubernetes.io/docs/concepts/security/pod-security-standards/"],
+    holdout: true
   },
   {
     id: "O025",
@@ -2017,7 +2049,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "Pod Security Admission se configura con labels en el namespace con el formato pod-security.kubernetes.io/<modo>: <nivel>. Las otras etiquetas no son reconocidas por el controlador.",
-    source: ["https://kubernetes.io/docs/concepts/security/pod-security-admission/#pod-security-admission-labels-for-namespaces"]
+    source: ["https://kubernetes.io/docs/concepts/security/pod-security-admission/#pod-security-admission-labels-for-namespaces"],
+    holdout: true
   },
   {
     id: "O026",
@@ -2065,7 +2098,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "Con runAsNonRoot: true el kubelet valida la imagen y se niega a arrancar el contenedor si fuera a ejecutarse como root. readOnlyRootFilesystem protege el sistema de archivos, pero no cambia el usuario.",
-    source: ["https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#SecurityContext"]
+    source: ["https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#SecurityContext"],
+    holdout: true
   },
   {
     id: "O029",
@@ -2241,7 +2275,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Si la conectividad por IP funciona pero la resolución falla, el problema está en el DNS del clúster: Pods de CoreDNS caídos, su Service kube-dns, su ConfigMap o el /etc/resolv.conf del Pod.",
-    source: ["https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/"]
+    source: ["https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/"],
+    holdout: true
   },
   {
     id: "O040",
@@ -2273,7 +2308,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "El Pod no puede programarse hasta que su PVC esté Bound. Hay que revisar kubectl describe pvc: StorageClass inexistente, provisionador CSI caído o ningún PV que cumpla tamaño y access mode.",
-    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding","https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode"]
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding","https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode"],
+    holdout: true
   },
   {
     id: "O042",
@@ -2337,7 +2373,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "Tras introducir NetworkPolicies, el tráfico no permitido explícitamente se bloquea. Hay que revisar las políticas de ingress del destino y de egress del origen (incluyendo namespaceSelector).",
-    source: ["https://kubernetes.io/docs/concepts/services-networking/network-policies/"]
+    source: ["https://kubernetes.io/docs/concepts/services-networking/network-policies/"],
+    holdout: true
   },
   {
     id: "O046",
@@ -2353,7 +2390,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1,3],
     explanation: "Pending significa que el Pod aún no se ha programado (o no se han creado sus contenedores): falta de recursos, taints sin toleration, afinidad imposible o PVC sin enlazar. Las excepciones y probes solo afectan a contenedores ya en ejecución.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase","https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase","https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"],
+    holdout: true
   },
   {
     id: "O047",
@@ -2513,7 +2551,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "Con WaitForFirstConsumer el volumen se crea en la zona del nodo donde se programa el Pod, evitando discos creados en una zona distinta. El modo Immediate (por defecto) aprovisiona en cuanto se crea el PVC.",
-    source: ["https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode"]
+    source: ["https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode"],
+    holdout: true
   },
   {
     id: "O057",
@@ -2577,7 +2616,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "hostPath monta rutas del nodo dentro del Pod: puede permitir escapar al host y los datos quedan atados a ese nodo. El nivel baseline de Pod Security lo prohíbe.",
-    source: ["https://kubernetes.io/docs/concepts/storage/volumes/#hostpath","https://kubernetes.io/docs/concepts/security/pod-security-standards/#baseline"]
+    source: ["https://kubernetes.io/docs/concepts/storage/volumes/#hostpath","https://kubernetes.io/docs/concepts/security/pod-security-standards/#baseline"],
+    holdout: true
   },
   {
     id: "O061",
@@ -2609,7 +2649,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "Con allowVolumeExpansion: true se puede aumentar spec.resources.requests.storage del PVC y el driver CSI amplía el volumen. Reducir el tamaño no está soportado.",
-    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#expanding-persistent-volumes-claims"]
+    source: ["https://kubernetes.io/docs/concepts/storage/persistent-volumes/#expanding-persistent-volumes-claims"],
+    holdout: true
   },
   {
     id: "O063",
@@ -2625,7 +2666,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "Los microservicios dividen la aplicación en servicios independientes que se despliegan y escalan por separado. A cambio aumentan los componentes y la comunicación por red, la complejidad operativa que un service mesh ayuda a gestionar.",
-    source: ["https://glossary.cncf.io/microservices-architecture/"]
+    source: ["https://glossary.cncf.io/microservices-architecture/"],
+    holdout: true
   },
   {
     id: "O064",
@@ -2641,7 +2683,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "Un native sidecar es un init container con restartPolicy: Always: arranca antes que los contenedores de la app, sigue corriendo toda la vida del Pod, se detiene después de ellos y no impide que un Job se complete.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/"],
+    holdout: true
   },
   {
     id: "O065",
@@ -2705,7 +2748,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "En ambient no hay sidecars: ztunnel, un proxy por nodo, aporta mTLS, identidad y telemetría L4. Los waypoint proxies (Envoy) son opcionales, no se inyectan en cada Pod y solo se despliegan cuando hacen falta funciones L7.",
-    source: ["https://istio.io/latest/docs/ambient/overview/","https://istio.io/latest/docs/overview/dataplane-modes/"]
+    source: ["https://istio.io/latest/docs/ambient/overview/","https://istio.io/latest/docs/overview/dataplane-modes/"],
+    holdout: true
   },
   {
     id: "O069",
@@ -2865,7 +2909,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "La reconciliación continua detecta la deriva (drift) entre el estado real y Git y, con self-heal activado (en Argo CD no lo está por defecto), restaura lo declarado. Para cambiar algo de forma persistente hay que hacerlo en Git.",
-    source: ["https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/"]
+    source: ["https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/"],
+    holdout: true
   },
   {
     id: "D006",
@@ -2897,7 +2942,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "Helm empaqueta aplicaciones como charts (plantillas + valores), las instala como releases versionadas y permite upgrade y rollback. Es un proyecto graduado de la CNCF.",
-    source: ["https://helm.sh/docs/intro/using_helm/","https://www.cncf.io/projects/helm/"]
+    source: ["https://helm.sh/docs/intro/using_helm/","https://www.cncf.io/projects/helm/"],
+    holdout: true
   },
   {
     id: "D008",
@@ -2945,7 +2991,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "Helm 2 necesitaba Tiller dentro del clúster, normalmente con permisos amplios. Desde Helm 3 el cliente habla directamente con el API server y sus permisos se evalúan con el kubeconfig del usuario (RBAC).",
-    source: ["https://helm.sh/docs/faq/changes_since_helm2/"]
+    source: ["https://helm.sh/docs/faq/changes_since_helm2/"],
+    holdout: true
   },
   {
     id: "D011",
@@ -2993,7 +3040,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "Un Deployment solo admite RollingUpdate (por defecto) y Recreate. Blue/green y canary se implementan con varios objetos, una service mesh o herramientas como Argo Rollouts o Flagger.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy"],
+    holdout: true
   },
   {
     id: "D014",
@@ -3009,7 +3057,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Recreate elimina primero todos los Pods antiguos y luego crea los nuevos; es útil cuando dos versiones no pueden coexistir, a costa de una interrupción.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment"],
+    holdout: true
   },
   {
     id: "D015",
@@ -3041,7 +3090,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "Canary expone la nueva versión a un subconjunto de usuarios y amplía el porcentaje si las métricas son buenas, limitando el impacto de un fallo. Blue/green cambia todo el tráfico de una vez.",
-    source: ["https://glossary.cncf.io/canary-deployment/"]
+    source: ["https://glossary.cncf.io/canary-deployment/"],
+    holdout: true
   },
   {
     id: "D017",
@@ -3073,7 +3123,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "kubectl rollout history lista las revisiones (una por ReplicaSet conservado, según revisionHistoryLimit, que por defecto es 10); con --revision=N se ve el detalle de una.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#checking-rollout-history-of-a-deployment","https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#revision-history-limit"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#checking-rollout-history-of-a-deployment","https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#revision-history-limit"],
+    holdout: true
   },
   {
     id: "D019",
@@ -3249,7 +3300,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "kubectl debug node/<nodo> crea un Pod en ese nodo que usa sus namespaces de host (IPC, red y PID) y monta su sistema de archivos raíz en /host, sin necesidad de SSH. Los demás comandos no existen o no aplican a nodos.",
-    source: ["https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#node-shell-session"]
+    source: ["https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#node-shell-session"],
+    holdout: true
   },
   {
     id: "D030",
@@ -3313,7 +3365,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "Los eventos se ordenan con --sort-by; también existe el comando kubectl events, específico para listarlos. Por defecto el API server conserva los eventos solo una hora (--event-ttl=1h).",
-    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_events/","https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/"]
+    source: ["https://kubernetes.io/docs/reference/kubectl/generated/kubectl_events/","https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/"],
+    holdout: true
   },
   {
     id: "D034",
@@ -3329,7 +3382,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1,2],
     explanation: "Completed (fase Succeeded) significa que todos los contenedores terminaron con éxito y no se reiniciarán; es el estado final normal de un Job. OOMKilled y Pending indican otros problemas.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase","https://kubernetes.io/docs/concepts/workloads/controllers/job/"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase","https://kubernetes.io/docs/concepts/workloads/controllers/job/"],
+    holdout: true
   },
   {
     id: "D035",
@@ -3377,7 +3431,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "Prometheus usa un modelo pull: descubre objetivos (por ejemplo vía la API de Kubernetes) y los consulta periódicamente. Para trabajos batch efímeros que no pueden ser 'scrapeados' existe el Pushgateway.",
-    source: ["https://prometheus.io/docs/introduction/overview/"]
+    source: ["https://prometheus.io/docs/introduction/overview/"],
+    holdout: true
   },
   {
     id: "A003",
@@ -3393,7 +3448,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0,1],
     explanation: "Prometheus es una base de datos de series temporales con modelo de labels y el lenguaje PromQL. No es un sistema de logs (para eso existen Loki o Elasticsearch) y es un proyecto graduado de la CNCF desde 2018.",
-    source: ["https://prometheus.io/docs/introduction/overview/","https://www.cncf.io/projects/prometheus/"]
+    source: ["https://prometheus.io/docs/introduction/overview/","https://www.cncf.io/projects/prometheus/"],
+    holdout: true
   },
   {
     id: "A004",
@@ -3537,7 +3593,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [3],
     explanation: "El HPA escala horizontalmente (más o menos réplicas) según métricas de recursos, personalizadas o externas. El VPA ajusta requests, el Cluster Autoscaler añade nodos y el descheduler reubica Pods.",
-    source: ["https://kubernetes.io/docs/concepts/workloads/autoscaling/"]
+    source: ["https://kubernetes.io/docs/concepts/workloads/autoscaling/"],
+    holdout: true
   },
   {
     id: "A013",
@@ -3601,7 +3658,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [1],
     explanation: "KEDA (Kubernetes Event-Driven Autoscaling, graduado en la CNCF en 2023) usa más de 70 'scalers' (Kafka, RabbitMQ, colas cloud, Prometheus...) y trabaja junto al HPA, extendiéndolo, lo que permite escalar de 0 a N.",
-    source: ["https://keda.sh/","https://www.cncf.io/projects/keda/"]
+    source: ["https://keda.sh/","https://www.cncf.io/projects/keda/"],
+    holdout: true
   },
   {
     id: "A017",
@@ -3729,7 +3787,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [2],
     explanation: "El TOC define la visión técnica de la CNCF y vota la aceptación y graduación de proyectos. El Governing Board gestiona presupuesto y asuntos de negocio, y el Steering Committee gobierna solo el proyecto Kubernetes.",
-    source: ["https://www.cncf.io/about/who-we-are/","https://github.com/cncf/toc"]
+    source: ["https://www.cncf.io/about/who-we-are/","https://github.com/cncf/toc"],
+    holdout: true
   },
   {
     id: "A025",
@@ -3809,7 +3868,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "Un WG es temporal: se disuelve al cumplir su objetivo, sirve para temas que cruzan varias SIGs y no posee código ni repositorios (eso queda en las SIGs patrocinadoras).",
-    source: ["https://github.com/kubernetes/community/blob/master/committee-steering/governance/wg-governance.md"]
+    source: ["https://github.com/kubernetes/community/blob/master/committee-steering/governance/wg-governance.md"],
+    holdout: true
   },
   {
     id: "A030",
@@ -3905,7 +3965,8 @@ window.KCNA_QUESTIONS = [
     ],
     answer: [0],
     explanation: "KubeCon + CloudNativeCon es la conferencia insignia de la CNCF (Norteamérica y Europa, además de ediciones en China, Japón e India). No es una certificación, una SIG ni un servicio.",
-    source: ["https://www.cncf.io/kubecon-cloudnativecon-events/"]
+    source: ["https://www.cncf.io/kubecon-cloudnativecon-events/"],
+    holdout: true
   },
   {
     id: "A036",

@@ -100,7 +100,7 @@
 <script>
 (function () {
   'use strict';
-  const QS = window.KCNA_QUESTIONS || [];
+  const QS = (window.KCNA_QUESTIONS || []).filter((q) => !q.holdout); // el banco reservado es para el Examen de graduación del sitio
   const FC = window.KCNA_FLASHCARDS || [];
   const DOMAINS = {
     fundamentals:  { name: 'Kubernetes Fundamentals', weight: 44, color: 'var(--f)', exam: 26 },

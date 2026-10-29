@@ -8,10 +8,10 @@ export interface Progress {
   done: string[];
   /** simulaciones con las que ya se interactuó: ["04:scheduler"] */
   sims: string[];
-  /** estadísticas del quiz por id de pregunta */
-  quiz: Record<string, { seen: number; ok: number; last: boolean }>;
-  /** simulacros entregados */
-  exams: { date: number; score: number; ok: number; total: number; secs: number }[];
+  /** estadísticas del quiz por id de pregunta (first/at: resultado y fecha del primer intento) */
+  quiz: Record<string, QuizStat>;
+  /** simulacros entregados; kind 'final' = Examen de graduación (banco reservado) */
+  exams: { date: number; score: number; ok: number; total: number; secs: number; kind?: 'final'; doms?: Record<string, [number, number]> }[];
   /** flashcards dominadas (término) */
   known: string[];
   /** checklist de entorno */
@@ -21,6 +21,8 @@ export interface Progress {
   /** checklist final "estoy listo" (módulo 13) */
   ready: string[];
 }
+
+export interface QuizStat { seen: number; ok: number; last: boolean; first?: boolean; at?: number }
 
 const KEY = 'kcna.progress.v1';
 const empty = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [] });
@@ -57,8 +59,10 @@ export function touchSim(id: string) {
 }
 
 export function recordAnswer(qid: string, correct: boolean) {
-  const s = progress.quiz[qid] ?? { seen: 0, ok: 0, last: false };
-  progress.quiz[qid] = { seen: s.seen + 1, ok: s.ok + (correct ? 1 : 0), last: correct };
+  const s = progress.quiz[qid];
+  progress.quiz[qid] = s
+    ? { ...s, seen: s.seen + 1, ok: s.ok + (correct ? 1 : 0), last: correct }
+    : { seen: 1, ok: correct ? 1 : 0, last: correct, first: correct, at: Date.now() };
   save();
 }
 

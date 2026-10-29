@@ -54,7 +54,7 @@
   <div class="controls">
     <label for="inicio">Fecha de inicio</label>
     <input id="inicio" type="date" value={startIso} onchange={(e) => setStart((e.currentTarget as HTMLInputElement).value)} />
-    <span class="hint">Semana 1 empieza el {fDay.format(start)}. Reserva el examen el {fDay.format(bookDay)} y preséntate hacia el <strong>{fLong.format(examDay)}</strong>, si llevas dos simulacros seguidos con 85% o más.</span>
+    <span class="hint">Semana 1 empieza el {fDay.format(start)}. Reserva el examen el {fDay.format(bookDay)} y preséntate hacia el <strong>{fLong.format(examDay)}</strong>, si el panel Preparación real de la práctica está en verde.</span>
   </div>
 
   <div class="progress" aria-label="Avance del plan">

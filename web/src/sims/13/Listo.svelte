@@ -3,12 +3,13 @@
   // Al completar todo aparece el resumen con los recursos oficiales y los consejos del día del examen.
   import { progress, toggleReady } from '../../lib/progress.svelte';
   import { DOMAINS, MODULES, pad, type DomainKey } from '../../lib/modules';
+  import { readiness, READY } from '../../lib/preparacion';
 
   interface Item { id: string; text: string }
   interface Group { key: DomainKey | 'metodo' | 'dia'; name: string; weight?: number; items: Item[] }
   const GROUPS: Group[] = [
     { key: 'metodo', name: 'Simulacros y retos', items: [
-      { id: 'sim85', text: 'Saco 85% o más en dos simulacros seguidos de la app, cronometrados y sin apuntes.' },
+      { id: 'sim85', text: 'El panel Preparación real de la app está en verde: examen de graduación (primer intento) con 80% o más y ningún dominio por debajo del 70%.' },
       { id: 'retos', text: 'He completado todos los retos (.\\kcna.ps1 check NN) al menos una vez.' },
     ] },
     { key: 'fundamentals', name: DOMAINS.fundamentals.name, weight: 44, items: [
@@ -43,8 +44,10 @@
   let showResources = $state(false);
 
   // Datos reales del progreso para acompañar dos casillas
-  const lastTwo = $derived(progress.exams.slice(-2).map((e) => e.score));
-  const examHint = $derived(lastTwo.length === 0 ? 'Aún no has entregado ningún simulacro en la app.' : `Tus últimos simulacros: ${lastTwo.map((s) => `${s}%`).join(' y ')}${lastTwo.length === 2 && lastTwo.every((s) => s >= 85) ? ' (objetivo cumplido)' : ''}.`);
+  const prep = $derived(readiness(progress));
+  const examHint = $derived(prep.ready ? 'Preparación real en verde (objetivo cumplido).'
+    : prep.final ? `Examen de graduación: ${prep.final.score}% (meta ${READY.finalPass}% y dominios ≥ ${READY.domainPass}%).`
+    : `Aún no has hecho el examen de graduación. Cobertura ${prep.coverOk ? 'completa' : 'pendiente'}; acierto en preguntas nuevas ${prep.recent.n ? `${prep.recent.pct}%` : 'sin datos'}.`);
   const labs = MODULES.filter((m) => m.lab);
   const labsDone = $derived(labs.filter((m) => progress.done.includes(pad(m.n))).length);
   const chipClass = (k: Group['key']) => (k in DOMAINS ? k : '');
@@ -92,7 +95,7 @@
   </div>
 
   {#if complete}
-    <div class="explain ok">Lista completa. Si los dos últimos simulacros están en 85% o más, reserva fecha: el margen sobre el 75% absorbe los nervios y las preguntas con redacción rara. Lo que sigue es todo lo que necesitas para el día del examen.</div>
+    <div class="explain ok">Lista completa. Si el panel Preparación real está en verde, reserva fecha: el margen sobre el 75% absorbe los nervios y las preguntas con redacción rara. Lo que sigue es todo lo que necesitas para el día del examen.</div>
   {:else}
     <div class="explain">Te faltan {TOTAL - doneCount} casillas. Marca solo lo que de verdad dominas: la lista sirve para encontrar huecos, no para tranquilizarte. Cada hueco apunta a un módulo del curso.</div>
   {/if}

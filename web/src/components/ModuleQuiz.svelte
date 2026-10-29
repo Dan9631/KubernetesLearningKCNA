@@ -8,10 +8,11 @@
   import Escuchar from './Escuchar.svelte';
   import { questionParts, answerParts } from '../lib/voz.svelte';
 
-  interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[] }
+  interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[]; holdout?: boolean }
   let { module }: { module: number } = $props();
 
-  const pool = (preguntas as Q[]).filter((q) => q.module === module);
+  // sin el banco reservado: esas preguntas solo salen en el Examen de graduación
+  const pool = (preguntas as Q[]).filter((q) => q.module === module && !q.holdout);
   let order = $state<number[]>([]);
   let i = $state(0);
   let picked = $state<number[]>([]);

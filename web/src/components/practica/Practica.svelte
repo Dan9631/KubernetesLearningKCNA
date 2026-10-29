@@ -2,14 +2,16 @@
   // Página de práctica: inicio con los modos, práctica por dominio/módulo, repaso de falladas,
   // simulacro cronometrado con revisión final, y progreso del alumno.
   import { onMount } from 'svelte';
-  import preguntas from '../../data/preguntas.json';
   import { DOMAINS, MODULES, pad, url, type DomainKey } from '../../lib/modules';
   import { progress, recordAnswer, resetProgress, save } from '../../lib/progress.svelte';
   import { EXAM_DOMAINS, EXAM_SECONDS, PASS, fmt, fmtDate, isCorrect, pct, prep, shuffle, togglePick, type Item, type Q } from './quiz';
   import Pregunta from './Pregunta.svelte';
   import VozAjustes from '../VozAjustes.svelte';
+  import Preparacion from './Preparacion.svelte';
+  import { PRACTICE, HOLDOUT } from '../../lib/preparacion';
 
-  const QS = preguntas as Q[];
+  // la práctica, los repasos y los simulacros nunca usan el banco reservado (Examen de graduación)
+  const QS = PRACTICE;
   const PRACTICE_N = 20;
   const examMods = MODULES.filter((m) => m.domain !== 'base');
 
@@ -26,7 +28,8 @@
   let left = $state(EXAM_SECONDS);
   let startedAt = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
-  let result = $state<{ score: number; ok: number; secs: number; timeout: boolean } | null>(null);
+  let result = $state<{ score: number; ok: number; secs: number; timeout: boolean; counts: boolean } | null>(null);
+  let finalRun = $state(false); // simulacro con el banco reservado
 
   const cur = $derived(items[idx]);
   const okCount = $derived(items.filter((it) => it.done && isCorrect(it)).length);
@@ -78,9 +81,15 @@
 
   // ---------- simulacro ----------
   function startExam() {
-    stopTimer();
     let sel: Q[] = [];
     for (const d of EXAM_DOMAINS) sel = sel.concat(shuffle(QS.filter((q) => q.domain === d)).slice(0, DOMAINS[d].exam));
+    beginExam(sel, false);
+  }
+  // Examen de graduación: las 60 reservadas (ya vienen con los pesos del examen)
+  function startFinal() { beginExam(HOLDOUT, true); }
+  function beginExam(sel: Q[], final: boolean) {
+    stopTimer();
+    finalRun = final;
     items = shuffle(sel).map(prep); idx = 0; result = null; askSubmit = false;
     startedAt = Date.now(); left = EXAM_SECONDS;
     timer = setInterval(tick, 1000);
@@ -98,9 +107,13 @@
     for (const it of items) { it.done = true; recordAnswer(it.q.id, isCorrect(it)); }
     const ok = items.filter(isCorrect).length;
     const score = pct(ok, items.length);
-    progress.exams.push({ date: Date.now(), score, ok, total: items.length, secs });
+    const doms: Record<string, [number, number]> = {};
+    for (const it of items) { const d = (doms[it.q.domain] ??= [0, 0]); d[1]++; if (isCorrect(it)) d[0]++; }
+    // solo el primer examen de graduación cuenta para la preparación (ver lib/preparacion.ts)
+    const counts = finalRun && !progress.exams.some((e) => e.kind === 'final');
+    progress.exams.push({ date: Date.now(), score, ok, total: items.length, secs, doms, ...(finalRun ? { kind: 'final' as const } : {}) });
     save();
-    result = { score, ok, secs, timeout };
+    result = { score, ok, secs, timeout, counts };
     idx = 0;
     view = 'result';
   }
@@ -167,6 +180,7 @@
 
 {#if view === 'home'}
   <div class="home">
+    <Preparacion onfinal={startFinal} />
     <ul class="modes">
       <li class="mode main">
         <div class="txt">
@@ -233,7 +247,7 @@
             <tbody>
               {#each lastExams as h}
                 <tr>
-                  <td>{fmtDate(h.date)}</td>
+                  <td>{fmtDate(h.date)}{#if h.kind === 'final'} <span class="tag">Graduación</span>{/if}</td>
                   <td class:pass={h.score >= PASS} class:fail={h.score < PASS}>{h.score} % <span class="muted">({h.ok}/{h.total})</span></td>
                   <td class="mono">{fmt(h.secs)}</td>
                 </tr>
@@ -299,7 +313,7 @@
 {:else if view === 'exam' && cur}
   <div class="round">
     <div class="top">
-      <span class="title">Simulacro</span>
+      <span class="title">{finalRun ? 'Examen de graduación' : 'Simulacro'}</span>
       <span class="timer" class:low={left < 300} role="timer" aria-label="Tiempo restante">{fmt(left)}</span>
       <span class="stat">{answeredCount}/{items.length} respondidas</span>
       <VozAjustes />
@@ -333,10 +347,14 @@
 
 {:else if view === 'result' && result}
   <div class="card end" role="status">
-    <p class="muted">{result.timeout ? 'Se acabó el tiempo.' : 'Simulacro entregado.'} Tiempo: {fmt(result.secs)}</p>
-    <h2>Resultado del simulacro</h2>
+    <p class="muted">{result.timeout ? 'Se acabó el tiempo.' : finalRun ? 'Examen de graduación entregado.' : 'Simulacro entregado.'} Tiempo: {fmt(result.secs)}</p>
+    <h2>{finalRun ? 'Resultado del examen de graduación' : 'Resultado del simulacro'}</h2>
     <p class="score" class:pass={result.score >= PASS} class:fail={result.score < PASS}>{result.score} %</p>
     <p>{result.ok} de {items.length} correctas · <strong class:pass={result.score >= PASS} class:fail={result.score < PASS}>{result.score >= PASS ? 'Aprobado' : 'Por debajo del 75 %'}</strong></p>
+
+    {#if finalRun}
+      <p class="note">{result.counts ? 'Este resultado cuenta para tu Preparación real.' : 'Es una repetición: ya conocías estas preguntas, así que no cambia tu Preparación real.'}</p>
+    {/if}
 
     <h3 class="sec">Por dominio</h3>
     <ul class="doms">
@@ -376,7 +394,7 @@
 {:else if view === 'review' && cur}
   <div class="round">
     <div class="top">
-      <span class="title">Revisión del simulacro</span>
+      <span class="title">{finalRun ? 'Revisión del examen de graduación' : 'Revisión del simulacro'}</span>
       <span class="stat">{items.filter(isCorrect).length} de {items.length} correctas</span>
       <VozAjustes />
     </div>
@@ -464,6 +482,8 @@
   .end .sec { margin-top: 22px; }
   .score { font-size: clamp(2.4rem, 2rem + 2vw, 3.2rem); font-weight: 700; line-height: 1.1; margin: 6px 0 4px; letter-spacing: -0.02em; }
   .weak { display: block; overflow-x: auto; }
+  .note { margin-top: 10px; padding: 8px 12px; border-radius: var(--r-m); background: var(--panel-2); font-size: 0.92rem; color: var(--ink-2); }
+  .tag { font-size: 0.72rem; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--ready); color: var(--ready); white-space: nowrap; }
   .weak td { padding-right: 10px; }
 
   @media (max-width: 760px) {

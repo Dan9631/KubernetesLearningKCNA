@@ -78,9 +78,15 @@ Rutina de cada módulo: leer *Conceptos* → `.\kcna.ps1 lab NN` → laboratorio
 | **3** | 8 | [05](05-seguridad.md), [06](06-networking-services.md), [07](07-service-mesh-microservicios.md) | Labs 05, 06 y 07 | *Práctica* por módulo; *Repasar falladas* el fin de semana |
 | **4** | 8 | [08](08-storage.md), [09](09-troubleshooting-debugging.md), [11](11-observabilidad.md) | Labs 08, 09 y 11 | *Práctica* del dominio Container Orchestration. Fin de semana: **primer simulacro** completo como diagnóstico (no importa la nota, importa ver huecos) |
 | **5** | 8 | [10](10-arquitectura-cloud-native.md), [12](12-application-delivery-gitops.md) | Labs 10 y 12 (incluida la parte de Argo CD) | *Práctica* de los dominios Application Delivery y Architecture. **Segundo simulacro** el domingo |
-| **6** | 7 | 13 (este) + repaso | Repite 3-4 retos al azar desde cero (`reset` + `lab` + reto + `check`) | **Simulacros 3 y 4** en condiciones reales (90 min, sin interrupciones, sin apuntes). Entre medias, *Repasar falladas* y *Flashcards*. Lee los *Resumen para repasar* de los 13 módulos |
+| **6** | 7 | 13 (este) + repaso | Repite 3-4 retos al azar desde cero (`reset` + `lab` + reto + `check`) | **Simulacros 3 y 4** en condiciones reales (90 min, sin interrupciones, sin apuntes). Entre medias, *Repasar falladas* y *Flashcards*. Lee los *Resumen para repasar* de los 13 módulos. **Examen de graduación** cuando el panel *Preparación real* lo recomiende |
 
-Cuándo reservar fecha: cuando saques **85% o más en dos simulacros seguidos** de la app (el margen sobre el 75% absorbe los nervios y las preguntas con redacción rara). Reserva al inicio de la semana 5 para tener una fecha que te comprometa; puedes reprogramar con antelación si hace falta.
+Cuándo reservar fecha: cuando el panel **Preparación real** de la *Práctica* esté en verde. Pide tres cosas a la vez:
+
+1. **Cobertura**: has practicado las 13 competencias del temario, con al menos 8 preguntas distintas en cada una.
+2. **Acierto en preguntas nuevas**: 75% o más en las últimas 40 preguntas que respondiste por primera vez. Repetir una pregunta mide memoria, no conocimiento, así que solo cuenta el primer intento.
+3. **Examen de graduación**: 80% o más y ningún dominio por debajo del 70%. Son 60 preguntas reservadas que nunca salen en la práctica ni en los simulacros, y solo cuenta el primer intento. El margen sobre el 75% absorbe los nervios, las preguntas con redacción rara y el error de medir con 60 preguntas.
+
+Los simulacros normales siguen siendo la mejor forma de entrenar el ritmo y encontrar huecos, pero tras unos cuantos ya has visto casi todo el banco de práctica: una nota alta ahí puede ser memoria. Reserva al inicio de la semana 5 para tener una fecha que te comprometa; puedes reprogramar con antelación si hace falta.
 
 Cómo usar el simulacro de la app:
 
@@ -221,7 +227,7 @@ Cómo usar el simulacro de la app:
 
 ## 6. Checklist final: estoy listo si...
 
-- [ ] Saco **85% o más en dos simulacros seguidos** de la app, cronometrados y sin apuntes.
+- [ ] El panel **Preparación real** de la app está en verde: examen de graduación (primer intento) con 80% o más y ningún dominio por debajo del 70%.
 - [ ] Puedo dibujar de memoria la arquitectura de Kubernetes y explicar qué hace cada componente del plano de control y del nodo.
 - [ ] Explico la diferencia entre Pod, ReplicaSet, Deployment, StatefulSet, DaemonSet y Job, y cuándo usar cada uno.
 - [ ] Sé qué tipo de Service usar en cada caso y cómo funciona el DNS interno.
@@ -257,7 +263,7 @@ Cómo usar el simulacro de la app:
 
 - 60 preguntas (instrucciones generales de la LF), 90 minutos, 75% para aprobar, online supervisado (PSI Bridge), dos intentos incluidos, 12 meses para presentarlo, vigencia 2 años; precio de referencia USD 250 (verifícalo siempre).
 - Pesos: Fundamentals 44% · Orchestration 28% · Application Delivery 16% · Architecture 12%. Fundamentals + Orchestration son unas 43 preguntas.
-- Plan: 6 semanas, 7-8 h/semana; un simulacro diagnóstico en la semana 4, y reservar fecha con 85% o más en dos simulacros seguidos.
+- Plan: 6 semanas, 7-8 h/semana; un simulacro diagnóstico en la semana 4, y reservar fecha cuando el panel Preparación real esté en verde (examen de graduación con 80% o más, sin dominios por debajo del 70%).
 - Lee primero la pregunta real (última frase), vigila NOT/EXCEPT/BEST/default, descarta absolutos, marca y vuelve, nunca dejes en blanco.
 - Prepara la logística de PSI con días de antelación: navegador seguro, una pantalla, identificación, habitación despejada.
 - Domina el vocabulario en inglés: el examen no traduce nada (las versiones en japonés y chino son exámenes aparte).
