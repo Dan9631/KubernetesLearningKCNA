@@ -1,10 +1,10 @@
 <script lang="ts">
   // "Escuchar este módulo": lee el texto del módulo párrafo a párrafo, resaltando el que suena.
   // Se salta código, tablas y diagramas, y para antes de "Fuentes oficiales".
-  import { untrack } from 'svelte';
+  import { untrack, onMount } from 'svelte';
   import { voz, play, pause, resume, stop, jump, type Part } from '../lib/voz.svelte';
   import { progress } from '../lib/progress.svelte';
-  import { bloques, findBlock, saveReading, pctOf } from '../lib/lectura';
+  import { bloques, findBlock, saveReading, pctOf, EV_ESCUCHAR } from '../lib/lectura';
   import VozAjustes from './VozAjustes.svelte';
 
   let { module }: { module: string } = $props();
@@ -33,6 +33,12 @@
   });
 
   function start(from = 0) { play(KEY, collect(), from); }
+  // el botón flotante del módulo pide escuchar desde un bloque concreto
+  onMount(() => {
+    const on = (e: Event) => start((e as CustomEvent<{ from: number }>).detail?.from ?? 0);
+    addEventListener(EV_ESCUCHAR, on);
+    return () => removeEventListener(EV_ESCUCHAR, on);
+  });
   // "Desde donde me quedé": el índice se calcula sobre los mismos bloques que guarda el marcador
   const saved = $derived(progress.reading[module]);
   function resumeFrom() {

@@ -18,6 +18,23 @@ export function bloques(prose: HTMLElement): HTMLElement[] {
   return out.filter((b) => b.getClientRects().length && (b.textContent ?? '').trim()); // sin ocultos ni vacíos
 }
 
+/** Línea de lectura: el tercio superior de la pantalla */
+export const LINE = 0.33;
+
+/** Bloque que se está leyendo: el último cuyo inicio ya pasó por la línea de lectura (-1 si aún no empieza el texto) */
+export function currentBlock(blocks: HTMLElement[]): number {
+  const line = innerHeight * LINE;
+  let cur = -1;
+  for (let k = 0; k < blocks.length; k++) { if (blocks[k].getBoundingClientRect().top <= line) cur = k; else break; }
+  return cur;
+}
+
+// El botón flotante del módulo pide acciones a otras islas con eventos de ventana
+/** detail: { from: número de bloque } → "Escuchar este módulo" desde ese bloque */
+export const EV_ESCUCHAR = 'kcna:escuchar';
+/** detail: 'last' | 'far' → el marcador lleva a la última posición o a la más lejana */
+export const EV_IR = 'kcna:ir';
+
 const snippet = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
 export const pctOf = (p: ReadPos) => Math.min(100, Math.round((100 * (p.i + 1)) / Math.max(1, p.n)));
 

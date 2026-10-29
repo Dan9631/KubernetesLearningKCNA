@@ -3,7 +3,7 @@
   // ofrece continuar desde la última posición o desde la más lejana. Ver lib/lectura.ts.
   import { onMount } from 'svelte';
   import { progress } from '../lib/progress.svelte';
-  import { bloques, saveReading, findBlock, sectionOf, pctOf, importReading } from '../lib/lectura';
+  import { bloques, saveReading, findBlock, sectionOf, pctOf, importReading, currentBlock, LINE, EV_IR } from '../lib/lectura';
   import Compartir from './Compartir.svelte';
 
   let { module }: { module: string } = $props();
@@ -11,7 +11,6 @@
   let blocks = $state.raw<HTMLElement[]>([]);
   let show = $state(false);
   let armed = false; // hay desplazamiento del alumno (ver onMount)
-  const LINE = 0.33; // línea de lectura: tercio superior de la pantalla
 
   const saved = $derived(progress.reading[module]);
   const lastI = $derived(saved && blocks.length ? findBlock(blocks, saved.last) : -1);
@@ -29,14 +28,6 @@
     el.classList.remove('marca'); void el.offsetWidth; el.classList.add('marca');
     // los diagramas Mermaid se dibujan después y empujan el texto: se recoloca una vez
     setTimeout(() => { if (Math.abs(el.getBoundingClientRect().top - innerHeight * (LINE - 0.05)) > 60) place(el); }, 900);
-  }
-
-  // Bloque que se está leyendo: el último cuyo inicio ya pasó por el tercio superior de la pantalla
-  function current(): number {
-    const line = innerHeight * LINE;
-    let cur = -1;
-    for (let k = 0; k < blocks.length; k++) { if (blocks[k].getBoundingClientRect().top <= line) cur = k; else break; }
-    return cur;
   }
 
   onMount(() => {
@@ -65,16 +56,19 @@
     for (const ev of INPUT) addEventListener(ev, arm, { passive: true });
     const record = () => {
       if (!armed) return;
-      const i = current();
+      const i = currentBlock(blocks);
       if (i < 0) return; // aún en la cabecera o en las simulaciones: no pisa la posición guardada
       saveReading(module, blocks, i);
       if (show && i >= lastI - 1) show = false;
     };
     const onScroll = () => { clearTimeout(timer); timer = setTimeout(record, 500); };
     const flush = () => { clearTimeout(timer); record(); };
+    // "Volver a donde me quedé" / "Ir a lo más lejos" desde el botón flotante
+    const onIr = (e: Event) => { const to = (e as CustomEvent<'last' | 'far'>).detail; if (to === 'far' ? farI >= 0 : lastI >= 0) irA(to === 'far' ? farI : lastI); };
     addEventListener('scroll', onScroll, { passive: true });
     addEventListener('pagehide', flush);
-    return () => { removeEventListener('scroll', onScroll); removeEventListener('pagehide', flush); for (const ev of INPUT) removeEventListener(ev, arm); clearTimeout(timer); };
+    addEventListener(EV_IR, onIr);
+    return () => { removeEventListener('scroll', onScroll); removeEventListener('pagehide', flush); removeEventListener(EV_IR, onIr); for (const ev of INPUT) removeEventListener(ev, arm); clearTimeout(timer); };
   });
 </script>
 

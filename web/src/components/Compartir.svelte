@@ -2,13 +2,15 @@
   // "Seguir en otro dispositivo": enlace con las posiciones de lectura y su código QR para abrirlo en el teléfono.
   import { shareUrl } from '../lib/lectura';
 
-  let { label = 'Seguir en el teléfono' }: { label?: string } = $props();
+  // boton=false: sin botón propio; otro componente abre el diálogo con open() (bind:this)
+  let { label = 'Seguir en el teléfono', boton = true }: { label?: string; boton?: boolean } = $props();
   let dlg: HTMLDialogElement | undefined = $state();
   let link = $state<{ href: string; local: boolean } | null>(null);
   let svg = $state('');
   let copied = $state(false);
+  const uid = $props.id(); // puede haber varios en la página (aviso y botón flotante)
 
-  async function open() {
+  export async function open() {
     link = shareUrl();
     if (!link) return;
     // la librería del QR solo se descarga al abrir el diálogo
@@ -26,14 +28,16 @@
   }
 </script>
 
+{#if boton}
 <button type="button" class="btn small" onclick={open}>
   <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><rect x="5.5" y="2.5" width="9" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M9 15h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
   {label}
 </button>
+{/if}
 
-<dialog bind:this={dlg} aria-labelledby="qr-t" onclick={(e) => { if (e.target === dlg) dlg?.close(); }}>
+<dialog bind:this={dlg} aria-labelledby="{uid}-t" onclick={(e) => { if (e.target === dlg) dlg?.close(); }}>
   {#if link}
-    <h2 id="qr-t">Sigue leyendo en otro dispositivo</h2>
+    <h2 id="{uid}-t">Sigue leyendo en otro dispositivo</h2>
     <p>Escanea el código con la cámara del teléfono. Se abre el módulo donde te quedaste y guarda tus posiciones de lectura en ese navegador.</p>
     <div class="qr" role="img" aria-label="Código QR del enlace">{@html svg}</div>
     <label class="url"><span class="visually-hidden">Enlace</span><input readonly value={link.href} onfocus={(e) => e.currentTarget.select()} /></label>
