@@ -20,7 +20,12 @@ export interface Progress {
   plan: string[];
   /** checklist final "estoy listo" (módulo 13) */
   ready: string[];
+  /** marcador de lectura por módulo: última posición y la más lejana (ver lib/lectura.ts) */
+  reading: Record<string, { last: ReadPos; far: ReadPos }>;
 }
+
+/** Posición de lectura: índice del bloque (párrafo, encabezado o viñeta), total de bloques, fecha y el inicio del texto para reencontrarlo */
+export interface ReadPos { i: number; n: number; t: number; txt?: string }
 
 /** Confianza declarada al responder: Seguro, Dudo, Adivino */
 export type Conf = 's' | 'd' | 'a';
@@ -42,7 +47,7 @@ export const DAY = 86_400_000;
 export const INTERVALS = [0, 1, 3, 7, 16, 35];
 
 const KEY = 'kcna.progress.v1';
-const empty = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [] });
+const empty = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [], reading: {} });
 
 function load(): Progress {
   if (typeof localStorage === 'undefined') return empty();

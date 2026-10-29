@@ -149,6 +149,10 @@ p { margin: 0; }
 .prose h2 { margin-top: 2.4em; padding-top: 0.6em; border-top: 1px solid var(--line-2); }
 .prose h3 { margin-top: 1.8em; }
 .prose h4 { margin-top: 1.4em; }
+/* párrafo al que lleva "Continuar" del marcador de lectura */
+@keyframes marca { from { background: var(--wait-2); box-shadow: 0 0 0 6px var(--wait-2); } to { background: transparent; box-shadow: 0 0 0 6px transparent; } }
+.prose .marca { border-radius: 4px; animation: marca 2.4s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .prose .marca { animation-duration: 0.01s; } }
 /* párrafo que está leyendo "Escuchar este módulo" */
 .prose .leyendo { background: var(--helm-2); box-shadow: 0 0 0 6px var(--helm-2); border-radius: 4px; transition: background var(--dur), box-shadow var(--dur); }
 .prose p, .prose li { color: var(--ink); }

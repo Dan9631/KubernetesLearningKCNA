@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Ruta from '../components/Ruta.svelte';
 import HeroCluster from '../sims/HeroCluster.svelte';
+import SeguirLeyendo from '../components/SeguirLeyendo.svelte';
 import { DOMAINS, url } from '../lib/modules';
 const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] as const).map((k) => ({ k, ...DOMAINS[k] }));
 ---
@@ -15,6 +16,7 @@ const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] a
         <a class="btn primary" href={url('/modulos/00')}>Empezar por el laboratorio</a>
         <a class="btn" href={url('/practica')}>Hacer un simulacro</a>
       </div>
+      <SeguirLeyendo client:load />
     </div>
     <div class="live">
       <HeroCluster client:load />

@@ -1,7 +1,10 @@
 <script lang="ts">
   // "Escuchar este módulo": lee el texto del módulo párrafo a párrafo, resaltando el que suena.
   // Se salta código, tablas y diagramas, y para antes de "Fuentes oficiales".
+  import { untrack } from 'svelte';
   import { voz, play, pause, resume, stop, jump, type Part } from '../lib/voz.svelte';
+  import { progress } from '../lib/progress.svelte';
+  import { bloques, findBlock, saveReading, pctOf } from '../lib/lectura';
   import VozAjustes from './VozAjustes.svelte';
 
   let { module }: { module: string } = $props();
@@ -11,14 +14,7 @@
 
   function collect(): Part[] {
     const prose = root?.closest('article')?.querySelector<HTMLElement>('.prose');
-    blocks = [];
-    if (!prose) return [];
-    for (const el of prose.children as HTMLCollectionOf<HTMLElement>) {
-      if (el.tagName === 'H2' && /fuentes oficiales/i.test(el.textContent ?? '')) break;
-      if (/^(H[1-4]|P|BLOCKQUOTE)$/.test(el.tagName)) blocks.push(el);
-      else if (/^(UL|OL)$/.test(el.tagName)) blocks.push(...([...el.children] as HTMLElement[]));
-    }
-    blocks = blocks.filter((b) => b.getClientRects().length && (b.textContent ?? '').trim()); // sin ocultos ni vacíos
+    blocks = prose ? bloques(prose) : [];
     return blocks.map((b) => ({ text: b.textContent ?? '', lang: 'es' }));
   }
 
@@ -29,23 +25,35 @@
     const el = active ? blocks[voz.part] : undefined;
     if (!el) return;
     el.classList.add('leyendo');
+    const i = voz.part;
+    untrack(() => saveReading(module, blocks, i)); // escuchar también cuenta como leer
     const r = el.getBoundingClientRect();
     if (r.top < 80 || r.bottom > innerHeight - 110) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return () => el.classList.remove('leyendo');
   });
 
-  function start() { play(KEY, collect()); }
+  function start(from = 0) { play(KEY, collect(), from); }
+  // "Desde donde me quedé": el índice se calcula sobre los mismos bloques que guarda el marcador
+  const saved = $derived(progress.reading[module]);
+  function resumeFrom() {
+    const parts = collect();
+    if (saved) play(KEY, parts, findBlock(blocks, saved.last));
+  }
 </script>
 
 <div bind:this={root} class="hueco" class:activo={active}>
   {#if voz.supported}
     <div class="lector" class:on={active} role="group" aria-label="Escuchar este módulo">
       {#if !active}
-        <button type="button" class="btn small" onclick={start}>
+        <button type="button" class="btn small" onclick={() => start()}>
           <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M3 8h3l4-3.5v11L6 12H3z" fill="currentColor" /><path d="M13 7.2a4 4 0 0 1 0 5.6M15.2 5a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
           Escuchar este módulo
         </button>
-        <span class="hint">Se salta el código y los diagramas.</span>
+        {#if saved && saved.last.i > 0}
+          <button type="button" class="btn small" onclick={resumeFrom}>Desde donde me quedé ({pctOf(saved.last)} %)</button>
+        {:else}
+          <span class="hint">Se salta el código y los diagramas.</span>
+        {/if}
       {:else}
         <button type="button" class="btn small" onclick={() => jump(voz.part - 1)} disabled={voz.part === 0} aria-label="Párrafo anterior">⏮</button>
         {#if voz.status === 'paused'}
