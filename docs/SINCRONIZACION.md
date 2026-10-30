@@ -36,6 +36,8 @@ Cada sincronización descarga el registro, lo descifra, lo **combina** con el pr
 | Simulacros | Unión por fecha |
 | Pasos de laboratorio, módulos terminados, flashcards dominadas, checklists | Unión |
 | Lectura | Última posición: la más reciente; más lejana: la mayor |
+| Días de estudio | Unión, quedándose con los últimos 120 |
+| Fecha del examen | Gana el cambio más reciente (también quitarla) |
 | "Borrar mi progreso" | Guarda la fecha del borrado (`resetAt`); al combinar, se descarta el lado anterior a esa fecha, así el borrado llega a todos los dispositivos |
 
 Limitación conocida: como las listas se combinan por unión, desmarcar algo en un dispositivo no lo desmarca en los demás.

@@ -6,7 +6,8 @@
 // Además: fallos con "Seguro" pendientes (ideas equivocadas) y repetición espaciada ("Repaso del día").
 import preguntas from '../data/preguntas.json';
 import { COMPETENCIES, canonical, type Competency } from './curriculum';
-import type { Conf, Progress, QuizStat } from './progress.svelte';
+import { MODULES, url } from './modules';
+import { DAY, type Conf, type Progress, type QuizStat } from './progress.svelte';
 import type { Q } from '../components/practica/quiz';
 
 export const READY = {
@@ -102,4 +103,50 @@ export function readiness(p: Progress) {
     finalAdvised: coverOk && firstReady,
     ready: coverOk && firstReady && finalOk && sureMisses.length === 0,
   };
+}
+
+/** Módulo del curso que enseña una competencia (para enlazar "practica X") */
+export function moduleFor(c: Competency) {
+  return MODULES.find((m) => m.domain !== 'base' && m.topics.map(canonical).includes(c.name));
+}
+
+/** Siguiente paso según las señales de preparación, con su acción (portada "Hoy" y panel de la práctica) */
+export function nextStep(r: ReturnType<typeof readiness>): { text: string; href: string; label: string } {
+  const practica = url('/practica');
+  if (r.ready) return { text: 'Listo para reservar fecha. Mantén el ritmo con simulacros hasta el día del examen.', href: url('/practica?modo=simulacro'), label: 'Hacer un simulacro' };
+  if (!r.coverOk) {
+    // la competencia con menos preguntas vistas respecto a lo que pide
+    const gap = r.rows.filter((x) => x.seen < x.need).sort((a, b) => a.seen / a.need - b.seen / b.need)[0];
+    const m = moduleFor(gap.c);
+    return { text: `Siguiente paso: practica ${gap.c.name} (${gap.seen} de ${gap.need} preguntas vistas).`, href: m ? url(`/practica?modo=practica&modulo=${m.n}`) : url('/practica?modo=practica'), label: 'Practicar' };
+  }
+  if (!r.firstReady) return { text: 'Siguiente paso: sube tu acierto en preguntas nuevas antes de gastar el examen de graduación.', href: url('/practica?modo=practica'), label: 'Practicar' };
+  if (!r.final) return { text: 'Siguiente paso: haz el examen de graduación.', href: practica, label: 'Ir a la práctica' };
+  if (r.finalOk && r.sureMisses.length) return { text: 'Siguiente paso: corrige tus fallos con seguridad en el Repaso del día.', href: url('/practica?modo=repaso'), label: 'Repasar' };
+  return { text: 'Siguiente paso: repasa los dominios flojos del examen de graduación; tu estimación no mejorará repitiéndolo.', href: practica, label: 'Ir a la práctica' };
+}
+
+/** Estado de memoria por competencia según la caja de Leitner: frágil (caja 1, vuelve mañana),
+ *  en proceso (cajas 2-3) y firme (cajas 4-5, repasos a 16 y 35 días). Las estadísticas antiguas
+ *  sin caja se clasifican como lo haría recordAnswer. */
+export function memoria(p: Progress) {
+  const eod = endOfToday();
+  return COMPETENCIES.map((c) => {
+    const qs = PRACTICE.filter((q) => canonical(q.topic) === c.name);
+    let fragil = 0, proceso = 0, firme = 0, due = 0;
+    for (const q of qs) {
+      const s = p.quiz[q.id];
+      if (!s) continue;
+      const box = s.box ?? (s.last ? 2 : 1);
+      if (box >= 4) firme++; else if (box >= 2) proceso++; else fragil++;
+      if (isDue(s, eod)) due++;
+    }
+    return { c, total: qs.length, fragil, proceso, firme, due, module: moduleFor(c) };
+  });
+}
+
+/** Preguntas que vencen mañana (para "mañana vencen N") */
+export function dueTomorrow(p: Progress) {
+  const eod = endOfToday();
+  return PRACTICE.filter((q) => { const d = p.quiz[q.id]?.due; return d !== undefined && d > eod && d <= eod + DAY; }).length;
 }

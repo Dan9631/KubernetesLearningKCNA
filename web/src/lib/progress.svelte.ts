@@ -22,6 +22,10 @@ export interface Progress {
   ready: string[];
   /** marcador de lectura por módulo: última posición y la más lejana (ver lib/lectura.ts) */
   reading: Record<string, { last: ReadPos; far: ReadPos }>;
+  /** días con estudio (YYYY-MM-DD, hora local) para la constancia de la portada; se guardan los últimos KEEP_DAYS */
+  days: string[];
+  /** fecha del examen (YYYY-MM-DD; '' = sin fecha) y cuándo se cambió: al sincronizar gana el cambio más reciente */
+  exam?: { date: string; t: number };
   /** fecha del último "Borrar mi progreso": al sincronizar, lo anterior a esa fecha se descarta en todos los dispositivos */
   resetAt?: number;
 }
@@ -49,7 +53,19 @@ export const DAY = 86_400_000;
 export const INTERVALS = [0, 1, 3, 7, 16, 35];
 
 const KEY = 'kcna.progress.v1';
-export const emptyProgress = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [], reading: {} });
+export const emptyProgress = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [], reading: {}, days: [] });
+
+export const KEEP_DAYS = 120;
+/** Fecha local YYYY-MM-DD (no UTC: el día de estudio es el del reloj del alumno) */
+export function isoDay(t = Date.now()) {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+/** Marca hoy como día de estudio; quien llama se encarga de guardar */
+export function markToday() {
+  const d = isoDay();
+  if (!progress.days.includes(d)) progress.days = [...progress.days, d].slice(-KEEP_DAYS);
+}
 
 function load(): Progress {
   if (typeof localStorage === 'undefined') return emptyProgress();
@@ -75,11 +91,18 @@ export function save() {
 export function toggleStep(mod: string, step: string) {
   const list = progress.steps[mod] ?? [];
   progress.steps[mod] = list.includes(step) ? list.filter((s) => s !== step) : [...list, step];
+  markToday();
   save();
 }
 
 export function toggleDone(mod: string) {
   progress.done = progress.done.includes(mod) ? progress.done.filter((m) => m !== mod) : [...progress.done, mod];
+  markToday();
+  save();
+}
+
+export function setExamDate(date: string) {
+  progress.exam = { date, t: Date.now() };
   save();
 }
 
@@ -107,6 +130,7 @@ export function recordAnswer(qid: string, correct: boolean, conf?: Conf) {
   n.box = box;
   n.due = now + INTERVALS[box] * DAY;
   progress.quiz[qid] = n;
+  markToday();
   save();
 }
 

@@ -3,10 +3,21 @@ import Base from '../layouts/Base.astro';
 import Ruta from '../components/Ruta.svelte';
 import HeroCluster from '../sims/HeroCluster.svelte';
 import SeguirLeyendo from '../components/SeguirLeyendo.svelte';
+import Hoy from '../components/Hoy.svelte';
 import { DOMAINS, url } from '../lib/modules';
 const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] as const).map((k) => ({ k, ...DOMAINS[k] }));
 ---
 <Base title="Curso interactivo" width="wide">
+  <script is:inline>
+    // Antes de pintar: si ya hay progreso, la portada abre con "Hoy" y el hero se compacta (sin parpadeo)
+    try {
+      const p = JSON.parse(localStorage.getItem('kcna.progress.v1') || '{}');
+      const any = (o) => o && Object.keys(o).length > 0;
+      if (any(p.quiz) || any(p.reading) || any(p.steps) || (p.done && p.done.length)) document.documentElement.dataset.vuelve = '';
+    } catch {}
+  </script>
+  <Hoy client:load />
+
   <section class="hero">
     <div class="copy">
       <p class="kicker">Kubernetes and Cloud Native Associate</p>
@@ -64,5 +75,8 @@ const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] a
   .route { padding: 36px 0; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 40px; }
   .rhead { position: sticky; top: 80px; align-self: start; }
   @keyframes grow { from { width: 0; } }
+  /* quien vuelve ya tiene "Hoy" arriba: el hero queda como recordatorio de la idea central, sin llamadas de bienvenida */
+  :global([data-vuelve]) .hero { padding-top: 36px; }
+  :global([data-vuelve]) .hero .lead, :global([data-vuelve]) .hero .cta, :global([data-vuelve]) .hero .copy :global(.seguir) { display: none; }
   @media (max-width: 900px) { .hero, .route { grid-template-columns: 1fr; gap: 24px; } .hero { padding-top: 28px; } .rhead { position: static; } }
 </style>

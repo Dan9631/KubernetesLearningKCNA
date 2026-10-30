@@ -2,7 +2,7 @@
   // Panel "Preparación real": tres señales para decidir cuándo reservar fecha sin engañarse
   // por haber memorizado el banco. Cálculo en lib/preparacion.ts.
   import { progress } from '../../lib/progress.svelte';
-  import { READY, HOLDOUT, CONF_LABEL, readiness } from '../../lib/preparacion';
+  import { READY, HOLDOUT, CONF_LABEL, readiness, nextStep } from '../../lib/preparacion';
   import type { Conf } from '../../lib/progress.svelte';
   import { DOMAINS, type DomainKey } from '../../lib/modules';
   import { fmtDate, pct } from './quiz';
@@ -14,14 +14,7 @@
   const step2 = $derived(r.firstReady && r.sureMisses.length === 0);
   const calibRows = $derived((['s', 'd', 'a'] as Conf[]).filter((k) => r.calib[k].n > 0));
 
-  const next = $derived(
-    r.ready ? 'Listo para reservar fecha. Mantén el ritmo con simulacros hasta el día del examen.'
-    : !r.coverOk ? 'Siguiente paso: practica las competencias que faltan.'
-    : !r.firstReady ? 'Siguiente paso: sube tu acierto en preguntas nuevas antes de gastar el examen de graduación.'
-    : !r.final ? 'Siguiente paso: haz el examen de graduación.'
-    : r.finalOk && r.sureMisses.length ? 'Siguiente paso: corrige tus fallos con seguridad en el Repaso del día.'
-    : 'Siguiente paso: repasa los dominios flojos del examen de graduación; tu estimación no mejorará repitiéndolo.'
-  );
+  const next = $derived(nextStep(r).text);
 </script>
 
 <section class="prep" class:ready={r.ready} aria-labelledby="h-prep">

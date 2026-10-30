@@ -1,7 +1,7 @@
 // Marcador de lectura, como en Kindle: por módulo se guarda la última posición y la más lejana.
 // La posición es un bloque del texto (párrafo, encabezado o viñeta), no píxeles: así sirve en
 // cualquier ancho de pantalla. El enlace "?r=" lleva las posiciones a otro dispositivo (QR).
-import { progress, save, type ReadPos } from './progress.svelte';
+import { progress, save, markToday, type ReadPos } from './progress.svelte';
 import { url } from './modules';
 
 /** Sitio publicado: un enlace a localhost no abre en el teléfono */
@@ -45,6 +45,7 @@ export function saveReading(mod: string, blocks: HTMLElement[], i: number) {
   const far = !cur || i >= cur.far.i ? pos : cur.far;
   if (cur && cur.last.i === i && far === cur.far) return; // sin cambios: no reescribir el almacenamiento
   progress.reading[mod] = { last: pos, far };
+  markToday();
   save();
 }
 

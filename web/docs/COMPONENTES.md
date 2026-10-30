@@ -27,7 +27,9 @@ web/
   src/components/VozAjustes.svelte voz en español, voz en inglés y velocidad (localStorage)
   src/data/preguntas.json         292 preguntas, 60 reservadas (generado por scripts/sync-data.mjs)
   src/data/flashcards.json        150 términos
-  src/pages/index.astro           portada
+  src/components/Hoy.svelte       portada de quien ya empezó: cuenta atrás, Repaso del día, seguir leyendo, siguiente paso, semana
+  src/components/MapaMemoria.svelte memoria por competencia según la caja de Leitner (crece desde la visita anterior)
+  src/pages/index.astro           portada (bienvenida; "Hoy" arriba si ya hay progreso)
   src/pages/modulos/[id].astro    página de módulo (no tocar salvo acuerdo)
   src/pages/entorno.astro         consideraciones del entorno
   src/pages/practica.astro        quiz / simulacro / flashcards

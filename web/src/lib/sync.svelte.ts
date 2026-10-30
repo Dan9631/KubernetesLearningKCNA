@@ -1,7 +1,7 @@
 // Sincronización opcional del progreso con el Worker de Cloudflare (sync/). Ver docs/SINCRONIZACION.md.
 // Del código de sincronización salen, con HKDF, el id del registro, el token y la clave AES-GCM;
 // el progreso se comprime y se cifra aquí, así que el servidor solo guarda bloques ilegibles.
-import { progress, save, onSave, emptyProgress, type Progress, type QuizStat } from './progress.svelte';
+import { progress, save, onSave, emptyProgress, KEEP_DAYS, type Progress, type QuizStat } from './progress.svelte';
 import { url } from './modules';
 import { PUBLIC_SITE } from './lectura';
 
@@ -91,6 +91,8 @@ export function merge(a: Progress, b: Progress): Progress {
   const ex = new Map([...a.exams, ...b.exams].map((e) => [`${e.date}:${e.kind ?? ''}`, e]));
   out.exams = [...ex.values()].sort((x, y) => x.date - y.date);
   for (const k of ['done', 'sims', 'known', 'env', 'plan', 'ready'] as const) out[k] = uni(a[k], b[k]);
+  out.days = uni(a.days, b.days).sort().slice(-KEEP_DAYS);
+  if (a.exam || b.exam) out.exam = (b.exam?.t ?? 0) > (a.exam?.t ?? 0) ? b.exam : a.exam;
   for (const m of new Set([...Object.keys(a.reading), ...Object.keys(b.reading)])) {
     const x = a.reading[m], y = b.reading[m];
     out.reading[m] = !x ? y : !y ? x : { last: y.last.t > x.last.t ? y.last : x.last, far: y.far.i > x.far.i ? y.far : x.far };
