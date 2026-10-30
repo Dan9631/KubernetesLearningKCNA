@@ -22,6 +22,8 @@ export interface Progress {
   ready: string[];
   /** marcador de lectura por módulo: última posición y la más lejana (ver lib/lectura.ts) */
   reading: Record<string, { last: ReadPos; far: ReadPos }>;
+  /** retos superados fuera del quiz: misiones de la Terminal ("term:crear") y casos de diagnóstico del módulo 09 ("diag:shop") */
+  retos: string[];
   /** días con estudio (YYYY-MM-DD, hora local) para la constancia de la portada; se guardan los últimos KEEP_DAYS */
   days: string[];
   /** fecha del examen (YYYY-MM-DD; '' = sin fecha) y cuándo se cambió: al sincronizar gana el cambio más reciente */
@@ -53,7 +55,7 @@ export const DAY = 86_400_000;
 export const INTERVALS = [0, 1, 3, 7, 16, 35];
 
 const KEY = 'kcna.progress.v1';
-export const emptyProgress = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [], reading: {}, days: [] });
+export const emptyProgress = (): Progress => ({ steps: {}, done: [], sims: [], quiz: {}, exams: [], known: [], env: [], plan: [], ready: [], reading: {}, retos: [], days: [] });
 
 export const KEEP_DAYS = 120;
 /** Fecha local YYYY-MM-DD (no UTC: el día de estudio es el del reloj del alumno) */
@@ -103,6 +105,14 @@ export function toggleDone(mod: string) {
 
 export function setExamDate(date: string) {
   progress.exam = { date, t: Date.now() };
+  save();
+}
+
+/** Guarda un reto superado (una vez); cuenta como día de estudio */
+export function addReto(id: string) {
+  if (progress.retos.includes(id)) return;
+  progress.retos = [...progress.retos, id];
+  markToday();
   save();
 }
 

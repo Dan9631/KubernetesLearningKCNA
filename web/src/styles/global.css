@@ -153,6 +153,8 @@ p { margin: 0; }
 .prose > * + * { margin-top: 1em; }
 .prose h2 { margin-top: 2.4em; padding-top: 0.6em; border-top: 1px solid var(--line-2); }
 .prose h3 { margin-top: 1.8em; }
+/* al saltar a una sección (índice, enlaces con #) el título no queda debajo de la cabecera fija */
+.prose :is(h2, h3, h4) { scroll-margin-top: 72px; }
 .prose h4 { margin-top: 1.4em; }
 /* párrafo al que lleva "Continuar" del marcador de lectura */
 @keyframes marca { from { background: var(--wait-2); box-shadow: 0 0 0 6px var(--wait-2); } to { background: transparent; box-shadow: 0 0 0 6px transparent; } }

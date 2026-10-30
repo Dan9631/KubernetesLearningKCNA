@@ -2,9 +2,9 @@
   // Panel "Preparación real": tres señales para decidir cuándo reservar fecha sin engañarse
   // por haber memorizado el banco. Cálculo en lib/preparacion.ts.
   import { progress } from '../../lib/progress.svelte';
-  import { READY, HOLDOUT, CONF_LABEL, readiness, nextStep } from '../../lib/preparacion';
+  import { READY, HOLDOUT, CONF_LABEL, readiness, nextStep, trampas } from '../../lib/preparacion';
   import type { Conf } from '../../lib/progress.svelte';
-  import { DOMAINS, type DomainKey } from '../../lib/modules';
+  import { DOMAINS, moduleUrl, type DomainKey } from '../../lib/modules';
   import { fmtDate, pct } from './quiz';
 
   let { onfinal }: { onfinal: () => void } = $props();
@@ -15,6 +15,9 @@
   const calibRows = $derived((['s', 'd', 'a'] as Conf[]).filter((k) => r.calib[k].n > 0));
 
   const next = $derived(nextStep(r).text);
+  // tipos de pregunta que te cuestan más que el resto (lib/preparacion.ts trampas)
+  const traps = $derived(trampas(progress));
+  const TECNICAS = `${moduleUrl(13)}#4-técnicas-para-preguntas-de-opción-múltiple-en-inglés`;
 </script>
 
 <section class="prep" class:ready={r.ready} aria-labelledby="h-prep">
@@ -69,6 +72,9 @@
           </p>
           {#if r.calib.s.n >= 10 && pct(r.calib.s.ok, r.calib.s.n) < 90}<p class="muted">Cuando dices «Seguro» deberías acertar casi siempre: hoy hay exceso de confianza. Revisa la explicación completa de esas preguntas, no solo la respuesta.</p>{/if}
         {/if}
+        {#each traps as t (t.key)}
+          <p class="trap">En preguntas {t.label} aciertas <strong class="bad">{t.inn.pct} %</strong>, frente al {t.out.pct} % en el resto. {t.tip} <a href={TECNICAS}>Técnicas del módulo 13</a>.</p>
+        {/each}
       </div>
     </li>
 
@@ -124,6 +130,7 @@
   .fail { color: var(--fail); }
   li p.bad, strong.bad { color: var(--fail); }
   .calib { font-size: 0.88rem; }
+  .trap { font-size: 0.88rem; color: var(--ink-2); padding-left: 10px; border-left: 2px solid var(--wait); }
   .act { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
   .confirm { margin-top: 10px; padding: 10px 12px; border-radius: var(--r-m); background: var(--wait-2); border-left: 3px solid var(--wait); }
   .confirm p { color: var(--ink); margin: 0; }

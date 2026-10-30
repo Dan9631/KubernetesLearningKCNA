@@ -13,7 +13,7 @@ const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] a
     try {
       const p = JSON.parse(localStorage.getItem('kcna.progress.v1') || '{}');
       const any = (o) => o && Object.keys(o).length > 0;
-      if (any(p.quiz) || any(p.reading) || any(p.steps) || (p.done && p.done.length)) document.documentElement.dataset.vuelve = '';
+      if (any(p.quiz) || any(p.reading) || any(p.steps) || (p.done && p.done.length) || (p.retos && p.retos.length)) document.documentElement.dataset.vuelve = '';
     } catch {}
   </script>
   <Hoy client:load />

@@ -145,6 +145,29 @@ export function memoria(p: Progress) {
   });
 }
 
+/** Tipos de pregunta que suelen costar puntos aunque se sepa el tema (técnicas: módulo 13, sección 4) */
+export const TRAMPAS: { key: string; label: string; test: (q: Q) => boolean; tip: string }[] = [
+  { key: 'multi', label: 'de varias respuestas («Choose 2»)', test: (q) => q.answer.length > 1,
+    tip: 'Valida cada opción por separado, como si fuera verdadero o falso, y marca exactamente las que pide el enunciado.' },
+  { key: 'superl', label: 'con MOST, BEST, FIRST o primary', test: (q) => /\b(most|best|first|primary)\b/i.test(q.q),
+    tip: 'Varias opciones pueden ser ciertas: busca la que responde exactamente a esa palabra.' },
+  { key: 'neg', label: 'con NOT o EXCEPT', test: (q) => /\b(NOT|EXCEPT|LEAST|FALSE|INCORRECT)\b/.test(q.q),
+    tip: 'Buscas la opción falsa: lee la última frase primero y no pierdas de vista la negación.' },
+];
+export const TRAMPA_MIN = 8; // preguntas vistas de cada lado para que la diferencia signifique algo
+
+/** Tipos de pregunta en los que el alumno acierta 10 puntos o más por debajo del resto */
+export function trampas(p: Progress) {
+  const seen = PRACTICE.filter((q) => p.quiz[q.id]);
+  const acc = (qs: Q[]) => {
+    let ok = 0, n = 0;
+    for (const q of qs) { ok += p.quiz[q.id].ok; n += p.quiz[q.id].seen; }
+    return { qs: qs.length, pct: n ? Math.round((100 * ok) / n) : 0 };
+  };
+  return TRAMPAS.map((t) => ({ ...t, inn: acc(seen.filter(t.test)), out: acc(seen.filter((q) => !t.test(q))) }))
+    .filter((x) => x.inn.qs >= TRAMPA_MIN && x.out.qs >= TRAMPA_MIN && x.out.pct - x.inn.pct >= 10);
+}
+
 /** Preguntas que vencen mañana (para "mañana vencen N") */
 export function dueTomorrow(p: Progress) {
   const eod = endOfToday();

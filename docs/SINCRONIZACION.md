@@ -34,7 +34,7 @@ Cada sincronización descarga el registro, lo descifra, lo **combina** con el pr
 |---|---|
 | Estadísticas por pregunta | Gana la que tiene más intentos (`seen`); si empatan, la de repaso más reciente |
 | Simulacros | Unión por fecha |
-| Pasos de laboratorio, módulos terminados, flashcards dominadas, checklists | Unión |
+| Pasos de laboratorio, módulos terminados, flashcards dominadas, checklists, misiones de la Terminal y casos de diagnóstico | Unión |
 | Lectura | Última posición: la más reciente; más lejana: la mayor |
 | Días de estudio | Unión, quedándose con los últimos 120 |
 | Fecha del examen | Gana el cambio más reciente (también quitarla) |

@@ -90,7 +90,7 @@ export function merge(a: Progress, b: Progress): Progress {
   for (const id of new Set([...Object.keys(a.quiz), ...Object.keys(b.quiz)])) out.quiz[id] = better(a.quiz[id], b.quiz[id]);
   const ex = new Map([...a.exams, ...b.exams].map((e) => [`${e.date}:${e.kind ?? ''}`, e]));
   out.exams = [...ex.values()].sort((x, y) => x.date - y.date);
-  for (const k of ['done', 'sims', 'known', 'env', 'plan', 'ready'] as const) out[k] = uni(a[k], b[k]);
+  for (const k of ['done', 'sims', 'known', 'env', 'plan', 'ready', 'retos'] as const) out[k] = uni(a[k], b[k]);
   out.days = uni(a.days, b.days).sort().slice(-KEEP_DAYS);
   if (a.exam || b.exam) out.exam = (b.exam?.t ?? 0) > (a.exam?.t ?? 0) ? b.exam : a.exam;
   for (const m of new Set([...Object.keys(a.reading), ...Object.keys(b.reading)])) {

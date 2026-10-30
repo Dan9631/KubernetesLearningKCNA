@@ -5,6 +5,7 @@
   import { Cluster, imageTag } from '../../lib/kube/cluster.ts';
   import { execute, complete, PROMPT, HELP } from '../../lib/kube/kubectl.ts';
   import { MISSIONS } from '../../lib/kube/missions.ts';
+  import { progress, addReto } from '../../lib/progress.svelte';
 
   interface Entry { id: number; cmd?: string; out: string; ok: boolean }
 
@@ -16,8 +17,13 @@
   let hIndex = $state(-1);
   let draft = '';
   let seq = 1;
-  let done = $state<string[]>([]);
+  // misiones superadas: se guardan en el progreso (y se sincronizan); reiniciar el clúster no las borra
+  const saved = () => MISSIONS.filter((m) => progress.retos.includes(`term:${m.id}`)).map((m) => m.id);
+  let done = $state<string[]>(saved());
   let showHints = $state(false);
+  // en el teléfono las misiones van encima de la consola, plegadas a "Siguiente: …" para no empujarla hacia abajo
+  let missionsOpen = $state(typeof window === 'undefined' || !matchMedia('(max-width: 900px)').matches);
+  const nextMission = $derived(MISSIONS.find((m) => !done.includes(m.id)));
   let ranOk: string[] = [];
   let outEl: HTMLDivElement | undefined = $state();
   let inputEl: HTMLInputElement | undefined = $state();
@@ -62,7 +68,7 @@
     const ctx = { ran: (re: RegExp) => ranOk.some((x) => re.test(x)) };
     const now = MISSIONS.filter((m) => m.check(cluster, ctx)).map((m) => m.id);
     const merged = [...new Set([...done, ...now])];
-    if (merged.length !== done.length) done = merged;
+    if (merged.length !== done.length) { done = merged; for (const id of now) addReto(`term:${id}`); }
   }
 
   async function scrollDown() {
@@ -121,7 +127,7 @@
   function clear() { entries = []; inputEl?.focus(); }
   function reset() {
     cluster = new Cluster();
-    ranOk = []; done = []; history = []; hIndex = -1; input = '';
+    ranOk = []; done = saved(); history = []; hIndex = -1; input = '';
     entries = [{ id: seq++, out: 'Clúster reiniciado: estado inicial (deployment web, service web, pod tools, deployment catalogo roto).', ok: true }];
     version++;
     inputEl?.focus();
@@ -162,37 +168,47 @@
     <p class="hint">Tab completa comandos, recursos y nombres · flechas arriba y abajo recorren el historial · Ctrl+L limpia. El clúster avanza en tiempo real: los pods tardan unos segundos en pasar a Running.</p>
   </section>
 
-  <aside class="side">
-    <section class="panel">
-      <h2>Clúster en vivo</h2>
-      <ClusterCanvas {nodes} {pods} compact showLabels={true} />
-      <p class="hint">Fichas: pods de default (etiqueta = versión de imagen) y de otros namespaces (etiqueta = namespace). {hiddenCount} pods de kube-system y local-path-storage no se dibujan.</p>
-    </section>
-    <section class="panel">
-      <div class="mhead">
-        <h2>Misiones <span class="count mono">{done.length}/{MISSIONS.length}</span></h2>
-        <button type="button" class="btn small" onclick={() => (showHints = !showHints)} aria-pressed={showHints}>{showHints ? 'Ocultar pistas' : 'Ver pistas'}</button>
-      </div>
-      <ol class="missions">
-        {#each MISSIONS as m, i (m.id)}
-          {@const ok = done.includes(m.id)}
-          <li class:ok>
-            <span class="check" aria-hidden="true">{ok ? '✓' : i + 1}</span>
-            <div>
-              <span class="mtitle">{m.title}</span><span class="visually-hidden">{ok ? ' (completada)' : ''}</span>
-              {#if showHints && !ok}<button type="button" class="use mono" onclick={() => use(m.hint.split(',')[0])} title="Copiar al prompt">{m.hint}</button>{/if}
-            </div>
-          </li>
-        {/each}
-      </ol>
-      {#if done.length === MISSIONS.length}<p class="explain ok">Misiones completadas. Ahora repite la secuencia en tu clúster real con <span class="mono">.\kcna.ps1 up</span>.</p>{/if}
-    </section>
-  </aside>
+  <section class="panel canvas">
+    <h2>Clúster en vivo</h2>
+    <ClusterCanvas {nodes} {pods} compact showLabels={true} />
+    <p class="hint">Fichas: pods de default (etiqueta = versión de imagen) y de otros namespaces (etiqueta = namespace). {hiddenCount} pods de kube-system y local-path-storage no se dibujan.</p>
+  </section>
+  <section class="panel misiones">
+    <div class="mhead">
+      <h2>
+        <button type="button" class="fold" aria-expanded={missionsOpen} aria-controls="mision-lista" onclick={() => (missionsOpen = !missionsOpen)}>
+          Misiones <span class="count mono">{done.length}/{MISSIONS.length}</span><span class="caret" aria-hidden="true">{missionsOpen ? '▾' : '▸'}</span>
+        </button>
+      </h2>
+      <button type="button" class="btn small" onclick={() => { showHints = !showHints; missionsOpen = true; }} aria-pressed={showHints}>{showHints ? 'Ocultar pistas' : 'Ver pistas'}</button>
+    </div>
+    {#if !missionsOpen && nextMission}<p class="next">Siguiente: {nextMission.title}</p>{/if}
+    <ol class="missions" id="mision-lista" hidden={!missionsOpen}>
+      {#each MISSIONS as m, i (m.id)}
+        {@const ok = done.includes(m.id)}
+        <li class:ok>
+          <span class="check" aria-hidden="true">{ok ? '✓' : i + 1}</span>
+          <div>
+            <span class="mtitle">{m.title}</span><span class="visually-hidden">{ok ? ' (completada)' : ''}</span>
+            {#if showHints && !ok}<button type="button" class="use mono" onclick={() => use(m.hint.split(',')[0])} title="Copiar al prompt">{m.hint}</button>{/if}
+          </div>
+        </li>
+      {/each}
+    </ol>
+    {#if done.length === MISSIONS.length}<p class="explain ok">Misiones completadas. Ahora repite la secuencia en tu clúster real con <span class="mono">.\kcna.ps1 up</span>.</p>
+    {:else if done.length && missionsOpen}<p class="hint">Las misiones superadas se guardan en tu progreso: reiniciar el clúster no las borra.</p>{/if}
+  </section>
 </div>
 
 <style>
-  .term-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
-  .console { min-width: 0; }
+  .term-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr; grid-template-areas: 'console canvas' 'console misiones'; gap: 16px 20px; align-items: start; }
+  .console { min-width: 0; grid-area: console; }
+  .canvas { grid-area: canvas; }
+  .misiones { grid-area: misiones; }
+  .fold { all: unset; cursor: pointer; display: inline-flex; align-items: baseline; gap: 8px; border-radius: 4px; }
+  .fold:focus-visible { outline: 2px solid var(--helm); outline-offset: 2px; }
+  .caret { font-size: 0.8rem; color: var(--ink-3); }
+  .next { font-size: 0.9rem; color: var(--ink-2); }
   .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-bottom: 10px; }
   .title { font-size: 0.82rem; color: var(--ink-2); }
   .title strong { color: var(--helm); font-weight: 500; }
@@ -209,7 +225,6 @@
   .inrow input::placeholder { color: #5b6b86; }
   .inrow:focus-within { border-top-color: var(--helm); }
   .hint { color: var(--ink-2); font-size: 0.88rem; margin-top: 10px; }
-  .side { display: grid; gap: 16px; min-width: 0; }
   .panel { min-width: 0; overflow-wrap: anywhere; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 16px; }
   .missions li > * { min-width: 0; }
   .panel h2 { font-size: 1.02rem; margin-bottom: 10px; display: flex; align-items: baseline; gap: 8px; }
@@ -217,6 +232,7 @@
   .mhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .count { font-size: 0.8rem; color: var(--ink-3); font-weight: 400; }
   .missions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .missions[hidden] { display: none; }
   .missions li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.9rem; line-height: 1.4; }
   .missions li.ok .mtitle { color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1px; }
   .check { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--ink-2); background: var(--panel-2); }
@@ -224,9 +240,11 @@
   .use { display: block; margin-top: 4px; font-size: 0.74rem; color: var(--helm-ink); background: var(--helm-2); border: 0; border-radius: 4px; padding: 2px 6px; cursor: pointer; text-align: left; }
   .explain { margin-top: 12px; padding: 10px 12px; border-radius: var(--r-m); background: var(--panel-2); border-left: 3px solid var(--ready); font-size: 0.9rem; }
   @media (max-width: 900px) {
-    .term-layout { grid-template-columns: minmax(0, 1fr); }
-    .screen { height: 52vh; min-height: 320px; }
+    .term-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: 'misiones' 'console' 'canvas'; }
+    .screen { height: min(60svh, 520px); min-height: 280px; }
   }
+  /* 16 px en el campo: en iOS, un input más pequeño hace zoom al enfocarlo */
+  @media (pointer: coarse) { .inrow input { font-size: 16px; } .fold { min-height: 44px; } }
   @media (max-width: 420px) {
     .out, .inrow { font-size: 0.76rem; padding-left: 10px; padding-right: 10px; }
     .panel { padding: 12px; }

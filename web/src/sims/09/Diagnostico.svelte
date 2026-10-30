@@ -3,6 +3,7 @@
   // Todo vive en memoria; reiniciar vuelve a romper el namespace.
   import ClusterCanvas, { type NodeSpec, type PodSpec } from '../ClusterCanvas.svelte';
   import { wait } from '../../lib/motion';
+  import { progress, addReto } from '../../lib/progress.svelte';
 
   type CaseKey = 'frontend' | 'api' | 'cache' | 'worker' | 'reporter' | 'shop';
   type Cmd = 'get' | 'describe' | 'events' | 'logs' | 'prev' | 'exec' | 'svc' | 'cm' | 'top';
@@ -449,6 +450,8 @@ ${p.name}   1m           3Mi` : noMetrics(p),
   const sel = $derived(selPod ? CASES.find((c) => c.key === selPod.caseKey)! : null);
   const solvedCount = $derived(CASES.filter((c) => st[c.key].solved).length);
   const totalFails = $derived(CASES.reduce((a, c) => a + st[c.key].fails, 0));
+  // casos resueltos en cualquier sesión o dispositivo (la ronda actual siempre empieza con el namespace roto, para repetirla)
+  const everSolved = $derived(CASES.filter((c) => progress.retos.includes(`diag:${c.key}`)).length);
   const hintLevel = $derived(sel ? (st[sel.key].fails >= 4 ? 2 : st[sel.key].fails >= 2 ? 1 : 0) : 0);
 
   $effect(() => { consoleLog.length; if (preEl) preEl.scrollTop = preEl.scrollHeight; });
@@ -579,6 +582,7 @@ Events:
     await wait(800);
     pods = pods.map((p) => (fresh.some((f) => f.id === p.id) ? { ...p, status: 'Running', real: 'Running', ready: '1/1' } : p));
     st[c.key].solved = true;
+    addReto(`diag:${c.key}`);
     selId = fresh[0].id;
     busy = false;
     const done = CASES.filter((k) => st[k.key].solved).length;
@@ -597,7 +601,7 @@ Events:
 
 <div class="diag">
   <div class="controls top">
-    <span class="score">Resueltos <strong class="mono">{solvedCount}/6</strong> · fallos <strong class="mono">{totalFails}</strong></span>
+    <span class="score">Resueltos <strong class="mono">{solvedCount}/6</strong> · fallos <strong class="mono">{totalFails}</strong>{#if everSolved > solvedCount}<span class="ever"> · alguna vez: {everSolved}/6</span>{/if}</span>
     <span class="hint ns mono">namespace lab-09</span>
     <button type="button" class="btn small" onclick={reset} disabled={busy}>Reiniciar</button>
   </div>
@@ -668,6 +672,7 @@ Events:
   .diag { display: grid; gap: 12px; }
   .top { margin-bottom: 0; justify-content: space-between; }
   .score { font-size: 0.92rem; color: var(--ink-2); }
+  .ever { color: var(--ready); }
   .ns { font-size: 0.8rem; }
   .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
   .legend button { font: inherit; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); cursor: pointer; }
