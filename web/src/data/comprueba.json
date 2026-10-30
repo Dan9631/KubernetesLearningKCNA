@@ -1,0 +1,940 @@
+{
+  "predicciones": {
+    "01:aislamiento": {
+      "q": "Un contenedor con límite de memoria de 64 MiB (memory.max del cgroup) intenta usar 96 MiB. ¿Qué ocurre?",
+      "options": [
+        "El kernel lo frena (throttling) y sigue funcionando más lento",
+        "Usa memoria extra del host hasta que el host se queda sin ella",
+        "El kernel mata el proceso: OOMKilled (exit 137)"
+      ],
+      "answer": 2,
+      "why": "El cgroup de memoria es un techo duro: al superarlo, el kernel mata el proceso (OOMKilled). El throttling es lo que pasa con el límite de CPU, no con el de memoria."
+    },
+    "01:capas": {
+      "q": "Editas index.html (lo copia la instrucción COPY) y reconstruyes la imagen. ¿Qué instrucciones salen de la caché?",
+      "options": [
+        "Todas menos COPY: solo se rehace la instrucción que cambió",
+        "Las anteriores a COPY; desde COPY en adelante todo se reconstruye",
+        "Ninguna: al cambiar un archivo se reconstruye la imagen entera"
+      ],
+      "answer": 1,
+      "why": "La caché se reutiliza solo hasta la primera instrucción que cambia; todo lo posterior (RUN, EXPOSE, CMD) se reconstruye aunque no haya cambiado."
+    },
+    "02:apply": {
+      "q": "Tras un kubectl apply de un Deployment con 2 réplicas, ¿qué componente crea los objetos Pod?",
+      "options": [
+        "El kube-apiserver, al guardar el Deployment en etcd",
+        "El kube-scheduler, al elegir un nodo para cada réplica",
+        "El controlador de ReplicaSet, dentro del kube-controller-manager"
+      ],
+      "answer": 2,
+      "why": "El controlador de Deployments crea el ReplicaSet y el de ReplicaSets crea los Pods (sin nodeName). El scheduler solo escribe spec.nodeName después y el API server solo guarda."
+    },
+    "02:componentes": {
+      "q": "Con el kube-controller-manager apagado, borras un Pod de un Deployment de 2 réplicas. ¿Qué pasa?",
+      "options": [
+        "Nadie lo repone: el Deployment se queda con 1 réplica lista",
+        "El kubelet del nodo lo recrea al instante",
+        "El kube-scheduler crea un Pod nuevo en otro nodo"
+      ],
+      "answer": 0,
+      "why": "El controlador de ReplicaSet vive dentro del kube-controller-manager: sin él no hay reconciliación. El kubelet solo arranca Pods que ya existen en la API y el scheduler solo asigna nodo."
+    },
+    "03:ciclo": {
+      "q": "Un Pod con restartPolicy Always (la de por defecto) termina su proceso con código 0. ¿Qué hace el kubelet?",
+      "options": [
+        "Lo reinicia igualmente; si se repite, verás CrashLoopBackOff",
+        "Nada: el Pod pasa a la fase Succeeded",
+        "Lo vuelve a crear en otro nodo"
+      ],
+      "answer": 0,
+      "why": "Always reinicia aunque el proceso termine bien, con espera exponencial (CrashLoopBackOff). Succeeded solo llega con Never u OnFailure, y el reinicio es siempre en el mismo nodo."
+    },
+    "03:rollout": {
+      "q": "Deployment de 3 réplicas con maxSurge 1 y maxUnavailable 0. Actualizas a una imagen que no existe. ¿Qué pasa?",
+      "options": [
+        "Los 3 Pods viejos se sustituyen por Pods rotos y el servicio cae",
+        "El rollout se atasca: 1 Pod nuevo falla y los 3 viejos siguen sirviendo",
+        "Kubernetes detecta el fallo y vuelve solo a la versión anterior"
+      ],
+      "answer": 1,
+      "why": "Con maxUnavailable 0 no se borra un Pod viejo hasta que uno nuevo esté Ready, y el nuevo nunca lo está. Kubernetes no revierte solo: lo haces tú con kubectl rollout undo."
+    },
+    "04:qos": {
+      "q": "Pod con dos contenedores: uno con requests = limits de CPU y memoria, el otro sin resources. ¿Qué QoS class recibe?",
+      "options": [
+        "Guaranteed",
+        "Burstable",
+        "BestEffort"
+      ],
+      "answer": 1,
+      "why": "Guaranteed exige que todos los contenedores tengan requests = limits de CPU y memoria. Como al menos uno declara algo, tampoco es BestEffort: queda Burstable."
+    },
+    "04:scheduler": {
+      "q": "Un pod sin tolerations fija nodeName: kcna-control-plane, que tiene el taint control-plane:NoSchedule. ¿Qué pasa?",
+      "options": [
+        "Queda Pending con un evento FailedScheduling por el taint",
+        "El scheduler lo redirige a un worker sin taint",
+        "Arranca en el control plane: el scheduler no participa"
+      ],
+      "answer": 2,
+      "why": "Con nodeName, el kubelet de ese nodo arranca el pod directamente. Los taints NoSchedule los comprueba el scheduler, que aquí no interviene (ni siquiera hay evento Scheduled)."
+    },
+    "05:netpol": {
+      "q": "Activas solo db-solo-api (app=db acepta únicamente a app=api en 6379), sin default deny. ¿Qué pasa con el tráfico de frontend a db?",
+      "options": [
+        "Se bloquea: al seleccionar a db, todo lo no permitido se deniega",
+        "Pasa: sin default deny, db sigue aceptando todo",
+        "Pasa, porque frontend no está seleccionado por ninguna política"
+      ],
+      "answer": 0,
+      "why": "En cuanto una política selecciona un pod para Ingress, ese pod deniega por defecto lo que ninguna regla permita. Que el origen no esté seleccionado no importa: cuenta el destino."
+    },
+    "05:psa": {
+      "q": "El namespace tiene enforce=baseline. Tu pod corre como root, sin drop ALL ni seccompProfile, pero sin privileged ni hostPath. ¿Qué pasa?",
+      "options": [
+        "Se rechaza: viola PodSecurity por correr como root",
+        "Se crea con un aviso, pero el kubelet no lo arranca",
+        "Se crea: baseline no exige runAsNonRoot, drop ALL ni seccomp"
+      ],
+      "answer": 2,
+      "why": "baseline solo bloquea escaladas conocidas (privileged, hostPath, hostNetwork...). runAsNonRoot, drop ALL y seccompProfile los exige restricted, no baseline."
+    },
+    "05:rbac": {
+      "q": "El grupo dev tiene un RoleBinding en lab-05 hacia el ClusterRole gestor-deploy. ¿Puede ana (grupo dev) crear deployments en default?",
+      "options": [
+        "Sí: un ClusterRole da permisos en todos los namespaces",
+        "No: con un RoleBinding, el ClusterRole solo aplica en lab-05",
+        "Solo get y list: create exige un ClusterRoleBinding"
+      ],
+      "answer": 1,
+      "why": "ClusterRole + RoleBinding concede los permisos del ClusterRole solo en el namespace del RoleBinding. Para todos los namespaces haría falta un ClusterRoleBinding."
+    },
+    "06:dns": {
+      "q": "El Service tienda está en lab-06. Desde un pod del namespace default ejecutas nslookup tienda. ¿Qué obtienes?",
+      "options": [
+        "NXDOMAIN: desde otro namespace hay que escribir al menos tienda.lab-06",
+        "La ClusterIP de tienda: CoreDNS busca en todos los namespaces",
+        "La IP de uno de los pods de tienda"
+      ],
+      "answer": 0,
+      "why": "El search del pod empieza por default.svc.cluster.local, así que tienda se expande a tienda.default.svc.cluster.local, que no existe. Hace falta <svc>.<ns> o el FQDN."
+    },
+    "06:trafico": {
+      "q": "Con el Service ClusterIP y keep-alive activado, el cliente envía 6 peticiones por la misma conexión TCP. ¿Cómo se reparten entre los 3 pods?",
+      "options": [
+        "2 a cada pod, en round robin",
+        "Al azar: cada petición puede ir a un pod distinto",
+        "Las 6 van al mismo pod"
+      ],
+      "answer": 2,
+      "why": "kube-proxy balancea por conexión, no por petición HTTP: si el cliente reutiliza la conexión TCP, todas sus peticiones llegan al mismo pod."
+    },
+    "07:canary": {
+      "q": "La HTTPRoute da weight 90 a whoami-v1 (2 pods) y 10 a whoami-v2 (1 pod). De 100 peticiones, ¿cuántas van aproximadamente a v2?",
+      "options": [
+        "Unas 33: una por cada pod de los tres",
+        "Unas 10: lo deciden los pesos de la ruta",
+        "Ninguna hasta que v2 tenga tantos pods como v1"
+      ],
+      "answer": 1,
+      "why": "Con pesos en backendRefs el porcentaje es independiente del número de pods. Repartir según réplicas es el canary aproximado de un Deployment, no el de una HTTPRoute."
+    },
+    "07:mesh": {
+      "q": "En modo ambient, con solo mTLS activado, enciendes los reintentos (una función L7). ¿Qué cambia en el camino de la llamada?",
+      "options": [
+        "Aparece un waypoint proxy (Envoy) que aplica las funciones L7",
+        "Se inyecta un sidecar istio-proxy en cada pod",
+        "Nada: el ztunnel de cada nodo ya hace los reintentos"
+      ],
+      "answer": 0,
+      "why": "ztunnel solo da mTLS, identidad y telemetría L4. Las funciones L7 como los reintentos necesitan un waypoint proxy, que se despliega solo si hace falta; ambient no usa sidecars."
+    },
+    "08:pvc": {
+      "q": "En modo dinámico (clase standard), borras el pod y luego el PVC datos. ¿Qué pasa con el PV y los datos?",
+      "options": [
+        "El PV pasa a Released y conserva los datos",
+        "El PV vuelve a Available para otro PVC",
+        "Se borran el PV y los datos: su reclaimPolicy es Delete"
+      ],
+      "answer": 2,
+      "why": "Un PV dinámico toma la reclaimPolicy de la StorageClass, Delete por defecto: se borran el PV y el almacenamiento real. Released con los datos intactos es lo que hace Retain."
+    },
+    "08:volumenes": {
+      "q": "Con un volumen hostPath, el escritor guarda líneas en kcna-worker y luego mueves el pod a kcna-worker2. ¿Qué ve el pod nuevo?",
+      "options": [
+        "Las mismas líneas: hostPath sobrevive al pod",
+        "La carpeta de kcna-worker2, sin esas líneas",
+        "Un error: hostPath impide que el pod cambie de nodo"
+      ],
+      "answer": 1,
+      "why": "hostPath monta una carpeta del nodo: los datos sobreviven al pod pero quedan atados a ese nodo. En kcna-worker2 el pod ve otra carpeta; las líneas siguen en kcna-worker."
+    },
+    "09:diagnostico": {
+      "q": "El pod api está en CrashLoopBackOff y sus eventos dicen «Started container». ¿Qué comando te revelará la causa?",
+      "options": [
+        "kubectl top pod",
+        "kubectl exec -it ... -- sh",
+        "kubectl logs --previous"
+      ],
+      "answer": 2,
+      "why": "El contenedor sí llegó a ejecutarse, así que la causa está en lo que imprimió antes de morir. exec necesita un contenedor vivo y top no explica por qué sale."
+    },
+    "10:cncf": {
+      "q": "Filtra el paisaje por madurez: ¿en qué nivel de la CNCF aparece Grafana?",
+      "options": [
+        "Graduated, como Prometheus",
+        "Incubating",
+        "No es un proyecto de la CNCF"
+      ],
+      "answer": 2,
+      "why": "Grafana es de Grafana Labs, no de la CNCF: pregunta trampa típica. Prometheus, con el que suele ir, sí es graduated."
+    },
+    "10:hpa": {
+      "q": "Tras escalar, quitas toda la carga con la ventana de estabilización de bajada en 300 s. ¿Qué hace el HPA en el siguiente tick?",
+      "options": [
+        "Baja de inmediato a minReplicas",
+        "Mantiene réplicas: usa la recomendación más alta de los últimos 300 s",
+        "Borra todos los pods hasta que vuelva la carga"
+      ],
+      "answer": 1,
+      "why": "Hacia abajo, el HPA usa la recomendación más alta de la ventana para no bajar y volver a subir. Nunca baja de minReplicas."
+    },
+    "11:prometheus": {
+      "q": "Creas un pod sin la anotación prometheus.io/scrape: \"true\". ¿Lo scrapea el job kubernetes-pods?",
+      "options": [
+        "No: el relabeling (action: keep) lo descarta",
+        "Sí: el service discovery añade todos los pods",
+        "Sí, pero solo tras reiniciar Prometheus"
+      ],
+      "answer": 0,
+      "why": "El service discovery ve el pod, pero el relabeling solo conserva los que tienen la anotación en \"true\". Es una convención de la configuración, no una API de Kubernetes."
+    },
+    "11:slo": {
+      "q": "Gastas todo el error budget del SLO antes de que acabe la ventana. ¿Qué decide el equipo?",
+      "options": [
+        "Congelar despliegues y priorizar la fiabilidad",
+        "Bajar el SLO para recuperar margen",
+        "Pagar al cliente la penalización del SLA"
+      ],
+      "answer": 0,
+      "why": "Sin presupuesto se congelan los cambios y se prioriza la fiabilidad. El SLA es más laxo que el SLO: agotar el budget no implica aún penalizaciones."
+    },
+    "12:empaquetado": {
+      "q": "Tras helm install (revisión 1) y un upgrade (revisión 2), haces helm rollback a la 1. ¿Qué revisión queda deployed?",
+      "options": [
+        "La 1: se borra la revisión 2",
+        "La 3, con el contenido de la 1",
+        "La 2, marcada como rolled back"
+      ],
+      "answer": 1,
+      "why": "Cada install, upgrade o rollback crea una revisión numerada nueva: el historial siempre avanza, como un git revert. No se borra ninguna revisión."
+    },
+    "12:estrategias": {
+      "q": "Despliegas v2 con Blue/Green sobre 4 réplicas. ¿Cuántos pods llegan a existir a la vez?",
+      "options": [
+        "8: el entorno green completo junto a blue",
+        "5: un pod de más, como en el rolling update",
+        "4: nunca más de las réplicas deseadas"
+      ],
+      "answer": 0,
+      "why": "Blue/Green levanta v2 completa al lado de v1 antes de cambiar el tráfico: el doble de recursos un tiempo. Un pod de más es el rolling update con maxSurge 1."
+    },
+    "12:gitops": {
+      "q": "Quitas el ConfigMap del repo con prune desactivado. ¿Qué pasa con ese ConfigMap en el clúster?",
+      "options": [
+        "Argo CD lo borra en el siguiente sync",
+        "Queda huérfano en el clúster y la app sigue OutOfSync",
+        "Argo CD lo vuelve a añadir a Git"
+      ],
+      "answer": 1,
+      "why": "Sin prune, Argo CD no borra recursos que desaparecen de Git: quedan huérfanos. Y Argo CD nunca escribe en Git, siempre corrige el clúster."
+    }
+  },
+  "comprobaciones": {
+    "10": [
+      {
+        "after": "2. Autoscaling: las cuatro dimensiones",
+        "q": "Un HPA tiene 2 réplicas al 90 % de CPU con objetivo 60 %. ¿Cuántas réplicas pide?",
+        "options": [
+          "3",
+          "2",
+          "4"
+        ],
+        "answer": 0,
+        "why": "ceil(2 × 90 / 60) = ceil(3) = 3. El cociente 1,5 queda fuera de la tolerancia del 10 %, así que sí escala."
+      },
+      {
+        "after": "3. Serverless en Kubernetes",
+        "q": "¿Qué significa realmente «serverless»?",
+        "options": [
+          "Que no hay servidores detrás",
+          "Que tú no gestionas los servidores: la plataforma ejecuta tu código",
+          "Que la aplicación no puede usar contenedores"
+        ],
+        "answer": 1,
+        "why": "Sigue habiendo servidores, pero no los administras: la plataforma ejecuta tu código o contenedor ante peticiones o eventos, y puede escalar a cero."
+      },
+      {
+        "after": "4. Estándares abiertos: la razón por la que todo encaja",
+        "q": "¿Qué estándar permite que un proveedor de almacenamiento se integre con Kubernetes sin cambiar su código?",
+        "options": [
+          "CNI",
+          "CSI",
+          "CRI"
+        ],
+        "answer": 1,
+        "why": "CSI (Container Storage Interface) define cómo se aprovisionan y montan volúmenes con drivers externos. CNI es la red del pod y CRI el runtime de contenedores."
+      },
+      {
+        "after": "5. Gobierno de Kubernetes y de la CNCF",
+        "q": "¿Qué órgano de la CNCF acepta proyectos y decide sus cambios de nivel de madurez?",
+        "options": [
+          "El Governing Board",
+          "El TOC (Technical Oversight Committee)",
+          "El Steering Committee de Kubernetes"
+        ],
+        "answer": 1,
+        "why": "El TOC lleva la visión técnica y decide la madurez. El Governing Board se ocupa de presupuesto y negocio; el Steering Committee gobierna solo Kubernetes."
+      },
+      {
+        "after": "7. Roles y personas cloud native",
+        "q": "¿Qué rol construye una plataforma interna de autoservicio, con golden paths, para los desarrolladores?",
+        "options": [
+          "SRE",
+          "Cloud Architect",
+          "Platform Engineer"
+        ],
+        "answer": 2,
+        "why": "El Platform Engineer construye la IDP (por ejemplo, con Backstage). El SRE se centra en la fiabilidad: SLI/SLO, error budget y toil."
+      }
+    ],
+    "11": [
+      {
+        "after": "2. Las señales (pilares) de la observabilidad",
+        "q": "Según el módulo, ¿qué señal te dice en qué servicio de la cadena está fallando una petición?",
+        "options": [
+          "Las trazas",
+          "Las métricas",
+          "Los logs"
+        ],
+        "answer": 0,
+        "why": "Las métricas dicen que algo va mal, las trazas dónde (qué servicio, con sus spans) y los logs por qué."
+      },
+      {
+        "after": "3. SLI, SLO, SLA y error budget",
+        "q": "Con un SLO del 99,9 % en 30 días, ¿cuánto error budget tienes aproximadamente?",
+        "options": [
+          "4,3 minutos",
+          "43 minutos",
+          "7,2 horas"
+        ],
+        "answer": 1,
+        "why": "100 % − 99,9 % = 0,1 % de 30 días ≈ 43 min. 4,3 min corresponde al 99,99 % y 7,2 h al 99 %."
+      },
+      {
+        "after": "4. Prometheus",
+        "q": "¿Para qué se usa el Pushgateway?",
+        "options": [
+          "Para trabajos batch que terminan antes de ser scrapeados",
+          "Para que cualquier app empuje métricas en vez de ser scrapeada",
+          "Para enrutar alertas a Slack o PagerDuty"
+        ],
+        "answer": 0,
+        "why": "Es la excepción para trabajos de vida corta, no un modo push general: Prometheus sigue haciendo pull. Las alertas las enruta Alertmanager."
+      },
+      {
+        "after": "5. Formato y tipos de métricas",
+        "q": "¿Cómo se consulta correctamente un counter como http_requests_total?",
+        "options": [
+          "Leyendo su valor crudo",
+          "Con histogram_quantile()",
+          "Con rate() o increase()"
+        ],
+        "answer": 2,
+        "why": "Un counter solo sube (o vuelve a 0 al reiniciar), así que su valor crudo dice poco. histogram_quantile() es para histograms."
+      },
+      {
+        "after": "7. Monitorear contenedores y Kubernetes",
+        "q": "¿Qué fuente publica el estado de los objetos de la API, como réplicas disponibles o la fase de los pods?",
+        "options": [
+          "cAdvisor",
+          "kube-state-metrics",
+          "metrics-server"
+        ],
+        "answer": 1,
+        "why": "kube-state-metrics expone métricas kube_* sobre objetos. cAdvisor mide el consumo por contenedor y metrics-server solo la CPU/memoria actual."
+      }
+    ],
+    "12": [
+      {
+        "after": "1. Del código al clúster: los fundamentos de la entrega",
+        "q": "¿Qué distingue Continuous Deployment de Continuous Delivery?",
+        "options": [
+          "Deployment no ejecuta pruebas automáticas",
+          "Deployment llega a producción sin aprobación manual",
+          "Delivery construye una imagen nueva en cada entorno"
+        ],
+        "answer": 1,
+        "why": "Solo cambia el último paso: Delivery exige un clic humano para producción y Deployment sale solo si pasa las pruebas. La imagen se construye una sola vez."
+      },
+      {
+        "after": "2. Estrategias de despliegue",
+        "q": "¿Qué estrategia usa un Deployment si no indicas ninguna?",
+        "options": [
+          "Rolling update",
+          "Recreate",
+          "Canary"
+        ],
+        "answer": 0,
+        "why": "RollingUpdate es el valor por defecto, controlado por maxSurge y maxUnavailable. Recreate hay que pedirlo y canary no es nativo."
+      },
+      {
+        "after": "3. GitOps",
+        "q": "En el modelo pull de GitOps, ¿quién aplica los cambios al clúster?",
+        "options": [
+          "El pipeline de CI, con credenciales del clúster",
+          "El servidor Git, mediante un webhook",
+          "Un agente que corre dentro del clúster y lee Git"
+        ],
+        "answer": 2,
+        "why": "Argo CD o Flux corren dentro del clúster y solo necesitan leer Git. El pipeline con credenciales del clúster es el modelo push."
+      },
+      {
+        "after": "5. Argo CD y Flux",
+        "q": "Con sync automated pero sin selfHeal, alguien escala el Deployment a mano. ¿Qué hace Argo CD?",
+        "options": [
+          "Lo revierte al estado de Git",
+          "Lo marca OutOfSync, pero no lo revierte",
+          "Hace commit del cambio en Git"
+        ],
+        "answer": 1,
+        "why": "Con automated solo los cambios en Git disparan un sync. Para revertir el drift del clúster hace falta selfHeal: true; y Argo CD nunca escribe en Git."
+      },
+      {
+        "after": "6. Empaquetado: Helm y Kustomize",
+        "q": "¿Qué componente de Helm 2 eliminó Helm 3?",
+        "options": [
+          "Tiller, el componente en el clúster",
+          "Los repositorios de charts",
+          "El archivo values.yaml"
+        ],
+        "answer": 0,
+        "why": "Helm 2 usaba Tiller, con permisos amplios; Helm 3 lo eliminó y pasó a ser solo un cliente que usa tus credenciales de kubeconfig."
+      }
+    ],
+    "01": [
+      {
+        "after": "2. Contenedor vs máquina virtual",
+        "q": "¿Qué comparten todos los contenedores que corren en un mismo host?",
+        "options": [
+          "El kernel del host",
+          "Un hipervisor que les simula el hardware",
+          "Un sistema operativo invitado común"
+        ],
+        "answer": 0,
+        "why": "Un contenedor virtualiza el sistema operativo: todos comparten el kernel del host y solo aíslan procesos. El hipervisor y el SO invitado son propios de las máquinas virtuales."
+      },
+      {
+        "after": "3. Qué hay dentro: namespaces y cgroups",
+        "q": "¿Qué mecanismo del kernel decide cuánta CPU y memoria puede usar un contenedor?",
+        "options": [
+          "Los namespaces",
+          "Los cgroups",
+          "seccomp"
+        ],
+        "answer": 1,
+        "why": "Los cgroups limitan y contabilizan lo que el proceso puede usar; los namespaces deciden lo que puede ver. seccomp filtra llamadas al sistema."
+      },
+      {
+        "after": "4. Imágenes OCI",
+        "q": "¿Qué referencia identifica exactamente un contenido de imagen y nunca cambia?",
+        "options": [
+          "El tag latest",
+          "Un tag de versión, como nginx:1.27-alpine",
+          "El digest, como nginx@sha256:..."
+        ],
+        "answer": 2,
+        "why": "Un tag es una etiqueta móvil que se puede reasignar; el digest es el hash del contenido y es inmutable. Y latest no significa «la más nueva»: es solo el tag por defecto."
+      },
+      {
+        "after": "6. Runtimes de contenedores: quién hace qué",
+        "q": "¿Qué interfaz usa el kubelet para pedirle al runtime (containerd o CRI-O) que arranque contenedores?",
+        "options": [
+          "CRI (Container Runtime Interface)",
+          "CNI (Container Network Interface)",
+          "La runtime-spec de OCI"
+        ],
+        "answer": 0,
+        "why": "CRI es la API gRPC entre el kubelet y el runtime de alto nivel. La runtime-spec de OCI es lo que containerd usa para hablar con runc; CNI es para la red."
+      },
+      {
+        "after": "8. ¿Qué significa \"cloud native\"?",
+        "q": "Según la app de 12 factores, ¿dónde debe vivir la configuración?",
+        "options": [
+          "En el código, en un archivo de constantes",
+          "En el entorno: variables, ConfigMaps, Secrets",
+          "Dentro de la imagen, para que sea inmutable"
+        ],
+        "answer": 1,
+        "why": "El factor 3 separa la configuración del código: va en el entorno, así la misma imagen sirve en dev y en prod. Meterla en la imagen obliga a reconstruir para cada entorno."
+      }
+    ],
+    "02": [
+      {
+        "after": "1. Vista general: cerebro y músculo",
+        "q": "¿Qué componente es el único que lee y escribe directamente en etcd?",
+        "options": [
+          "kube-apiserver",
+          "kube-controller-manager",
+          "kubelet"
+        ],
+        "answer": 0,
+        "why": "Todos los componentes hablan con el kube-apiserver y solo él habla con etcd (modelo hub and spoke). Los controladores y el kubelet leen y escriben a través de la API."
+      },
+      {
+        "after": "2. Componentes del control plane",
+        "q": "¿Por qué etcd se despliega con un número impar de miembros (3, 5)?",
+        "options": [
+          "Para repartir las escrituras a partes iguales",
+          "Para tener quórum con el algoritmo de consenso Raft",
+          "Porque cada miembro guarda solo una parte del estado"
+        ],
+        "answer": 1,
+        "why": "etcd usa Raft, que necesita una mayoría de miembros (quórum) para seguir aceptando cambios; por eso 3 o 5. No reparte los datos: cada miembro tiene una copia completa."
+      },
+      {
+        "after": "3. Componentes de cada nodo",
+        "q": "¿Cómo se ejecuta el kubelet en cada nodo?",
+        "options": [
+          "Como static pod en kube-system",
+          "Como Pod de un DaemonSet",
+          "Como servicio de systemd, no como Pod"
+        ],
+        "answer": 2,
+        "why": "El kubelet es el agente que arranca los Pods, así que corre como servicio de systemd en el nodo. El que normalmente va como DaemonSet es kube-proxy."
+      },
+      {
+        "after": "5. Static pods: cómo arranca el propio control plane",
+        "q": "Borras con kubectl delete el mirror pod etcd-kcna-control-plane. ¿Qué ocurre?",
+        "options": [
+          "El kubelet lo vuelve a crear: hay que borrar el archivo del manifiesto",
+          "Se elimina el static pod de forma definitiva",
+          "El scheduler lo recoloca en otro nodo del control plane"
+        ],
+        "answer": 0,
+        "why": "El mirror pod es solo una copia de lectura en la API; el static pod lo gestiona el kubelet desde su directorio (staticPodPath). Solo desaparece si borras el archivo."
+      },
+      {
+        "after": "7. Modelo declarativo y reconciliación",
+        "q": "En un objeto de Kubernetes, ¿quién escribe el campo status?",
+        "options": [
+          "Tú, en el YAML que aplicas",
+          "Los controladores y el kubelet",
+          "kubectl, al terminar el apply"
+        ],
+        "answer": 1,
+        "why": "spec es el estado deseado y lo escribes tú; status es el estado actual y lo escriben los controladores y el kubelet. El bucle de reconciliación compara ambos."
+      }
+    ],
+    "03": [
+      {
+        "after": "1. El Pod: la unidad mínima",
+        "q": "Dos contenedores del mismo Pod: ¿cómo se comunican entre sí?",
+        "options": [
+          "Cada uno tiene su IP y se hablan por ella",
+          "A través de un Service obligatorio",
+          "Por localhost, porque comparten la IP del Pod"
+        ],
+        "answer": 2,
+        "why": "Los contenedores de un Pod comparten red: una sola IP, y se hablan por localhost. Por eso no pueden escuchar los dos en el mismo puerto."
+      },
+      {
+        "after": "2. Ciclo de vida del Pod",
+        "q": "¿Cuál de estos valores es una fase real del Pod (status.phase)?",
+        "options": [
+          "CrashLoopBackOff",
+          "Succeeded",
+          "ContainerCreating"
+        ],
+        "answer": 1,
+        "why": "Las fases son Pending, Running, Succeeded, Failed y Unknown. CrashLoopBackOff y ContainerCreating son motivos que kubectl mezcla en la columna STATUS."
+      },
+      {
+        "after": "4. Deployment: versiones y actualizaciones sin corte",
+        "q": "¿Qué cambio en un Deployment crea una revisión nueva en kubectl rollout history?",
+        "options": [
+          "Cambiar la imagen del contenedor en spec.template",
+          "Escalar replicas de 3 a 5",
+          "Ejecutar kubectl rollout status"
+        ],
+        "answer": 0,
+        "why": "Solo los cambios en spec.template crean un ReplicaSet nuevo y una revisión. Escalar solo cambia replicas, y rollout status solo sigue el progreso."
+      },
+      {
+        "after": "5. Otros controladores de workloads",
+        "q": "Una base de datos necesita nombres estables (db-0, db-1) y un volumen propio por réplica. ¿Qué controlador usas?",
+        "options": [
+          "Deployment",
+          "StatefulSet",
+          "DaemonSet"
+        ],
+        "answer": 1,
+        "why": "StatefulSet da identidad estable, orden de arranque y volumeClaimTemplates. Un Deployment trata las réplicas como intercambiables y un DaemonSet pone un Pod por nodo."
+      },
+      {
+        "after": "9. ConfigMaps y Secrets",
+        "q": "Los valores de un Secret aparecen en base64. ¿Qué protección da eso?",
+        "options": [
+          "Los cifra en etcd con una clave del clúster",
+          "Impide leerlos a quien no tenga permisos RBAC",
+          "Ninguna: es solo codificación y se decodifica al instante"
+        ],
+        "answer": 2,
+        "why": "base64 no es cifrado: sirve para guardar binarios. La protección real viene de RBAC, del cifrado en reposo de etcd o de gestores externos como Vault."
+      }
+    ],
+    "04": [
+      {
+        "after": "El trabajo del scheduler",
+        "q": "¿En qué se basa el scheduler para decidir si un pod cabe en un nodo?",
+        "options": [
+          "En el consumo real de CPU y memoria del nodo",
+          "En la suma de requests frente al allocatable del nodo",
+          "En los limits de los contenedores del pod"
+        ],
+        "answer": 1,
+        "why": "El scheduler suma requests, no mira el consumo real: un nodo al 5% de CPU puede rechazar pods si la suma de requests ya llena su allocatable."
+      },
+      {
+        "after": "Node affinity: reglas expresivas sobre nodos",
+        "q": "Un pod usa preferredDuringSchedulingIgnoredDuringExecution y ningún nodo cumple la regla. ¿Qué pasa?",
+        "options": [
+          "Se coloca igual en otro nodo",
+          "Queda Pending hasta que algún nodo cumpla",
+          "Se rechaza al crearlo con un error de validación"
+        ],
+        "answer": 0,
+        "why": "preferred es una preferencia con peso que actúa en la puntuación: si nadie cumple, el pod va a otro nodo. Quedarse Pending es lo que pasa con required."
+      },
+      {
+        "after": "Taints y tolerations: el \"prohibido el paso\" de los nodos",
+        "q": "¿Qué efecto de taint desaloja también a los pods que ya corren en el nodo sin toleration?",
+        "options": [
+          "NoSchedule",
+          "PreferNoSchedule",
+          "NoExecute"
+        ],
+        "answer": 2,
+        "why": "NoExecute impide programar pods nuevos y además desaloja los que ya corren sin toleration. Con NoSchedule, los pods que ya estaban en el nodo se quedan."
+      },
+      {
+        "after": "Taints vs node affinity: ¿cuándo combinarlos?",
+        "q": "Quieres un nodo dedicado: que solo entren tus pods y que tus pods vayan solo allí. ¿Qué necesitas?",
+        "options": [
+          "Solo un taint en el nodo y tolerations en tus pods",
+          "Taint + toleration y además node affinity",
+          "Solo node affinity o nodeSelector en tus pods"
+        ],
+        "answer": 1,
+        "why": "El taint echa a los pods ajenos pero no obliga a los tuyos a ir allí; la affinity lleva tus pods allí pero no impide que entren otros. Hace falta combinarlos."
+      },
+      {
+        "after": "Requests, limits y QoS classes",
+        "q": "¿Qué le pasa a un contenedor que intenta usar más CPU que su limit?",
+        "options": [
+          "Se ralentiza (throttling), pero no muere",
+          "El kernel lo mata con OOMKilled",
+          "El kubelet lo desaloja a otro nodo"
+        ],
+        "answer": 0,
+        "why": "El límite de CPU frena el contenedor (throttling). OOMKilled es la consecuencia de superar el límite de memoria, no el de CPU."
+      }
+    ],
+    "05": [
+      {
+        "after": "Autenticación: ¿quién eres?",
+        "q": "¿Cómo se crea un usuario humano en Kubernetes?",
+        "options": [
+          "Con kubectl create user",
+          "Con un objeto User en el namespace kube-system",
+          "No se crea: viene de mecanismos externos como certificados u OIDC"
+        ],
+        "answer": 2,
+        "why": "Kubernetes no gestiona usuarios humanos: no existe un objeto User. El API server extrae usuario y grupos de certificados X.509, OIDC, etc.; solo las ServiceAccounts son objetos."
+      },
+      {
+        "after": "RBAC: Role, ClusterRole y sus bindings",
+        "q": "¿Qué combinación de RBAC no es posible?",
+        "options": [
+          "ClusterRole + RoleBinding",
+          "Role + ClusterRoleBinding",
+          "ClusterRole + ClusterRoleBinding"
+        ],
+        "answer": 1,
+        "why": "Un ClusterRoleBinding solo puede referenciar un ClusterRole. ClusterRole + RoleBinding sí es válido: concede esos permisos solo en el namespace del RoleBinding."
+      },
+      {
+        "after": "Pod Security Admission y los Pod Security Standards",
+        "q": "¿Qué label de namespace hace que Pod Security Admission rechace los pods que violan el perfil?",
+        "options": [
+          "pod-security.kubernetes.io/enforce",
+          "pod-security.kubernetes.io/warn",
+          "pod-security.kubernetes.io/audit"
+        ],
+        "answer": 0,
+        "why": "enforce rechaza los pods que violan el perfil; warn los admite mostrando un aviso y audit los admite anotándolo en el log de auditoría."
+      },
+      {
+        "after": "NetworkPolicies: un firewall entre pods",
+        "q": "Creas una NetworkPolicy en un clúster cuyo CNI no las soporta. ¿Qué ocurre?",
+        "options": [
+          "El API server la rechaza con un error",
+          "Se crea, pero no tiene ningún efecto",
+          "Kubernetes la aplica igualmente con kube-proxy"
+        ],
+        "answer": 1,
+        "why": "Las NetworkPolicies las aplica el plugin CNI, no Kubernetes. Si el CNI no las implementa (Flannel solo, por ejemplo), el objeto se crea sin error y el tráfico sigue igual."
+      },
+      {
+        "after": "Secrets y cifrado en reposo",
+        "q": "¿Qué protección dan, por defecto, los valores en base64 de un Secret?",
+        "options": [
+          "Cifrado AES al guardarse en etcd",
+          "Solo el kubelet puede decodificarlos",
+          "Ninguna: base64 es una codificación, no un cifrado"
+        ],
+        "answer": 2,
+        "why": "base64 se decodifica en un segundo y, por defecto, etcd guarda los Secrets sin cifrar. El cifrado en reposo requiere una EncryptionConfiguration (mejor con KMS)."
+      }
+    ],
+    "06": [
+      {
+        "after": "2. El modelo de red de Kubernetes",
+        "q": "Un pod habla con otro pod de otro nodo. ¿Qué IP de origen ve el destino?",
+        "options": [
+          "La IP real del pod de origen",
+          "La IP del nodo de origen, por NAT",
+          "La ClusterIP del Service del pod de origen"
+        ],
+        "answer": 0,
+        "why": "El modelo exige que los pods se comuniquen sin NAT: el destino ve la IP real del pod. Traducirla a la IP del nodo es justo lo que el modelo prohíbe."
+      },
+      {
+        "after": "4. Services: una dirección estable para un grupo cambiante de pods",
+        "q": "¿Qué Service no tiene IP virtual y hace que el DNS devuelva las IPs de los pods?",
+        "options": [
+          "ExternalName",
+          "NodePort",
+          "Headless (clusterIP: None)"
+        ],
+        "answer": 2,
+        "why": "Un Service headless no tiene ClusterIP ni balanceo: el DNS devuelve las IPs de los pods. ExternalName tampoco tiene IP, pero responde con un CNAME a un nombre externo."
+      },
+      {
+        "after": "5. Endpoints y EndpointSlices",
+        "q": "Un pod de un Service deja de pasar su readiness probe. ¿Qué ocurre?",
+        "options": [
+          "Sigue recibiendo tráfico hasta que alguien lo borre",
+          "Sale de los endpoints y deja de recibir tráfico, sin que lo maten",
+          "El Service lo elimina y crea otro pod"
+        ],
+        "answer": 1,
+        "why": "Solo los pods Ready entran en los EndpointSlices. Al fallar la readiness probe, el Service deja de mandarle tráfico, pero el pod no se mata."
+      },
+      {
+        "after": "7. DNS en Kubernetes: CoreDNS",
+        "q": "¿Cuál es el FQDN del Service api del namespace tienda?",
+        "options": [
+          "api.tienda.svc.cluster.local",
+          "tienda.api.svc.cluster.local",
+          "api.tienda.pod.cluster.local"
+        ],
+        "answer": 0,
+        "why": "El formato es <svc>.<ns>.svc.cluster.local. La zona pod.cluster.local es para los registros opcionales de pods, con la IP escrita con guiones."
+      },
+      {
+        "after": "8. Ingress e Ingress Controller",
+        "q": "Creas un Ingress en un clúster sin ningún Ingress Controller instalado. ¿Qué pasa?",
+        "options": [
+          "Kubernetes usa su controlador integrado",
+          "Se crea un Service LoadBalancer automáticamente",
+          "El objeto existe, pero no hace nada"
+        ],
+        "answer": 2,
+        "why": "Un Ingress solo describe reglas HTTP; hace falta un controlador (Traefik, HAProxy, Contour...) que las aplique, y Kubernetes no trae ninguno instalado."
+      }
+    ],
+    "07": [
+      {
+        "after": "2. El patrón sidecar",
+        "q": "¿Cómo se declara un native sidecar container (GA en v1.33)?",
+        "options": [
+          "En containers, con la label sidecar=true",
+          "En initContainers, con restartPolicy: Always",
+          "En initContainers, con restartPolicy: Never"
+        ],
+        "answer": 1,
+        "why": "Un init container con restartPolicy: Always no bloquea el arranque y sigue corriendo toda la vida del pod. Uno en containers es el sidecar clásico, sin orden de arranque garantizado."
+      },
+      {
+        "after": "4. ¿Qué es un service mesh?",
+        "q": "En un service mesh, ¿qué componentes tocan cada petición entre servicios?",
+        "options": [
+          "Los proxies del data plane",
+          "El control plane, que reenvía cada petición",
+          "El kube-apiserver"
+        ],
+        "answer": 0,
+        "why": "El data plane son los proxies (Envoy, ztunnel...) que tocan cada petición. El control plane no está en la ruta del tráfico: distribuye configuración y certificados."
+      },
+      {
+        "after": "5. Istio",
+        "q": "En el modo sidecar de Istio, ¿cómo llega el Envoy (istio-proxy) a cada pod?",
+        "options": [
+          "Hay que añadirlo a mano en cada manifiesto",
+          "Lo despliega un DaemonSet, un proxy por nodo",
+          "Lo inyecta un mutating admission webhook si el namespace tiene istio-injection=enabled"
+        ],
+        "answer": 2,
+        "why": "El sidecar se inyecta automáticamente con un mutating admission webhook en los namespaces con esa label. Un proxy por nodo (DaemonSet) es el ztunnel del modo ambient."
+      },
+      {
+        "after": "6. Linkerd y otros",
+        "q": "¿Qué proxy usa Linkerd en su data plane?",
+        "options": [
+          "linkerd2-proxy, escrito en Rust",
+          "Envoy, igual que Istio",
+          "ztunnel, un proxy por nodo"
+        ],
+        "answer": 0,
+        "why": "Linkerd usa su propio proxy ligero, linkerd2-proxy, escrito en Rust; no usa Envoy. ztunnel es el proxy por nodo del modo ambient de Istio."
+      },
+      {
+        "after": "7. SMI → GAMMA: estándares para mesh",
+        "q": "En GAMMA, ¿a qué apunta el parentRefs de una HTTPRoute que configura tráfico este-oeste?",
+        "options": [
+          "A un Gateway",
+          "A un Service",
+          "A un Ingress"
+        ],
+        "answer": 1,
+        "why": "GAMMA reutiliza HTTPRoute y GRPCRoute, pero cuelga la ruta de un Service en lugar de un Gateway. Así el mismo idioma sirve para el tráfico norte-sur y el este-oeste."
+      }
+    ],
+    "08": [
+      {
+        "after": "4. Volúmenes en Kubernetes",
+        "q": "Un contenedor que escribe en un emptyDir se reinicia, pero el pod sigue vivo. ¿Qué pasa con los datos?",
+        "options": [
+          "Se pierden: el emptyDir vive lo que el contenedor",
+          "Siguen ahí: el volumen vive lo que el pod",
+          "Se copian a un PV automáticamente"
+        ],
+        "answer": 1,
+        "why": "La vida de un volumen está ligada al pod, no al contenedor. Un emptyDir solo se borra al eliminar el pod; un reinicio de contenedor no lo toca."
+      },
+      {
+        "after": "5. PersistentVolume y PersistentVolumeClaim",
+        "q": "Un PVC pide 100Mi y el único PV Available compatible tiene 200Mi. ¿Qué ocurre?",
+        "options": [
+          "El PVC se enlaza a ese PV de 200Mi",
+          "El PVC queda Pending: el tamaño debe coincidir",
+          "El PV se divide y quedan 100Mi para otro PVC"
+        ],
+        "answer": 0,
+        "why": "El binding exige capacidad mayor o igual a la pedida y es 1:1: el PVC se queda con el PV entero de 200Mi y nadie más puede usar el resto."
+      },
+      {
+        "after": "6. Access modes",
+        "q": "¿Qué significa ReadWriteOnce (RWO)?",
+        "options": [
+          "Lectura/escritura por un único pod en todo el clúster",
+          "Se escribe una vez y después es solo lectura",
+          "Lectura/escritura montado por un solo nodo"
+        ],
+        "answer": 2,
+        "why": "RWO limita el montaje a un nodo, y varios pods de ese nodo pueden usarlo. Un único pod en todo el clúster es ReadWriteOncePod (RWOP)."
+      },
+      {
+        "after": "8. StorageClass y aprovisionamiento dinámico",
+        "q": "Un PVC no indica storageClassName. ¿Qué clase usa?",
+        "options": [
+          "Ninguna: solo se enlaza a PVs estáticos sin clase",
+          "La StorageClass marcada como predeterminada",
+          "La primera StorageClass por orden alfabético"
+        ],
+        "answer": 1,
+        "why": "Sin storageClassName se usa la clase con la anotación is-default-class. Para pedir explícitamente ninguna clase hay que poner storageClassName: \"\"."
+      },
+      {
+        "after": "9. StatefulSets y volumeClaimTemplates",
+        "q": "Reduces un StatefulSet de 3 a 1 réplica. ¿Qué pasa con los PVCs de las réplicas eliminadas?",
+        "options": [
+          "Se conservan por defecto",
+          "Se borran junto con sus pods",
+          "Se reasignan a la réplica que queda"
+        ],
+        "answer": 0,
+        "why": "Para no perder datos, los PVCs de volumeClaimTemplates no se borran al reducir réplicas ni al borrar el StatefulSet. Se cambia con persistentVolumeClaimRetentionPolicy."
+      }
+    ],
+    "09": [
+      {
+        "after": "1. La metodología: de afuera hacia adentro",
+        "q": "Si el fallo ocurre antes de que arranque el contenedor (imagen, scheduling, configuración), ¿dónde está la respuesta?",
+        "options": [
+          "En kubectl logs --previous",
+          "En kubectl describe y los eventos",
+          "En kubectl exec dentro del contenedor"
+        ],
+        "answer": 1,
+        "why": "describe y los eventos funcionan aunque el contenedor nunca haya arrancado. logs solo sirve si llegó a ejecutarse y exec necesita un contenedor vivo."
+      },
+      {
+        "after": "3. Catálogo de estados y causas típicas",
+        "q": "Un contenedor terminó con Exit Code 137. ¿Qué indica?",
+        "options": [
+          "SIGTERM: apagado ordenado",
+          "Un error de la aplicación al iniciar",
+          "SIGKILL: OOMKilled o muerte forzada"
+        ],
+        "answer": 2,
+        "why": "137 = 128 + 9 (SIGKILL), típico de OOMKilled. El apagado ordenado por SIGTERM da 143 (128 + 15)."
+      },
+      {
+        "after": "4. Sondas (probes): quién decide si tu contenedor está sano",
+        "q": "¿Qué ocurre cuando falla la readinessProbe de un contenedor?",
+        "options": [
+          "Sale de los endpoints del Service, sin reiniciarse",
+          "El kubelet reinicia el contenedor",
+          "El pod pasa a la fase Failed"
+        ],
+        "answer": 0,
+        "why": "La readiness decide si puede recibir tráfico: al fallar, se saca de los endpoints. Reiniciar el contenedor es lo que hace la livenessProbe."
+      },
+      {
+        "after": "5. Services sin endpoints",
+        "q": "Un Service no tiene endpoints aunque sus pods están Running y Ready. ¿Cuál es la causa más probable?",
+        "options": [
+          "Es de tipo ClusterIP en lugar de NodePort",
+          "Su selector no coincide con las labels de los pods",
+          "Falta un Ingress delante del Service"
+        ],
+        "answer": 1,
+        "why": "Sin pods que coincidan con el selector, el EndpointSlice queda vacío: compara el Selector de `kubectl describe svc` con `kubectl get pods --show-labels`. El tipo de Service y el Ingress no cambian los endpoints."
+      },
+      {
+        "after": "7. Troubleshooting del clúster",
+        "q": "El kubelet de un nodo falla. ¿Dónde miras sus logs?",
+        "options": [
+          "kubectl logs -n kube-system kubelet",
+          "journalctl -u kubelet, dentro del nodo",
+          "kubectl describe node <nodo>"
+        ],
+        "answer": 1,
+        "why": "El kubelet es un servicio systemd, no un Pod: escribe en journald. `kubectl logs` solo sirve para contenedores de Pods, y describe node muestra condiciones, no los logs."
+      }
+    ]
+  }
+}

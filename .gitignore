@@ -8,6 +8,8 @@ web/node_modules/
 web/dist/
 web/.astro/
 web/src/data/*.json
+# contenido escrito a mano (no lo genera sync-data.mjs)
+!web/src/data/comprueba.json
 
 # Herramientas de prueba
 .playwright-mcp/
