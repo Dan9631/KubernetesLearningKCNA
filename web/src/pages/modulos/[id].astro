@@ -72,7 +72,7 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
       <Acciones client:load module={pad(meta.n)} />
 
       <div class="prose">
-        <Prosa><Content /></Prosa>
+        <Prosa module={pad(meta.n)}><Content /></Prosa>
       </div>
 
       <p class="errata">¿Encontraste algo incorrecto o desactualizado en este módulo? <ReportLink href={report} label="Repórtalo en GitHub" /> con la fuente oficial que lo respalda.</p>

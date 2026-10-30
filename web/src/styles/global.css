@@ -177,6 +177,21 @@ p { margin: 0; }
 .prose summary { cursor: pointer; font-weight: 500; color: var(--helm-ink); }
 .prose details > :not(summary) { margin-top: 0.8em; }
 .prose hr { border: 0; border-top: 1px solid var(--line); }
+/* comprobación de 10 segundos al final de una subsección (lib/plegar.ts + Enhance.svelte) */
+.prose .check { margin-top: 1.4em; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--wait); border-radius: var(--r-m); background: var(--panel); }
+.prose .check.is-ok { border-left-color: var(--ready); }
+.prose .check.is-bad { border-left-color: var(--fail); }
+.prose .check-k { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+.prose .check-q { margin-top: 4px; font-weight: 500; }
+.prose .check-opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.prose .check-opt { font: inherit; font-size: 0.92rem; text-align: left; padding: 8px 12px; min-height: 40px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); cursor: pointer; }
+.prose .check-opt:hover:not(:disabled) { border-color: var(--helm); }
+.prose .check-opt:disabled { cursor: default; opacity: 0.7; }
+.prose .check-opt.right { opacity: 1; border-color: var(--ready); background: var(--ready-2); box-shadow: inset 0 0 0 1px var(--ready); }
+.prose .check-opt.picked:not(.right) { opacity: 1; border-color: var(--fail); background: var(--fail-2); box-shadow: inset 0 0 0 1px var(--fail); }
+.prose .check-why { margin-top: 10px; font-size: 0.92rem; color: var(--ink-2); }
+.prose .check-why strong { color: var(--ink); }
+@media (pointer: coarse) { .prose .check-opt { min-height: 44px; } }
 /* plegados de lib/plegar.ts: ficha de metadatos y secciones de consulta */
 .prose details.ficha { font-size: 0.92rem; color: var(--ink-2); }
 .prose details.ficha p { color: var(--ink-2); }

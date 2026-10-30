@@ -71,5 +71,6 @@ Cada módulo (en su cabecera y al final) y cada pregunta (al ver la explicación
 ## Cómo mantenerlo
 
 - Al cambiar contenido, sigue [VERIFICACION-GUIA.md](VERIFICACION-GUIA.md): fuente oficial abierta para cada dato, preguntas nuevas al final, y `node quiz/src/build.js` + `node quiz/src/validate.js --strict`.
+- Las predicciones de las simulaciones y las comprobaciones de 10 segundos viven en `web/src/data/comprueba.json`. Cada una se responde con el texto del módulo o con la propia simulación. Si renombras un encabezado `###` de "Conceptos" o una simulación, actualiza su `after` o su clave: `web/scripts/validar-comprueba.mjs` corre antes de cada build y lo detiene si alguna queda huérfana.
 - Revisa cada vez que salga una versión menor de Kubernetes (3 al año) los datos que dependen de la versión: estado GA/beta, valores por defecto y la lista de proyectos graduados de la CNCF.
 - El [mapa de cobertura](https://dan9631.github.io/KubernetesLearningKCNA/cobertura) del sitio muestra en cada build cuántas preguntas tienen fuente y qué competencias quedan cortas.

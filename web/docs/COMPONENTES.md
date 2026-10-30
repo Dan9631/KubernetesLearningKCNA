@@ -14,7 +14,9 @@ web/
   src/lib/sync.svelte.ts          sincronización opcional y cifrada con el Worker (sync/); PUBLIC_SYNC_URL al compilar
   src/lib/hoja.ts                 hoja de recuperación del código (HTML autónomo con código, enlace y QR)
   src/lib/lectura.ts              marcador de lectura, enlace ?r= y QR
-  src/lib/plegar.ts               HTML del módulo: quita el h1 del markdown, pliega ficha, Comandos clave y Fuentes (vía Prosa.astro)
+  src/lib/plegar.ts               HTML del módulo: quita el h1 del markdown, pliega ficha, Comandos clave y Fuentes, inserta las comprobaciones (vía Prosa.astro)
+  src/lib/comprueba.ts            predicciones por simulación y comprobaciones por sección (data/comprueba.json, validado en prebuild)
+  src/components/Predice.svelte   "Antes de tocar: ¿qué crees que pasará?" encima de cada simulación (lo monta SimHost)
   src/lib/voz.svelte.ts           lectura en voz alta (Web Speech API): play/pause/stop, voces, preferencias
   src/sims/ClusterCanvas.svelte   lienzo de clúster compartido (nodos + pods animados)
   src/sims/Stepper.svelte         reproductor por etapas (anterior / siguiente / reproducir)

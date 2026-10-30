@@ -1,7 +1,7 @@
 <script lang="ts">
   // Mejora el markdown renderizado: diagramas Mermaid, botón copiar y pasos del laboratorio con casilla.
   import { untrack } from 'svelte';
-  import { progress, toggleStep, toggleDone } from '../lib/progress.svelte';
+  import { progress, toggleStep, toggleDone, markToday, save } from '../lib/progress.svelte';
 
   // checklist=false: páginas que no son módulos (instalación) no muestran la barra de progreso
   let { module, checklist = true }: { module: string; checklist?: boolean } = $props();
@@ -80,6 +80,22 @@
     }
   }
 
+  // Comprobaciones de 10 segundos (las inserta lib/plegar.ts al compilar): un intento, luego la respuesta y el porqué
+  function checkpoints(prose: HTMLElement) {
+    prose.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.check-opt');
+      const box = b?.closest<HTMLElement>('.check');
+      if (!b || !box || box.classList.contains('done')) return;
+      const ok = b.dataset.i === box.dataset.answer;
+      box.classList.add('done', ok ? 'is-ok' : 'is-bad');
+      b.classList.add('picked');
+      for (const o of box.querySelectorAll<HTMLButtonElement>('.check-opt')) { o.disabled = true; if (o.dataset.i === box.dataset.answer) o.classList.add('right'); }
+      const why = box.querySelector<HTMLElement>('.check-why');
+      if (why) { why.insertAdjacentHTML('afterbegin', `<strong>${ok ? 'Bien.' : 'No exactamente.'}</strong> `); why.hidden = false; }
+      markToday(); save();
+    });
+  }
+
   // Los pasos del laboratorio son los h3 entre "## Laboratorio guiado" y el siguiente h2.
   // Las casillas se insertan UNA vez; su estado lo actualiza el $effect de abajo.
   let steps = $state<{ id: string; box: HTMLInputElement; h: HTMLElement }[]>([]);
@@ -114,6 +130,7 @@
     if (!prose) return;
     untrack(() => {
       labSteps(prose);
+      checkpoints(prose);
       mermaid(prose).finally(() => copyButtons(prose));
     });
   });

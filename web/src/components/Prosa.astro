@@ -1,6 +1,9 @@
 ---
-// Contenido del módulo con los plegados de lib/plegar.ts (ficha de metadatos y secciones de consulta)
+// Contenido del módulo con los plegados y las comprobaciones de lib/plegar.ts
 import { plegar } from '../lib/plegar';
-const html = plegar(await Astro.slots.render('default'));
+import { COMPROBACIONES } from '../lib/comprueba';
+interface Props { module: string }
+const { module } = Astro.props;
+const html = plegar(await Astro.slots.render('default'), COMPROBACIONES[module] ?? []);
 ---
 <Fragment set:html={html} />

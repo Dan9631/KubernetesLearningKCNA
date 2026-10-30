@@ -2,10 +2,13 @@
   // Carga perezosa de una simulación del registro y marca el progreso al interactuar.
   import { SIMS } from '../sims/registry';
   import { touchSim } from '../lib/progress.svelte';
+  import { PREDICCIONES } from '../lib/comprueba';
+  import Predice from './Predice.svelte';
   import type { Component } from 'svelte';
 
   let { module, simId }: { module: number; simId: string } = $props();
   const entry = SIMS[module]?.find((s) => s.id === simId);
+  const prediccion = PREDICCIONES[`${String(module).padStart(2, '0')}:${simId}`];
   let Comp = $state<Component<any> | null>(null);
   let error = $state('');
 
@@ -22,6 +25,7 @@
       <h3>{entry.title}</h3>
       <p>{entry.intro}</p>
     </header>
+    {#if prediccion}<Predice check={prediccion} />{/if}
     {#if Comp}
       <Comp />
     {:else if error}
