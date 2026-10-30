@@ -14,13 +14,14 @@ web/
   src/lib/sync.svelte.ts          sincronización opcional y cifrada con el Worker (sync/); PUBLIC_SYNC_URL al compilar
   src/lib/hoja.ts                 hoja de recuperación del código (HTML autónomo con código, enlace y QR)
   src/lib/lectura.ts              marcador de lectura, enlace ?r= y QR
+  src/lib/plegar.ts               HTML del módulo: quita el h1 del markdown, pliega ficha, Comandos clave y Fuentes (vía Prosa.astro)
   src/lib/voz.svelte.ts           lectura en voz alta (Web Speech API): play/pause/stop, voces, preferencias
   src/sims/ClusterCanvas.svelte   lienzo de clúster compartido (nodos + pods animados)
   src/sims/Stepper.svelte         reproductor por etapas (anterior / siguiente / reproducir)
   src/sims/registry.ts            registro módulo -> simulaciones (AQUÍ se registran)
   src/sims/<NN>/*.svelte          simulaciones de cada módulo
   src/components/SimHost.svelte   carga perezosa + marca el progreso (no tocar)
-  src/components/Enhance.svelte   mermaid, copiar, pasos del lab (no tocar)
+  src/components/Enhance.svelte   mermaid (colores del tema, redibujo al cambiarlo), copiar, pasos del lab, "Marcar terminado"
   src/components/Lector.svelte    "Escuchar este módulo" párrafo a párrafo (salta código y diagramas)
   src/components/Escuchar.svelte  botón Escuchar/Detener; preguntas en inglés, explicaciones en español
   src/components/VozAjustes.svelte voz en español, voz en inglés y velocidad (localStorage)

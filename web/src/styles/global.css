@@ -14,7 +14,7 @@
   --panel-2: #f6f8fb;
   --ink: #10213a;
   --ink-2: #4a5a72;
-  --ink-3: #7b8799;
+  --ink-3: #5f6b80; /* 4,8:1 sobre --paper y 5,4:1 sobre --panel (AA en texto pequeño) */
   --line: #d3dbe6;
   --line-2: #e6ebf2;
 
@@ -102,6 +102,11 @@ p { margin: 0; }
 .btn.primary:hover { background: var(--helm-ink); border-color: var(--helm-ink); }
 .btn.small { padding: 5px 10px; font-size: 0.9rem; border-radius: var(--r-s); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+/* Pantallas táctiles: objetivos de al menos 44 px (botones pequeños, casillas de las simulaciones) */
+@media (pointer: coarse) {
+  .btn.small { min-height: 44px; min-width: 44px; justify-content: center; }
+  .sim input[type='checkbox'], .sim input[type='radio'] { width: 22px; height: 22px; }
+}
 
 /* Chips de dominio: color = dominio del examen */
 .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 500; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--panel); white-space: nowrap; max-width: 100%; }
@@ -172,8 +177,15 @@ p { margin: 0; }
 .prose summary { cursor: pointer; font-weight: 500; color: var(--helm-ink); }
 .prose details > :not(summary) { margin-top: 0.8em; }
 .prose hr { border: 0; border-top: 1px solid var(--line); }
-.prose .mermaid { display: flex; justify-content: center; padding: 16px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--panel); overflow-x: auto; }
-.prose .mermaid svg { max-width: 100%; height: auto; }
+/* plegados de lib/plegar.ts: ficha de metadatos y secciones de consulta */
+.prose details.ficha { font-size: 0.92rem; color: var(--ink-2); }
+.prose details.ficha p { color: var(--ink-2); }
+.prose details.seccion { margin-top: 2.4em; }
+.prose details.seccion > summary h2 { display: inline; margin: 0; padding: 0; border: 0; font-size: 1.25rem; color: var(--ink); }
+.prose .mermaid { padding: 16px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--panel); overflow-x: auto; }
+/* tamaño natural y centrado sin recortar el inicio cuando el diagrama es más ancho que la columna */
+.prose .mermaid svg { display: block; margin-inline: auto; max-width: none; height: auto; }
+.prose .mermaid.ancho::after { content: 'Desliza para ver todo el diagrama →'; display: block; position: sticky; left: 0; width: max-content; margin-top: 8px; font-size: 0.8rem; color: var(--ink-3); }
 /* botón copiar de los bloques de código (lo añade Enhance.svelte) */
 .prose .copy { position: absolute; top: 8px; right: 8px; font: 500 0.78rem var(--sans); padding: 3px 8px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); cursor: pointer; opacity: 0; transition: opacity var(--dur); }
 .prose pre:hover .copy, .prose .copy:focus-visible { opacity: 1; }

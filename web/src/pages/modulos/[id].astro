@@ -8,6 +8,7 @@ import Marcador from '../../components/Marcador.svelte';
 import Acciones from '../../components/Acciones.svelte';
 import SimHost from '../../components/SimHost.svelte';
 import ModuleQuiz from '../../components/ModuleQuiz.svelte';
+import Prosa from '../../components/Prosa.astro';
 import { MODULES, DOMAINS, byId, pad, titleFromBody, moduleUrl } from '../../lib/modules';
 import { SIMS } from '../../sims/registry';
 import ReportLink from '../../components/ReportLink.svelte';
@@ -56,6 +57,9 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
         )}
       </header>
 
+      <!-- arriba de todo: quien vuelve ve "Te quedaste en…" sin bajar más allá de las simulaciones -->
+      <Marcador client:load module={pad(meta.n)} />
+
       {sims.length > 0 && (
         <section id="simulaciones" class="sims">
           <h2>Antes de leer, pruébalo</h2>
@@ -64,13 +68,11 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
         </section>
       )}
 
-      <Enhance client:load module={pad(meta.n)} />
-      <Marcador client:load module={pad(meta.n)} />
       <Lector client:load module={pad(meta.n)} />
       <Acciones client:load module={pad(meta.n)} />
 
       <div class="prose">
-        <Content />
+        <Prosa><Content /></Prosa>
       </div>
 
       <p class="errata">¿Encontraste algo incorrecto o desactualizado en este módulo? <ReportLink href={report} label="Repórtalo en GitHub" /> con la fuente oficial que lo respalda.</p>
@@ -79,6 +81,9 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
         <h2>Practica este módulo</h2>
         <ModuleQuiz client:visible module={meta.n} />
       </section>
+
+      <!-- al final, junto a "Siguiente": marcar el módulo terminado (y el resumen de pasos del laboratorio) -->
+      <Enhance client:load module={pad(meta.n)} />
 
       <nav class="pager" aria-label="Módulos anterior y siguiente">
         {prev ? <a href={moduleUrl(prev.n)}><span>Anterior</span><strong>{pad(prev.n)} · {prev.title}</strong></a> : <span />}

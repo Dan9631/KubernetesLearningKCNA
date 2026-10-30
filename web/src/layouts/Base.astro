@@ -75,5 +75,13 @@ const rel = path.startsWith(base) ? path.slice(base.length) || '/' : path;
   .main.wide { max-width: var(--wide); }
   .main.read { max-width: calc(var(--rail) + 24px + 860px); }
   .foot { border-top: 1px solid var(--line-2); padding: 20px clamp(14px, 3vw, 32px) 40px; color: var(--ink-3); font-size: 0.85rem; max-width: var(--wide); margin: 0 auto; }
-  @media (max-width: 560px) { .top { gap: 12px; } .brand span { display: none; } nav a { padding: 6px 9px; } }
+  /* Teléfono: las secciones pasan a una segunda fila de cuatro columnas (antes se recortaban "Terminal" y "Entorno")
+     y la cabecera deja de ser fija para no quitar alto de pantalla. Objetivos táctiles de 44 px. */
+  @media (max-width: 560px) {
+    .top { position: static; flex-wrap: wrap; height: auto; gap: 2px 6px; padding-top: 6px; padding-bottom: 6px; }
+    .brand { margin-right: auto; min-height: 44px; }
+    nav { order: 3; flex: 1 0 100%; margin-left: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; }
+    nav a { display: grid; place-items: center; min-height: 44px; padding: 4px 2px; font-size: 0.94rem; }
+    .top :global(.sync), .top :global(.btn) { min-width: 44px; min-height: 44px; }
+  }
 </style>

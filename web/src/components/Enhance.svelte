@@ -7,7 +7,42 @@
   let { module, checklist = true }: { module: string; checklist?: boolean } = $props();
   let root: HTMLElement | undefined;
 
-  const isDark = () => document.documentElement.dataset.theme === 'dark';
+  // Colores de los diagramas a partir de los tokens del tema (global.css): mismos azules, tinta y paneles
+  function mermaidTheme() {
+    const v = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return {
+      background: v('--panel'), primaryColor: v('--helm-2'), primaryBorderColor: v('--helm'), primaryTextColor: v('--ink'),
+      secondaryColor: v('--panel-2'), tertiaryColor: v('--panel-2'), lineColor: v('--ink-2'), textColor: v('--ink'),
+      mainBkg: v('--helm-2'), nodeBorder: v('--helm'), clusterBkg: v('--panel-2'), clusterBorder: v('--line'),
+      actorBkg: v('--helm-2'), actorBorder: v('--helm'), actorTextColor: v('--ink'), actorLineColor: v('--line'),
+      signalColor: v('--ink-2'), signalTextColor: v('--ink'), labelBoxBkgColor: v('--panel-2'), labelBoxBorderColor: v('--line'),
+      labelTextColor: v('--ink'), loopTextColor: v('--ink'), noteBkgColor: v('--wait-2'), noteBorderColor: v('--wait'), noteTextColor: v('--ink'),
+      edgeLabelBackground: v('--panel'), fontSize: '15px',
+    };
+  }
+
+  let diagrams: { div: HTMLDivElement; src: string }[] = [];
+  async function drawDiagrams() {
+    const { default: m } = await import('mermaid');
+    // tamaño natural (sin encoger al ancho de la columna): si no cabe, el contenedor se desplaza en horizontal
+    m.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'base', fontFamily: 'IBM Plex Sans, sans-serif', themeVariables: mermaidTheme(),
+      flowchart: { useMaxWidth: false }, sequence: { useMaxWidth: false } });
+    for (const [k, { div, src }] of diagrams.entries()) {
+      try {
+        const { svg } = await m.render(`mmd-${module}-${k}-${Date.now()}`, src);
+        div.innerHTML = svg;
+        // si al encogerlo el texto sigue legible (≥ 12 px de 15), se ajusta a la columna; si no, se desplaza con aviso
+        const el = div.querySelector('svg');
+        const natural = el?.viewBox.baseVal?.width ?? 0;
+        const fits = !natural || natural <= (div.clientWidth - 32) * 1.25;
+        if (el && fits) el.style.maxWidth = '100%';
+        div.classList.toggle('ancho', !fits);
+      } catch (e) {
+        console.warn('mermaid:', e);
+        div.innerHTML = `<pre>${src.replace(/</g, '&lt;')}</pre>`;
+      }
+    }
+  }
 
   async function mermaid(prose: HTMLElement) {
     const blocks = [...prose.querySelectorAll<HTMLPreElement>('pre')].filter((pre) => {
@@ -15,22 +50,16 @@
       return /mermaid/.test(lang);
     });
     if (!blocks.length) return;
-    const { default: m } = await import('mermaid');
-    m.initialize({ startOnLoad: false, securityLevel: 'strict', theme: isDark() ? 'dark' : 'neutral', fontFamily: 'IBM Plex Sans, sans-serif',
-      themeVariables: isDark() ? { background: '#141f34' } : { primaryColor: '#e3ebfb', primaryBorderColor: '#2f5fd0', lineColor: '#4a5a72' } });
-    for (const [k, pre] of blocks.entries()) {
+    diagrams = blocks.map((pre) => {
       const src = (pre.querySelector('code') ?? pre).textContent ?? '';
       const div = document.createElement('div');
       div.className = 'mermaid';
-      try {
-        const { svg } = await m.render(`mmd-${module}-${k}`, src);
-        div.innerHTML = svg;
-      } catch (e) {
-        console.warn('mermaid:', e);
-        div.innerHTML = `<pre>${src.replace(/</g, '&lt;')}</pre>`;
-      }
       pre.replaceWith(div);
-    }
+      return { div, src };
+    });
+    await drawDiagrams();
+    // al cambiar de tema se vuelven a dibujar con los colores nuevos
+    new MutationObserver(() => drawDiagrams()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
   function copyButtons(prose: HTMLElement) {
@@ -60,7 +89,7 @@
     const found: typeof steps = [];
     let el = h2.nextElementSibling;
     let n = 0;
-    while (el && el.tagName !== 'H2') {
+    while (el && el.tagName !== 'H2' && !el.matches('details.seccion')) { // secciones plegadas por lib/plegar.ts
       if (el.tagName === 'H3') {
         n += 1;
         const h = el as HTMLHeadingElement;
@@ -100,7 +129,7 @@
 </script>
 
 <div bind:this={root} class="status" style:display={checklist ? null : 'none'}>
-  <span class="hint">{doneCount ? `${doneCount} paso${doneCount === 1 ? '' : 's'} del laboratorio hechos` : 'Marca los pasos del laboratorio a medida que los completes.'}</span>
+  <span class="hint">{doneCount ? `${doneCount} paso${doneCount === 1 ? '' : 's'} del laboratorio hechos. ` : ''}{done ? 'Aparece como terminado en tu Ruta.' : '¿Terminaste la lectura y el laboratorio? Márcalo para verlo en tu Ruta.'}</span>
   <button type="button" class="btn small" class:primary={!done} onclick={() => toggleDone(module)}>{done ? 'Módulo terminado ✓' : 'Marcar módulo terminado'}</button>
 </div>
 

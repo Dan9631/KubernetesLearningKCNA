@@ -82,6 +82,10 @@
     it.done = true; recordAnswer(it.q.id, isCorrect(it), it.conf);
   }
   function nextPractice() { if (idx + 1 < items.length) idx += 1; else view = 'practice-end'; }
+  // cierre de la práctica: las falladas de la ronda, con su módulo, y repasarlas en el momento
+  const missed = $derived(items.filter((it) => it.done && !isCorrect(it)));
+  function retryMissed() { startPractice(missed.map((it) => it.q), missed.length, 'Repaso de fallos'); }
+  function again() { if (practiceTitle === 'Repaso del día') startDue(); else startScoped(); }
 
   // ---------- simulacro ----------
   function startExam() {
@@ -304,9 +308,27 @@
       <p class="muted">{practiceTitle}</p>
       <h2>Práctica terminada</h2>
       <p class="score" class:pass={pct(okCount, doneCount) >= PASS} class:fail={doneCount > 0 && pct(okCount, doneCount) < PASS}>{pct(okCount, doneCount)} %</p>
-      <p>{okCount} de {doneCount} correctas{#if doneCount < items.length}{' · '}{items.length - doneCount} sin responder{/if}</p>
+      <p>{okCount} de {doneCount} correctas{#if doneCount < items.length}{' · '}terminaste antes: {items.length - doneCount} sin ver{/if}</p>
+      {#if missed.length}
+        <h3 class="sec">Para repasar ({missed.length})</h3>
+        <ul class="missed">
+          {#each missed as it (it.q.id)}
+            <li>
+              <span class="mq">{it.q.q}</span>
+              <span class="mm">
+                {#if it.conf === 's'}<span class="tag bad">Fallo con seguridad</span>{/if}
+                <a href={url(`/modulos/${pad(it.q.module)}`)}>Repasar el módulo {pad(it.q.module)}</a>
+              </span>
+            </li>
+          {/each}
+        </ul>
+        <p class="note">Vuelven en tu Repaso del día de mañana; los fallos con seguridad, primero.</p>
+      {:else if doneCount}
+        <p class="note">Sin fallos en esta ronda.</p>
+      {/if}
       <div class="row">
-        <button type="button" class="btn primary" onclick={() => (practiceTitle === 'Repaso del día' ? startDue() : startScoped())}>Otra ronda</button>
+        {#if missed.length}<button type="button" class="btn primary" onclick={retryMissed}>Repasar mis fallos ahora</button>{/if}
+        <button type="button" class="btn" class:primary={!missed.length} onclick={again}>Otra ronda</button>
         <button type="button" class="btn" onclick={home}>Volver al inicio</button>
       </div>
     {:else}
@@ -491,6 +513,11 @@
   .note { margin-top: 10px; padding: 8px 12px; border-radius: var(--r-m); background: var(--panel-2); font-size: 0.92rem; color: var(--ink-2); }
   .tag { font-size: 0.72rem; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--ready); color: var(--ready); white-space: nowrap; }
   .weak td { padding-right: 10px; }
+  .tag.bad { border-color: var(--fail); color: var(--fail); }
+  .missed { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-2); }
+  .missed li { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+  .mq { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.95rem; }
+  .mm { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 0.88rem; }
 
   @media (max-width: 760px) {
     .cols { grid-template-columns: 1fr; }
