@@ -8,7 +8,8 @@ export interface Progress {
   done: string[];
   /** simulaciones con las que ya se interactuó: ["04:scheduler"] */
   sims: string[];
-  /** estadísticas del quiz por id de pregunta (first/at: resultado y fecha del primer intento) */
+  /** estadísticas del quiz por id de pregunta (first/at: resultado y fecha del primer intento).
+   *  Los ejercicios de «Comandos de memoria» comparten el mapa con la clave "cmd:<id>" (lib/kube/drills.ts) */
   quiz: Record<string, QuizStat>;
   /** simulacros entregados; kind 'final' = Examen de graduación (banco reservado) */
   exams: { date: number; score: number; ok: number; total: number; secs: number; kind?: 'final'; doms?: Record<string, [number, number]> }[];
@@ -120,7 +121,8 @@ export function touchSim(id: string) {
   if (!progress.sims.includes(id)) { progress.sims = [...progress.sims, id]; save(); }
 }
 
-export function recordAnswer(qid: string, correct: boolean, conf?: Conf) {
+/** `helped`: acierto con pistas o tras varios intentos (comandos de memoria): cuenta, pero no sube de caja */
+export function recordAnswer(qid: string, correct: boolean, conf?: Conf, helped = false) {
   const now = Date.now();
   const s = progress.quiz[qid];
   const n: QuizStat = s
@@ -136,7 +138,7 @@ export function recordAnswer(qid: string, correct: boolean, conf?: Conf) {
   else if (correct && n.sureMiss && now - n.sureMiss >= 3 * DAY) delete n.sureMiss;
   // Leitner: el fallo vuelve a la caja 1 (mañana); el acierto sube de caja, salvo si fue adivinando
   let box = n.box ?? (s ? (s.last ? 2 : 1) : 0);
-  box = !correct ? 1 : conf === 'a' ? Math.max(1, box) : Math.min(box + 1, INTERVALS.length - 1);
+  box = !correct ? 1 : conf === 'a' || helped ? Math.max(1, box) : Math.min(box + 1, INTERVALS.length - 1);
   n.box = box;
   n.due = now + INTERVALS[box] * DAY;
   progress.quiz[qid] = n;

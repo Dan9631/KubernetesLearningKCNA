@@ -8,11 +8,11 @@ export const fail = (lines: string[] | string): Result => ({ out: Array.isArray(
 // ---------- flags ----------
 export interface Parsed { args: string[]; flags: Record<string, string[]>; rest: string[] }
 
-const SHORT: Record<string, string> = { n: 'namespace', o: 'output', l: 'selector', L: 'label-columns', c: 'container', f: 'filename', A: 'all-namespaces', p: 'previous', w: 'watch', h: 'help', i: 'stdin', t: 'tty', k: 'kustomize', R: 'recursive' };
-const VALUE = new Set(['namespace', 'output', 'selector', 'label-columns', 'container', 'filename', 'image', 'replicas', 'port', 'target-port', 'type', 'name', 'from-literal', 'from-file', 'from-env-file', 'restart', 'env', 'to-revision', 'revision', 'timeout', 'tail', 'sort-by', 'field-selector', 'grace-period', 'cascade', 'schedule', 'labels', 'annotations', 'command', 'kustomize', 'since', 'limit', 'min', 'max', 'cpu-percent', 'protocol', 'external-ip', 'cluster-ip', 'selector-labels', 'overrides', 'requests', 'limits', 'serviceaccount', 'verb', 'resource', 'template', 'as', 'context', 'cluster', 'user', 'kubeconfig', 'server', 'current-replicas', 'max-replicas', 'min-replicas', 'image-pull-policy', 'port-name', 'for', 'chunk-size', 'pod-running-timeout', 'target', 'copy-to', 'share-processes', 'retries']);
+export const SHORT: Record<string, string> = { n: 'namespace', o: 'output', l: 'selector', L: 'label-columns', c: 'container', f: 'filename', A: 'all-namespaces', p: 'previous', w: 'watch', h: 'help', i: 'stdin', t: 'tty', k: 'kustomize', R: 'recursive' };
+export const VALUE = new Set(['namespace', 'output', 'selector', 'label-columns', 'container', 'filename', 'image', 'replicas', 'port', 'target-port', 'type', 'name', 'from-literal', 'from-file', 'from-env-file', 'restart', 'env', 'to-revision', 'revision', 'timeout', 'tail', 'sort-by', 'field-selector', 'grace-period', 'cascade', 'schedule', 'labels', 'annotations', 'command', 'kustomize', 'since', 'limit', 'min', 'max', 'cpu-percent', 'protocol', 'external-ip', 'cluster-ip', 'selector-labels', 'overrides', 'requests', 'limits', 'serviceaccount', 'verb', 'resource', 'template', 'as', 'context', 'cluster', 'user', 'kubeconfig', 'server', 'current-replicas', 'max-replicas', 'min-replicas', 'image-pull-policy', 'port-name', 'for', 'chunk-size', 'pod-running-timeout', 'target', 'copy-to', 'share-processes', 'retries']);
 
 /** Flags que en `logs` son booleanos aunque en otros comandos lleven valor. */
-const BOOL_IN: Record<string, Set<string>> = { logs: new Set(['filename', 'previous']), exec: new Set([]), run: new Set(['command']), delete: new Set(['selector-labels']) };
+export const BOOL_IN: Record<string, Set<string>> = { logs: new Set(['filename', 'previous']), exec: new Set([]), run: new Set(['command']), delete: new Set(['selector-labels']) };
 
 export function parseFlags(tokens: string[], cmd = ''): Parsed {
   const args: string[] = []; const flags: Record<string, string[]> = {}; let rest: string[] = [];

@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Terminal from '../components/terminal/Terminal.svelte';
+import { url } from '../lib/modules';
 ---
 <Base title="Terminal de práctica" description="Simulador de kubectl para practicar la sintaxis sin encender el clúster del curso." width="wide">
   <article class="term">
@@ -8,6 +9,10 @@ import Terminal from '../components/terminal/Terminal.svelte';
       <p class="kicker">Terminal de práctica</p>
       <h1>kubectl sin encender el clúster</h1>
       <p class="lead">Un clúster <span class="mono">kind-kcna</span> simulado en el navegador, con los mismos nodos y las mismas imágenes precargadas que tu laboratorio. Sirve para practicar la sintaxis y el ciclo de vida de los objetos: las salidas imitan a kubectl v1.37, los pods tardan en arrancar, las imágenes que no están cargadas acaban en <span class="mono">ImagePullBackOff</span> y los rollouts se hacen poco a poco. Nada de lo que hagas aquí toca tu máquina.</p>
+      <nav class="tabs" aria-label="Modos de la terminal">
+        <a href={url('/terminal')} aria-current="page">Clúster simulado</a>
+        <a href={url('/comandos')}>Comandos de memoria</a>
+      </nav>
     </header>
     <Terminal client:only="svelte" />
   </article>
@@ -18,4 +23,9 @@ import Terminal from '../components/terminal/Terminal.svelte';
   .head { margin-bottom: 22px; }
   .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
   .lead { font-size: 1.08rem; color: var(--ink-2); margin-top: 10px; max-width: 78ch; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+  .tabs a { padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--ink-2); font-weight: 500; font-size: 0.94rem; background: var(--panel); }
+  .tabs a:hover { border-color: var(--helm); color: var(--ink); }
+  .tabs a[aria-current='page'] { background: var(--helm-2); border-color: var(--helm); color: var(--helm-ink); }
+  @media (pointer: coarse) { .tabs a { min-height: 44px; display: inline-flex; align-items: center; } }
 </style>

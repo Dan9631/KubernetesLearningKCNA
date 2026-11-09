@@ -7,6 +7,7 @@ import { podObject, deploymentObject, replicaSetObject, serviceObject, configMap
 import { describePod, describeDeployment, describeReplicaSet, describeService, describeNode, describeNamespace, describeConfigMap, describeSecret } from './describe.ts';
 import { FILES, fileNames, EXPLAIN, wrap } from './files.ts';
 import { tokenize } from './exec.ts';
+import { erroresDeFlags } from './analizador.ts';
 import { run, create, expose, scale, setImage, rollout, del, label, annotate, taint, applyFiles, logs, exec } from './commands.ts';
 
 export type { Result } from './common.ts';
@@ -330,6 +331,9 @@ function kubectl(c: Cluster, tokens: string[]): Result {
   const cmd = tokens[0];
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') return ok(KUBECTL_USAGE);
   const p = parseFlags(tokens.slice(1), cmd);
+  // como kubectl de verdad: un flag mal escrito o sin valor rechaza el comando (antes se ignoraba en silencio)
+  const malos = SUBCOMMANDS.includes(cmd) ? erroresDeFlags('', cmd, tokens.slice(1)) : [];
+  if (malos.length) return fail([malos[0].real!, `See 'kubectl ${cmd} --help' for usage.`]);
   if (has(p, 'help')) return ok([`Ayuda de "kubectl ${cmd}" en la documentación oficial: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_${cmd.replace(/-/g, '_')}/`, ...HELP.filter((l) => l.includes(`kubectl ${cmd}`))]);
   const ns = flag(p, 'namespace');
   if (ns && !c.ns(ns) && ['run', 'create', 'expose', 'apply'].includes(cmd) && !has(p, 'dry-run')) { /* cada comando reporta el NotFound con su formato */ }

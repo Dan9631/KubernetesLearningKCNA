@@ -8,6 +8,8 @@ import Marcador from '../../components/Marcador.svelte';
 import Acciones from '../../components/Acciones.svelte';
 import SimHost from '../../components/SimHost.svelte';
 import ModuleQuiz from '../../components/ModuleQuiz.svelte';
+import Comandos from '../../components/practica/Comandos.svelte';
+import { drillsOf } from '../../lib/kube/drills';
 import Prosa from '../../components/Prosa.astro';
 import { MODULES, DOMAINS, byId, pad, titleFromBody, moduleUrl } from '../../lib/modules';
 import { SIMS } from '../../sims/registry';
@@ -26,6 +28,7 @@ const { entry, meta } = Astro.props;
 const { Content, headings } = await render(entry);
 const title = titleFromBody(entry.body ?? '', meta.title);
 const sims = SIMS[meta.n] ?? [];
+const drills = drillsOf(meta.n).length;
 const toc = headings.filter((h) => h.depth === 2);
 const prev = MODULES.find((m) => m.n === meta.n - 1);
 const next = MODULES.find((m) => m.n === meta.n + 1);
@@ -52,6 +55,7 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
           <nav class="toc" aria-label="En este módulo">
             {sims.length > 0 && <a href="#simulaciones">Simulaciones</a>}
             {toc.map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
+            {drills > 0 && <a href="#comandos">Comandos de memoria</a>}
             <a href="#practica">Practica este módulo</a>
           </nav>
         )}
@@ -76,6 +80,14 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
       </div>
 
       <p class="errata">¿Encontraste algo incorrecto o desactualizado en este módulo? <ReportLink href={report} label="Repórtalo en GitHub" /> con la fuente oficial que lo respalda.</p>
+
+      {drills > 0 && (
+        <section id="comandos" class="practica">
+          <h2>Comandos de memoria</h2>
+          <p class="hint">Después del laboratorio, sin mirarlo: {drills} comandos de este módulo. El analizador corrige cada parte y te explica qué concepto hay detrás.</p>
+          <Comandos client:only="svelte" module={meta.n} size={drills} />
+        </section>
+      )}
 
       <section id="practica" class="practica">
         <h2>Practica este módulo</h2>
@@ -113,6 +125,7 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
   .errata { margin-top: 36px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: var(--r-m); color: var(--ink-2); font-size: 0.92rem; max-width: var(--measure); }
   .practica { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line-2); }
   .practica h2 { margin-bottom: 12px; }
+  .practica .hint { color: var(--ink-2); font-size: 0.95rem; margin: -4px 0 14px; max-width: var(--measure); }
   .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 40px; }
   .pager a { display: grid; gap: 2px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-m); text-decoration: none; color: var(--ink); background: var(--panel); }
   .pager a:hover { border-color: var(--helm); }

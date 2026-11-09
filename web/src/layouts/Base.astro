@@ -15,7 +15,7 @@ const path = Astro.url.pathname;
 const nav = [
   { href: url('/'), label: 'Ruta', match: /^\/?$|\/modulos/ },
   { href: url('/practica'), label: 'Práctica', match: /\/practica|\/flashcards/ },
-  { href: url('/terminal'), label: 'Terminal', match: /\/terminal/ },
+  { href: url('/terminal'), label: 'Terminal', match: /\/terminal|\/comandos/ },
   { href: url('/entorno'), label: 'Entorno', match: /\/entorno/ },
 ];
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');

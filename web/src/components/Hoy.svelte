@@ -3,15 +3,19 @@
   // seguir leyendo, el siguiente paso de la preparación y la constancia de la semana. Todo se calcula
   // en el navegador con el progreso guardado (y sincronizado, si está activo).
   import { progress, setExamDate, isoDay, DAY } from '../lib/progress.svelte';
-  import { dueToday, dueTomorrow, readiness, nextStep } from '../lib/preparacion';
+  import { dueToday, dueTomorrow, readiness, nextStep, isDue as cmdIsDue } from '../lib/preparacion';
   import { lastRead, pctOf } from '../lib/lectura';
   import { MODULES, moduleUrl, url } from '../lib/modules';
   import MapaMemoria from './MapaMemoria.svelte';
   import { MISSIONS } from '../lib/kube/missions';
+  import { DRILLS, drillKey } from '../lib/kube/drills';
 
   const ROUND = 30; // preguntas por ronda del Repaso del día (Practica.svelte)
   const DIAG_CASES = 6; // casos de sims/09/Diagnostico.svelte
   const termN = $derived(progress.retos.filter((r) => r.startsWith('term:')).length);
+  // comandos de memoria: los que salieron bien en su último intento y los que toca repasar hoy
+  const cmdN = $derived(DRILLS.filter((d) => progress.quiz[drillKey(d)]?.last).length);
+  const cmdDue = $derived(DRILLS.filter((d) => cmdIsDue(progress.quiz[drillKey(d)])).length);
   const diagN = $derived(progress.retos.filter((r) => r.startsWith('diag:')).length);
 
   const started = $derived(Object.keys(progress.quiz).length > 0 || Object.keys(progress.reading).length > 0 || progress.done.length > 0 || Object.keys(progress.steps).length > 0 || progress.retos.length > 0);
@@ -124,6 +128,8 @@
         <p>{active === 0 ? 'Esta semana aún no has estudiado.' : `Estudiaste ${active} de los últimos 7 días.`}{due.length && tomorrow ? ` Mañana vencen ${tomorrow} más.` : ''}</p>
         <p class="retos">
           <a href={url('/terminal')}>Terminal <strong class:full={termN === MISSIONS.length}>{termN}/{MISSIONS.length}</strong> misiones</a>
+          <span aria-hidden="true">·</span>
+          <a href={url('/comandos')}>Comandos <strong class:full={cmdN === DRILLS.length}>{cmdN}/{DRILLS.length}</strong>{cmdDue ? ` (${cmdDue} por repasar)` : ''}</a>
           <span aria-hidden="true">·</span>
           <a href={`${moduleUrl(9)}#simulaciones`}>Diagnóstico <strong class:full={diagN === DIAG_CASES}>{diagN}/{DIAG_CASES}</strong> casos</a>
         </p>

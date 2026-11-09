@@ -36,7 +36,21 @@ web/
   src/pages/entorno.astro         consideraciones del entorno
   src/pages/practica.astro        quiz / simulacro / flashcards
   src/pages/terminal.astro        simulador de kubectl
+  src/pages/comandos.astro        "Comandos de memoria" (pestaña hermana de la terminal)
+  src/lib/kube/analizador.ts      analizador de comandos: analizar() explica por qué falla (el "Tutor" de la terminal),
+                                  comparar() corrige un comando escrito de memoria parte por parte, esqueleto() da la pista de forma
+  src/lib/kube/drills.ts          ejercicios de "Comandos de memoria" por módulo (validados en prebuild)
+  src/lib/kube/missions.ts        misiones de la terminal por grupo, con ayuda en tres escalones (idea, forma, solución)
+  src/components/practica/Comandos.svelte  el ejercicio; lo montan /comandos y cada módulo (sección #comandos)
 ```
+
+## Analizador de comandos y ejercicios
+
+- **Añadir un ejercicio**: una línea `D(id, módulo, tarea, acepta, idea, porque)` en `drills.ts`. El id (`NN-nombre`) queda guardado en el progreso del alumno como `cmd:<id>`: no se cambia ni se reutiliza. En `acepta` solo hacen falta variantes que de verdad se escriben distinto: el orden de los flags, `k`, las abreviaturas de recurso, `tipo/nombre` y `-n`/`--namespace` ya cuentan igual. `porque` es el concepto que fija el comando (lo que entra en el examen).
+- **Añadir una misión**: en `missions.ts`, con `group`, `idea` (pista sin sintaxis) y `hint` (la solución; varios pasos separados por `, luego `). `kubectl.test.mjs` comprueba que cada misión se resuelve con su propia pista.
+- **Añadir un diagnóstico al tutor**: en `estructura()` de `analizador.ts`, con su caso en `analizador.test.mjs` (incluida la lista de comandos correctos que no deben producir ninguna nota: un tutor que se equivoca enseña mal).
+- El simulador rechaza flags mal escritos o sin valor con el mensaje real de kubectl (`erroresDeFlags`). Solo marca como desconocido un flag que se parece a uno conocido; si añades un flag nuevo al simulador, añádelo también a `BOOLEANOS`/`OTROS_VALOR`.
+- Pruebas: `node src/lib/kube/kubectl.test.mjs`, `node src/lib/kube/analizador.test.mjs`, `node scripts/validar-comandos.mjs` (las dos últimas corren en `npm run build`).
 
 ## Registrar una simulación
 

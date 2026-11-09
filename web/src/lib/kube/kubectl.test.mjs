@@ -132,7 +132,8 @@ execute(c, 'kubectl expose deployment api --port=80');
 execute(c, 'kubectl scale deployment api --replicas=5'); c.tick(4000);
 execute(c, 'kubectl set image deployment/api nginx=nginx:1.27-alpine'); execute(c, 'kubectl rollout status deployment/api');
 ran.push('kubectl rollout history deployment/api', 'kubectl get pods -o wide', 'kubectl exec nginx -- env');
-execute(c, 'kubectl create namespace lab'); execute(c, 'kubectl config set-context --current --namespace=lab');
+// las misiones nuevas: se resuelven con su propia pista (y solo cuentan los comandos que mostraron algo)
+for (const m of MISSIONS) for (const cmd of m.hint.split(', luego ')) { const r = execute(c, cmd); if (r.ok && r.out && !/^No resources found/.test(r.out)) ran.push(cmd); c.tick(6000); }
 const ctx = { ran: (re) => ran.some((x) => re.test(x)) };
 for (const m of MISSIONS) { n++; const done = m.check(c, ctx); if (!done) { failures++; console.log(`\nFALLO ${n}: misión "${m.title}" no se verifica`); } else console.log(`ok ${n}: misión ${m.id}`); }
 
