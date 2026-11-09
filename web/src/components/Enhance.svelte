@@ -1,6 +1,8 @@
 <script lang="ts">
   // Mejora el markdown renderizado: diagramas Mermaid, botón copiar y pasos del laboratorio con casilla.
-  import { untrack } from 'svelte';
+  import { untrack, mount } from 'svelte';
+  import Comandos from './practica/Comandos.svelte';
+  import { drillsAt, type Cierre } from '../lib/kube/drills';
   import { progress, toggleStep, toggleDone, markToday, save } from '../lib/progress.svelte';
 
   // checklist=false: páginas que no son módulos (instalación) no muestran la barra de progreso
@@ -122,6 +124,66 @@
       el = el.nextElementSibling;
     }
     steps = found;
+    // lo que contiene cada paso: los hermanos entre su h3 y el siguiente
+    const hechos = progress.steps[module] ?? [];
+    const veladas: (() => void)[] = [];
+    for (const s of found) {
+      const body: HTMLElement[] = [];
+      for (let x = s.h.nextElementSibling; x && !/^H[23]$/.test(x.tagName) && !x.matches('details.seccion'); x = x.nextElementSibling) body.push(x as HTMLElement);
+      if (!body.length) continue;
+      // el paso 1 solo prepara el laboratorio; un paso ya hecho no se vuelve a tapar
+      if (s.id !== '1' && !hechos.includes(s.id)) veladas.push(...predictions(body));
+      stepDrills(s.id, body);
+    }
+    if (veladas.length) {
+      const bar = document.createElement('p');
+      bar.className = 'predice-todas';
+      bar.innerHTML = 'Las salidas esperadas están tapadas: antes de mirar cada una, piensa qué va a responder el clúster. <button type="button" class="btn small">Mostrar todas</button>';
+      bar.querySelector('button')!.addEventListener('click', () => { for (const show of veladas) show(); bar.remove(); });
+      h2.after(bar);
+    }
+  }
+
+  // Predice antes de mirar: la salida esperada (y su "Qué observar") quedan veladas hasta que el alumno
+  // se compromete con una predicción. Devuelve las funciones que las destapan.
+  function predictions(body: HTMLElement[]): (() => void)[] {
+    const out: (() => void)[] = [];
+    body.forEach((el, k) => {
+      if (el.tagName !== 'PRE' || el.dataset.language !== 'text' || body[k - 1]?.dataset.language !== 'powershell') return;
+      const after = body[k + 1];
+      const hidden = [el, ...(after?.tagName === 'P' && /^Qué observar/i.test(after.textContent ?? '') ? [after] : [])];
+      for (const h of hidden) { h.classList.add('velado'); h.setAttribute('aria-hidden', 'true'); }
+      const bar = document.createElement('div');
+      bar.className = 'predice-lab';
+      const n = `pred-${module}-${k}-${Math.round(el.offsetTop)}`;
+      bar.innerHTML = `<label for="${n}">Antes de mirar: ¿qué esperas ver?</label><input id="${n}" type="text" autocomplete="off" placeholder="tu predicción (opcional)" /><button type="button" class="btn small">Ver la salida esperada</button>`;
+      const show = () => {
+        if (!bar.isConnected) return;
+        for (const h of hidden) { h.classList.remove('velado'); h.removeAttribute('aria-hidden'); }
+        const said = bar.querySelector('input')!.value.trim();
+        if (said) { const p = document.createElement('p'); p.className = 'predice-dicho'; p.textContent = `Tu predicción: ${said}. Compárala con la salida.`; bar.replaceWith(p); } else bar.remove();
+      };
+      bar.querySelector('button')!.addEventListener('click', show);
+      bar.querySelector('input')!.addEventListener('keydown', (e) => { if (e.key === 'Enter') show(); });
+      el.before(bar);
+      out.push(show);
+    });
+    return out;
+  }
+
+  // Comandos de memoria del paso: al final de cada paso que tiene ejercicios. Mientras se escribe, el paso se tapa;
+  // si salen todos a la primera, el paso queda marcado como hecho (escribir sustituye a marcar la casilla).
+  function stepDrills(id: string, body: HTMLElement[]) {
+    const ids = drillsAt(Number(module), Number(id)).map((d) => d.id);
+    if (!ids.length) return;
+    const target = document.createElement('div');
+    target.className = 'paso-cmd';
+    body[body.length - 1].after(target);
+    mount(Comandos, { target, props: {
+      ids, mode: 'paso',
+      onfase: (f: string) => { const on = f === 'pregunta' || f === 'solucion' || f === 'bien'; for (const el of body) if (!el.classList.contains('predice-lab')) el.classList.toggle('tapado', on); },
+      ondone: (r: Cierre) => { if (r.primera === r.total && !(progress.steps[module] ?? []).includes(id)) toggleStep(module, id); },
+    } });
   }
 
   // Preparación del DOM: una sola vez (untrack evita que lea `progress` y se repita en cada clic)

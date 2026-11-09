@@ -220,3 +220,14 @@ p { margin: 0; }
 :root[data-theme='dark'] .astro-code, :root[data-theme='dark'] .astro-code span { color: var(--shiki-dark) !important; }
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Laboratorio: predice antes de mirar la salida y comandos de memoria del paso (Enhance.svelte) */
+.prose .velado, .prose .tapado { filter: blur(7px); user-select: none; pointer-events: none; }
+.prose .tapado { opacity: 0.6; }
+.prose .predice-todas { font-size: 0.92rem; color: var(--ink-2); padding: 10px 12px; border: 1px dashed var(--line); border-radius: var(--r-m); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.prose .predice-lab { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 14px 0 8px; padding: 10px 12px; border-radius: var(--r-m); background: var(--panel-2); border-left: 3px solid var(--wait); font-size: 0.92rem; }
+.prose .predice-lab label { font-weight: 500; }
+.prose .predice-lab input { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 0.92rem; padding: 6px 10px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.prose .predice-dicho { font-size: 0.9rem; color: var(--ink-2); border-left: 3px solid var(--wait); padding-left: 12px; }
+.prose .paso-cmd { margin: 18px 0 8px; padding-top: 14px; border-top: 1px dashed var(--line); }
+@media (pointer: coarse) { .prose .predice-lab input { font-size: 16px; min-height: 44px; } }

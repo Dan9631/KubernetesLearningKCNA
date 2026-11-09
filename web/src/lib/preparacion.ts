@@ -9,6 +9,7 @@ import { COMPETENCIES, canonical, type Competency } from './curriculum';
 import { MODULES, url } from './modules';
 import { DAY, type Conf, type Progress, type QuizStat } from './progress.svelte';
 import type { Q } from '../components/practica/quiz';
+import { DRILLS, drillKey, type Drill } from './kube/drills';
 
 export const READY = {
   /** preguntas distintas vistas por competencia (o todas, si tiene menos) */
@@ -54,6 +55,12 @@ export function dueToday(p: Progress) {
   const eod = endOfToday();
   return PRACTICE.filter((q) => isDue(p.quiz[q.id], eod))
     .sort((a, b) => Number(!!p.quiz[b.id].sureMiss) - Number(!!p.quiz[a.id].sureMiss) || (p.quiz[a.id].due ?? 0) - (p.quiz[b.id].due ?? 0));
+}
+
+/** Comandos de memoria que vencen hoy (se intercalan en el Repaso del día), lo más atrasado primero */
+export function dueCommands(p: Progress): Drill[] {
+  const eod = endOfToday();
+  return DRILLS.filter((d) => isDue(p.quiz[drillKey(d)], eod)).sort((a, b) => (p.quiz[drillKey(a)].due ?? 0) - (p.quiz[drillKey(b)].due ?? 0));
 }
 
 export const CONF_LABEL: Record<Conf, string> = { s: 'Seguro', d: 'Dudo', a: 'Adivino' };
@@ -171,5 +178,6 @@ export function trampas(p: Progress) {
 /** Preguntas que vencen mañana (para "mañana vencen N") */
 export function dueTomorrow(p: Progress) {
   const eod = endOfToday();
-  return PRACTICE.filter((q) => { const d = p.quiz[q.id]?.due; return d !== undefined && d > eod && d <= eod + DAY; }).length;
+  const soon = (id: string) => { const d = p.quiz[id]?.due; return d !== undefined && d > eod && d <= eod + DAY; };
+  return PRACTICE.filter((q) => soon(q.id)).length + DRILLS.filter((d) => soon(drillKey(d))).length;
 }

@@ -3,21 +3,26 @@
   // parte por parte (verbo, recurso, nombre, flags). No se ejecuta nada. Ayuda graduada: idea, forma, solución.
   // Comparte la repetición espaciada de las preguntas (progress.quiz con clave "cmd:<id>").
   import { tick } from 'svelte';
-  import { DRILLS, drillsOf, drillKey, type Drill } from '../../lib/kube/drills.ts';
+  import { DRILLS, drillsOf, drillKey, type Drill, type Cierre } from '../../lib/kube/drills.ts';
   import { analizar, comparar, esqueleto, type Veredicto, type Nota } from '../../lib/kube/analizador.ts';
   import { progress, recordAnswer } from '../../lib/progress.svelte';
   import { priority, isDue, endOfToday } from '../../lib/preparacion';
   import { MODULES, pad, moduleUrl, url } from '../../lib/modules';
 
-  // module: ejercicios de un solo módulo (página del módulo); sin él, se puede elegir el alcance
-  let { module, size = 8 }: { module?: number; size?: number } = $props();
+  // module: ejercicios de un solo módulo (página del módulo); sin él, se puede elegir el alcance.
+  // ids: ejercicios concretos, en ese orden. mode: 'full' (con inicio y cierre), 'uno' (arranca solo y avisa al
+  // terminar: lo intercala el Repaso del día) o 'paso' (botón compacto al final de un paso del laboratorio).
+  let { module, size = 8, ids, mode = 'full', ondone, onfase }: {
+    module?: number; size?: number; ids?: string[]; mode?: 'full' | 'uno' | 'paso';
+    ondone?: (r: Cierre) => void; onfase?: (f: 'inicio' | 'pregunta' | 'bien' | 'solucion' | 'fin') => void;
+  } = $props();
 
   // errores de forma que el analizador detecta sin clúster y que no revelan la respuesta
   const FORMA = new Set(['binario', 'verbo', 'flag-desconocido', 'flag-sin-valor', 'guion-simple', 'exec-separador', 'set-par', 'create-pod', 'tipo-mal-escrito', 'taint-efecto', 'rollout-sub', 'secret-subtipo', 'config-sub']);
 
   const preset = typeof location === 'undefined' ? 0 : Number(new URLSearchParams(location.search).get('modulo') ?? 0);
   let scope = $state(module ?? (drillsOf(preset).length ? preset : 0));
-  const pool = $derived(scope ? drillsOf(scope) : DRILLS);
+  const pool = $derived(ids ? ids.map((id) => DRILLS.find((x) => x.id === id)).filter((x): x is Drill => !!x) : scope ? drillsOf(scope) : DRILLS);
   const stats = $derived.by(() => {
     const eod = endOfToday();
     let seen = 0, due = 0, firme = 0;
@@ -47,7 +52,7 @@
   function start() {
     // primero lo que vence hoy, después lo nunca visto y, al final, lo menos dominado
     const eod = endOfToday();
-    queue = shuffle(pool).sort((a, b) => priority(progress.quiz[drillKey(b)], eod) - priority(progress.quiz[drillKey(a)], eod)).slice(0, size);
+    queue = ids ? pool : shuffle(pool).sort((a, b) => priority(progress.quiz[drillKey(b)], eod) - priority(progress.quiz[drillKey(a)], eod)).slice(0, size);
     i = 0; tally = { primera: 0, ayuda: 0, vistas: 0 };
     ask();
   }
@@ -82,20 +87,28 @@
     }
     inputEl?.focus();
   }
-  function next() { if (i + 1 < queue.length) { i++; ask(); } else fase = 'fin'; }
+  function next() {
+    if (i + 1 < queue.length) { i++; ask(); return; }
+    if (mode !== 'uno') fase = 'fin';
+    ondone?.({ ...tally, total: queue.length });
+  }
+  $effect(() => { onfase?.(fase); });
+  if (mode === 'uno') start();
   function onkeydown(e: KeyboardEvent) { if (e.key === 'Enter') { e.preventDefault(); submit(); } }
 </script>
 
-<div class="cmds">
+<div class="cmds" class:flat={mode !== 'full'}>
   {#if fase === 'inicio' || fase === 'fin'}
-    {#if fase === 'fin'}
+    {#if mode === 'paso'}
+      {#if fase === 'fin'}<p class="hint" role="status"><strong>{tally.primera} de {queue.length}</strong> a la primera{tally.vistas ? `, ${tally.vistas} con la solución a la vista` : ''}. {tally.primera === queue.length ? 'Paso marcado como hecho.' : 'Vuelve a intentarlo cuando quieras: el paso se marca cuando salgan sin ayuda.'}</p>{/if}
+    {:else if fase === 'fin'}
       <p class="res" role="status"><strong>{tally.primera} de {queue.length}</strong> a la primera{tally.ayuda ? `, ${tally.ayuda} con pistas o varios intentos` : ''}{tally.vistas ? `, ${tally.vistas} con la solución a la vista` : ''}.</p>
       <p class="hint">Los que salieron a la primera se espacian (1, 3, 7, 16 y 35 días). Los que necesitaron ayuda vuelven mañana: recordar un comando con esfuerzo, días después, es lo que lo deja fijo.</p>
     {:else}
       <p class="lead">Lee la tarea y escribe el comando <strong>sin mirarlo</strong>. Nada se ejecuta: se corrige la forma, parte por parte. El orden de los flags, <span class="mono">k</span> por <span class="mono">kubectl</span>, las abreviaturas (<span class="mono">deploy</span>, <span class="mono">svc</span>) y <span class="mono">tipo/nombre</span> cuentan igual.</p>
     {/if}
     <div class="row">
-      {#if module === undefined}
+      {#if module === undefined && !ids}
         <label>Alcance
           <select bind:value={scope}>
             <option value={0}>Todos los módulos</option>
@@ -103,12 +116,17 @@
           </select>
         </label>
       {/if}
+      {#if mode === 'paso'}
+        <button type="button" class="btn small" onclick={start}>{fase === 'fin' ? 'Otra vez' : pool.length === 1 ? 'Escríbelo de memoria' : `Escríbelos de memoria (${pool.length})`}</button>
+        {#if fase === 'inicio'}<span class="hint">Los comandos del paso se tapan mientras escribes.</span>{/if}
+      {:else}
       <button type="button" class="btn primary" onclick={start}>{fase === 'fin' ? 'Otra ronda' : stats.due ? `Repasar ${Math.min(size, pool.length)} comandos` : `Practicar ${Math.min(size, pool.length)} comandos`}</button>
       <span class="hint">{stats.seen} de {stats.total} practicados{stats.firme ? ` · ${stats.firme} firmes` : ''}{stats.due ? ` · ${stats.due} por repasar hoy` : ''}</span>
+      {/if}
     </div>
-    {#if fase === 'fin' && scope}<p class="hint">Para verlos funcionar: <a href={url('/terminal')}>terminal simulada</a> o el laboratorio del <a href={`${moduleUrl(scope)}#laboratorio-guiado`}>módulo {pad(scope)}</a> en tu clúster.</p>{/if}
+    {#if fase === 'fin' && scope && mode === 'full'}<p class="hint">Para verlos funcionar: <a href={url('/terminal')}>terminal simulada</a> o el laboratorio del <a href={`${moduleUrl(scope)}#laboratorio-guiado`}>módulo {pad(scope)}</a> en tu clúster.</p>{/if}
   {:else if d}
-    <p class="kicker">Comando {i + 1} de {queue.length} · módulo {pad(d.mod)}{progress.quiz[drillKey(d)] && fase === 'pregunta' ? ' · repaso' : ''}</p>
+    <p class="kicker">{mode === 'uno' ? 'Comando de memoria' : `Comando ${i + 1} de ${queue.length}`} · módulo {pad(d.mod)}{progress.quiz[drillKey(d)] && fase === 'pregunta' ? ' · repaso' : ''}</p>
     <p class="tarea">{d.tarea}</p>
 
     {#if fase === 'solucion'}
@@ -154,7 +172,7 @@
           {#if otras.length}<p class="hint">También vale: {#each otras as c, k}{k ? ' · ' : ''}<code class="mono">{c}</code>{/each}</p>{/if}
           {#if !limpio}<p class="hint">Salió con ayuda o tras varios intentos: volverá mañana para comprobar que ya sale solo.</p>{/if}
         </div>
-        <div class="row"><button type="button" class="btn primary small" bind:this={nextEl} onclick={next}>{i + 1 < queue.length ? 'Siguiente' : 'Ver resultado'}</button></div>
+        <div class="row"><button type="button" class="btn primary small" bind:this={nextEl} onclick={next}>{i + 1 < queue.length || mode === 'uno' ? 'Siguiente' : mode === 'paso' ? 'Terminar' : 'Ver resultado'}</button></div>
       {/if}
     </div>
   {/if}
@@ -162,6 +180,7 @@
 
 <style>
   .cmds { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 20px; overflow-wrap: anywhere; }
+  .cmds.flat { background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; }
   .cmds > :global(* + *), .cmds div[aria-live] > :global(* + *) { margin-top: 12px; }
   .lead { max-width: var(--measure); color: var(--ink-2); }
   .kicker { font-size: 0.85rem; color: var(--ink-2); }

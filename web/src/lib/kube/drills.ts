@@ -7,6 +7,8 @@
 //   porque   qué fija el comando: la idea de Kubernetes que hay detrás (se muestra tras responder).
 // Los ids están guardados en el progreso del alumno ("cmd:<id>"): no se cambian ni se reutilizan.
 // Se validan en el prebuild (scripts/validar-comandos.mjs). Los comandos salen de "Comandos clave" de cada módulo.
+/** Resultado de una ronda de Comandos.svelte */
+export interface Cierre { primera: number; ayuda: number; vistas: number; total: number }
 export interface Drill { id: string; mod: number; tarea: string; acepta: string[]; idea: string; porque: string }
 
 const D = (id: string, mod: number, tarea: string, acepta: string | string[], idea: string, porque: string): Drill => ({ id, mod, tarea, acepta: Array.isArray(acepta) ? acepta : [acepta], idea, porque });
@@ -215,6 +217,24 @@ export const DRILLS: Drill[] = [
     'Una Application es un recurso más (un CRD): se lista con get.', 'En GitOps el estado deseado vive en Git y un agente dentro del clúster (Argo CD, Flux) lo reconcilia por pull. La Application es el CRD que lo declara.'),
 ];
 
+/** Paso del laboratorio guiado (### N del módulo) en el que el alumno acaba de usar un comando de la misma forma.
+ *  Ahí aparece el ejercicio, para escribirlo de memoria con el paso tapado. Los que no figuran solo salen en la
+ *  sección del módulo y en /comandos. El prebuild comprueba que el paso existe y contiene un comando con ese verbo. */
+export const PASO: Record<string, number> = {
+  '01-run': 2, '01-logs': 3, '01-ps-a': 6, '01-build': 7, '01-history': 8, '01-load': 11,
+  '02-nodes-wide': 2, '02-system': 3, '02-cluster-info': 7, '02-events': 8, '02-api-resources': 11, '02-explain': 11, '02-contexts': 12, '02-use-context': 12,
+  '03-run': 2, '03-selector': 3, '03-status': 7, '03-set-image': 8, '03-undo': 9, '03-dry-run': 10,
+  '04-columnas': 2, '04-failed': 3, '04-label-node': 4, '04-unlabel': 4, '04-taint': 7, '04-untaint': 7, '04-ds': 10,
+  '05-whoami': 2, '05-can-i': 5, '05-psa': 9,
+  '06-dns': 4, '06-resolv': 4, '06-eps': 6, '06-ingress': 9,
+  '07-sidecar': 2, '07-logs-c': 4,
+  '08-sc': 1, '08-pvc': 3, '08-describe-pvc': 3, '08-pv': 4,
+  '09-describe': 4, '09-logs-label': 7, '09-debug': 10, '09-top': 12, '09-node': 13,
+  '10-hpa-w': 3, '10-describe-hpa': 5, '10-top': 5, '10-api-versions': 7,
+  '11-repo-add': 2, '11-install': 4, '11-pf': 5,
+  '12-kustomize': 3, '12-apply-k': 4, '12-template': 8, '12-install': 9, '12-upgrade': 10, '12-history': 11, '12-rollback': 12, '12-apps': 16,
+};
+export const drillsAt = (mod: number, paso: number) => DRILLS.filter((d) => d.mod === mod && PASO[d.id] === paso);
 export const drillsOf = (mod: number) => DRILLS.filter((d) => d.mod === mod);
 /** Clave del ejercicio en progress.quiz (comparte la repetición espaciada de las preguntas) */
 export const drillKey = (d: Drill) => `cmd:${d.id}`;

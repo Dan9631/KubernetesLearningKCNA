@@ -9,7 +9,9 @@
   import VozAjustes from '../VozAjustes.svelte';
   import { sync, syncNow } from '../../lib/sync.svelte';
   import Preparacion from './Preparacion.svelte';
-  import { PRACTICE, HOLDOUT, priority, dueToday, endOfToday } from '../../lib/preparacion';
+  import { PRACTICE, HOLDOUT, priority, dueToday, dueCommands, endOfToday } from '../../lib/preparacion';
+  import Comandos from './Comandos.svelte';
+  import type { Drill, Cierre } from '../../lib/kube/drills';
 
   // la práctica, los repasos y los simulacros nunca usan el banco reservado (Examen de graduación)
   const QS = PRACTICE;
@@ -42,6 +44,25 @@
   const duePool = $derived(dueToday(progress));
   const sureCount = $derived(duePool.filter((q) => progress.quiz[q.id]?.sureMiss).length);
   const DUE_N = 30;
+  // comandos de memoria que vencen hoy: en el Repaso del día salen repartidos entre las preguntas
+  const CMD_N = 10;
+  const dueCmds = $derived(dueCommands(progress));
+  let cmdPlan = $state<{ at: number; d: Drill }[]>([]); // antes de qué pregunta sale cada comando (items.length = al final)
+  let gate = $state<{ at: number; d: Drill } | null>(null); // comando en pantalla
+  let cmdTally = $state({ n: 0, primera: 0 });
+  /** Si toca un comando antes de la pregunta `at`, lo pone en pantalla */
+  function openGate(at: number) {
+    const k = cmdPlan.findIndex((x) => x.at === at);
+    if (k < 0) return false;
+    gate = cmdPlan[k]; cmdPlan = cmdPlan.filter((_, j) => j !== k);
+    return true;
+  }
+  function closeGate(r: Cierre) {
+    const at = gate!.at;
+    cmdTally = { n: cmdTally.n + 1, primera: cmdTally.primera + r.primera };
+    gate = null;
+    if (!openGate(at) && at >= items.length) view = 'practice-end';
+  }
   const lastExams = $derived(progress.exams.slice(-6).reverse());
   function domainStats(d: DomainKey) {
     const qs = QS.filter((q) => q.domain === d);
@@ -52,7 +73,7 @@
 
   function home() {
     stopTimer();
-    view = 'home'; items = []; idx = 0; askSubmit = false; askReset = false; result = null;
+    view = 'home'; items = []; idx = 0; cmdPlan = []; gate = null; askSubmit = false; askReset = false; result = null;
   }
 
   // ---------- práctica ----------
@@ -73,15 +94,28 @@
     const eod = endOfToday();
     const chosen = shuffle(pool).sort((a, b) => priority(progress.quiz[b.id], eod) - priority(progress.quiz[a.id], eod)).slice(0, Math.min(n, pool.length));
     items = chosen.map(prep); idx = 0; practiceTitle = title;
+    cmdPlan = []; gate = null; cmdTally = { n: 0, primera: 0 };
     view = items.length ? 'practice' : 'practice-end';
   }
   function startScoped() { startPractice(poolFor(scope), PRACTICE_N, titleFor(scope)); }
-  function startDue() { startPractice(duePool, DUE_N, 'Repaso del día'); }
+  function startDue() {
+    const cmds = dueCmds.slice(0, CMD_N);
+    startPractice(duePool, DUE_N, 'Repaso del día');
+    if (!cmds.length) return;
+    // repartidos: nunca antes de la primera pregunta (si hay preguntas) y el resto a intervalos iguales
+    const n = items.length;
+    cmdPlan = cmds.map((d, k) => ({ d, at: n ? Math.max(1, Math.round(((k + 1) * n) / cmds.length)) : 0 }));
+    view = 'practice';
+    if (!n) openGate(0);
+  }
   function confirmPractice() {
     const it = cur; if (!it || it.done || !it.picked.length) return;
     it.done = true; recordAnswer(it.q.id, isCorrect(it), it.conf);
   }
-  function nextPractice() { if (idx + 1 < items.length) idx += 1; else view = 'practice-end'; }
+  function nextPractice() {
+    if (openGate(idx + 1)) { if (idx + 1 < items.length) idx += 1; return; }
+    if (idx + 1 < items.length) idx += 1; else view = 'practice-end';
+  }
   // cierre de la práctica: las falladas de la ronda, con su módulo, y repasarlas en el momento
   const missed = $derived(items.filter((it) => it.done && !isCorrect(it)));
   function retryMissed() { startPractice(missed.map((it) => it.q), missed.length, 'Repaso de fallos'); }
@@ -153,6 +187,7 @@
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) return;
     // Enter y Espacio sobre un botón o enlace ya disparan su clic
     if ((e.key === 'Enter' || e.key === ' ') && /^(BUTTON|A)$/.test(tag)) return;
+    if (view === 'practice' && gate) return;
     if (view === 'practice' && cur) {
       if (/^[1-5]$/.test(e.key) && !cur.done && +e.key <= cur.options.length) { pick(+e.key - 1); e.preventDefault(); }
       else if (/^[sda]$/i.test(e.key) && !cur.done) { cur.conf = e.key.toLowerCase() as Item['conf']; e.preventDefault(); }
@@ -221,9 +256,9 @@
       <li class="mode">
         <div class="txt">
           <h2>Repaso del día</h2>
-          <p>{#if duePool.length}{duePool.length} {duePool.length === 1 ? 'pregunta pendiente' : 'preguntas pendientes'} hoy{#if sureCount}, {sureCount} {sureCount === 1 ? 'de ellas es un fallo' : 'de ellas son fallos'} con seguridad{/if}. Cada acierto la aleja más (1, 3, 7, 16 y 35 días); cada fallo la trae de vuelta mañana.{:else}Nada pendiente hoy. Las preguntas que respondas volverán solas justo antes de que las olvides: 1, 3, 7, 16 y 35 días.{/if}</p>
+          <p>{#if !duePool.length && dueCmds.length}{dueCmds.length} {dueCmds.length === 1 ? 'comando de memoria pendiente' : 'comandos de memoria pendientes'} hoy. Cada acierto sin ayuda lo aleja más (1, 3, 7, 16 y 35 días).{:else if duePool.length}{duePool.length} {duePool.length === 1 ? 'pregunta pendiente' : 'preguntas pendientes'} hoy{#if dueCmds.length} y {dueCmds.length} {dueCmds.length === 1 ? 'comando' : 'comandos'} de memoria, repartidos entre ellas{/if}{#if sureCount}, {sureCount} {sureCount === 1 ? 'de ellas es un fallo' : 'de ellas son fallos'} con seguridad{/if}. Cada acierto la aleja más (1, 3, 7, 16 y 35 días); cada fallo la trae de vuelta mañana.{:else}Nada pendiente hoy. Las preguntas que respondas volverán solas justo antes de que las olvides: 1, 3, 7, 16 y 35 días.{/if}</p>
         </div>
-        <div class="act"><button type="button" class="btn" class:primary={sureCount > 0} onclick={startDue} disabled={!duePool.length}>Repasar {Math.min(duePool.length, DUE_N) || ''}</button></div>
+        <div class="act"><button type="button" class="btn" class:primary={sureCount > 0} onclick={startDue} disabled={!duePool.length && !dueCmds.length}>Repasar {Math.min(duePool.length, DUE_N) + Math.min(dueCmds.length, CMD_N) || ''}</button></div>
       </li>
       <li class="mode">
         <div class="txt">
@@ -282,6 +317,18 @@
     </div>
   </div>
 
+{:else if view === 'practice' && gate}
+  <div class="round">
+    <div class="top">
+      <span class="title">{practiceTitle}</span>
+      <span class="stat">{okCount} correctas de {doneCount}</span>
+    </div>
+    <div class="card">
+      {#key gate.d.id}<Comandos mode="uno" ids={[gate.d.id]} ondone={closeGate} />{/key}
+      <div class="row"><button type="button" class="btn right" onclick={() => (view = 'practice-end')}>Terminar</button></div>
+    </div>
+  </div>
+
 {:else if view === 'practice' && cur}
   <div class="round">
     <div class="top">
@@ -304,11 +351,17 @@
 
 {:else if view === 'practice-end'}
   <div class="card end" role="status">
-    {#if items.length}
+    {#if !items.length && cmdTally.n}
+      <p class="muted">{practiceTitle}</p>
+      <h2>Repaso terminado</h2>
+      <p>{cmdTally.primera} de {cmdTally.n} comandos a la primera. Los que necesitaron ayuda vuelven mañana.</p>
+      <div class="row"><button type="button" class="btn primary" onclick={home}>Volver al inicio</button></div>
+    {:else if items.length}
       <p class="muted">{practiceTitle}</p>
       <h2>Práctica terminada</h2>
       <p class="score" class:pass={pct(okCount, doneCount) >= PASS} class:fail={doneCount > 0 && pct(okCount, doneCount) < PASS}>{pct(okCount, doneCount)} %</p>
       <p>{okCount} de {doneCount} correctas{#if doneCount < items.length}{' · '}terminaste antes: {items.length - doneCount} sin ver{/if}</p>
+      {#if cmdTally.n}<p>Comandos de memoria: {cmdTally.primera} de {cmdTally.n} a la primera.</p>{/if}
       {#if missed.length}
         <h3 class="sec">Para repasar ({missed.length})</h3>
         <ul class="missed">

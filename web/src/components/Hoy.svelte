@@ -3,7 +3,7 @@
   // seguir leyendo, el siguiente paso de la preparación y la constancia de la semana. Todo se calcula
   // en el navegador con el progreso guardado (y sincronizado, si está activo).
   import { progress, setExamDate, isoDay, DAY } from '../lib/progress.svelte';
-  import { dueToday, dueTomorrow, readiness, nextStep, isDue as cmdIsDue } from '../lib/preparacion';
+  import { dueToday, dueTomorrow, dueCommands, readiness, nextStep } from '../lib/preparacion';
   import { lastRead, pctOf } from '../lib/lectura';
   import { MODULES, moduleUrl, url } from '../lib/modules';
   import MapaMemoria from './MapaMemoria.svelte';
@@ -15,7 +15,8 @@
   const termN = $derived(progress.retos.filter((r) => r.startsWith('term:')).length);
   // comandos de memoria: los que salieron bien en su último intento y los que toca repasar hoy
   const cmdN = $derived(DRILLS.filter((d) => progress.quiz[drillKey(d)]?.last).length);
-  const cmdDue = $derived(DRILLS.filter((d) => cmdIsDue(progress.quiz[drillKey(d)])).length);
+  const cmdDue = $derived(dueCommands(progress).length);
+  const CMD_ROUND = 10; // comandos por ronda del Repaso del día (Practica.svelte)
   const diagN = $derived(progress.retos.filter((r) => r.startsWith('diag:')).length);
 
   const started = $derived(Object.keys(progress.quiz).length > 0 || Object.keys(progress.reading).length > 0 || progress.done.length > 0 || Object.keys(progress.steps).length > 0 || progress.retos.length > 0);
@@ -84,11 +85,11 @@
       </header>
 
       <ul class="tasks">
-        <li class="task main" class:done={!due.length}>
-          {#if due.length}
+        <li class="task main" class:done={!due.length && !cmdDue}>
+          {#if due.length || cmdDue}
             <div class="tx">
-              <strong>Repaso del día · {due.length} {due.length === 1 ? 'pregunta' : 'preguntas'}</strong>
-              <span>{sure ? `${sure} ${sure === 1 ? 'fallo' : 'fallos'} con seguridad primero · ` : ''}{due.length > ROUND ? `rondas de ${ROUND} · ` : ''}unos {Math.max(1, Math.round(Math.min(due.length, ROUND) * 0.75))} min</span>
+              <strong>Repaso del día · {[due.length ? `${due.length} ${due.length === 1 ? 'pregunta' : 'preguntas'}` : '', cmdDue ? `${cmdDue} ${cmdDue === 1 ? 'comando' : 'comandos'}` : ''].filter(Boolean).join(' y ')}</strong>
+              <span>{sure ? `${sure} ${sure === 1 ? 'fallo' : 'fallos'} con seguridad primero · ` : ''}{due.length > ROUND ? `rondas de ${ROUND} · ` : ''}unos {Math.max(1, Math.round(Math.min(due.length, ROUND) * 0.75 + Math.min(cmdDue, CMD_ROUND) * 0.75))} min</span>
             </div>
             <a class="btn primary" href={url('/practica?modo=repaso')}>Empezar</a>
           {:else}
@@ -105,7 +106,7 @@
               <span class="bar" role="img" aria-label="Te quedaste en el {pctOf(top.last)} %"><span style="width:{pctOf(top.last)}%"></span></span>
               <span>Te quedaste en el {pctOf(top.last)} %</span>
             </div>
-            <a class="btn" class:primary={!due.length} href={`${moduleUrl(meta.n)}#continuar`}>Continuar</a>
+            <a class="btn" class:primary={!due.length && !cmdDue} href={`${moduleUrl(meta.n)}#continuar`}>Continuar</a>
           </li>
         {/if}
         <li class="task">
@@ -115,7 +116,7 @@
               {#each signals as s}<span class="sig" class:ok={s.ok}><span aria-hidden="true">{s.ok ? '✓' : '○'}</span> {s.label}</span>{/each}
             </span>
           </div>
-          <a class="btn" class:primary={!due.length && !(top && meta)} href={next.href}>{next.label}</a>
+          <a class="btn" class:primary={!due.length && !cmdDue && !(top && meta)} href={next.href}>{next.label}</a>
         </li>
       </ul>
 
@@ -129,7 +130,7 @@
         <p class="retos">
           <a href={url('/terminal')}>Terminal <strong class:full={termN === MISSIONS.length}>{termN}/{MISSIONS.length}</strong> misiones</a>
           <span aria-hidden="true">·</span>
-          <a href={url('/comandos')}>Comandos <strong class:full={cmdN === DRILLS.length}>{cmdN}/{DRILLS.length}</strong>{cmdDue ? ` (${cmdDue} por repasar)` : ''}</a>
+          <a href={url('/comandos')}>Comandos <strong class:full={cmdN === DRILLS.length}>{cmdN}/{DRILLS.length}</strong></a>
           <span aria-hidden="true">·</span>
           <a href={`${moduleUrl(9)}#simulaciones`}>Diagnóstico <strong class:full={diagN === DIAG_CASES}>{diagN}/{DIAG_CASES}</strong> casos</a>
         </p>
