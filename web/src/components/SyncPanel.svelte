@@ -67,7 +67,7 @@
 {#if !syncAvailable}
   <div class="card">
     <h2>No disponible en esta copia</h2>
-    <p>Esta copia del sitio se generó sin un servicio de sincronización (variable <code>PUBLIC_SYNC_URL</code>). Tu progreso sigue guardado en este navegador, y puedes llevar tu posición de lectura al teléfono con el código QR del botón flotante de cada módulo.</p>
+    <p>Esta copia del sitio se generó sin un servicio de sincronización (variable <code>PUBLIC_SYNC_URL</code>). Tu progreso sigue guardado en este navegador; puedes respaldarlo con una copia en un archivo (más abajo) y llevar tu posición de lectura al teléfono con el código QR del botón flotante de cada módulo.</p>
   </div>
 {:else if fromLink && fromLink !== sync.code}
   <div class="card hl">
@@ -155,6 +155,7 @@
       <li><strong>Sin cuentas:</strong> no hay usuario, contraseña ni correo. Solo el código.</li>
       <li><strong>Cifrado en tu navegador:</strong> el progreso se cifra con una clave que sale del código y nunca viaja. El servidor guarda bloques que no puede leer.</li>
       <li><strong>Sin conexión también funciona:</strong> tu navegador sigue siendo la copia principal; si el servicio no responde, nada se pierde.</li>
+      <li><strong>Sin depender del servicio:</strong> la copia en un archivo, más abajo, guarda tu progreso fuera del navegador y del servidor.</li>
       <li><strong>Limpieza:</strong> los registros sin uso durante 400 días se borran.</li>
     </ul>
   </section>

@@ -9,7 +9,7 @@
         "sync": "node scripts/sync-data.mjs",
         "predev": "npm run sync",
         "dev": "astro dev",
-        "prebuild": "npm run sync && node scripts/validar-comprueba.mjs && node scripts/validar-comandos.mjs && node scripts/validar-diagramas.mjs && node src/lib/kube/analizador.test.mjs",
+        "prebuild": "npm run sync && node scripts/validar-comprueba.mjs && node scripts/validar-comandos.mjs && node scripts/validar-diagramas.mjs && node src/lib/kube/analizador.test.mjs && node src/lib/respaldo.test.mjs",
         "build": "astro build",
         "preview": "astro preview",
         "check": "astro check",

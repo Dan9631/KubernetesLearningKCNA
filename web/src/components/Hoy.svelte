@@ -7,6 +7,7 @@
   import { lastRead, pctOf } from '../lib/lectura';
   import { MODULES, moduleUrl, url } from '../lib/modules';
   import MapaMemoria from './MapaMemoria.svelte';
+  import AvisoRespaldo from './AvisoRespaldo.svelte';
   import { MISSIONS } from '../lib/kube/missions';
   import { DRILLS, drillKey } from '../lib/kube/drills';
 
@@ -119,6 +120,8 @@
           <a class="btn" class:primary={!due.length && !cmdDue && !(top && meta)} href={next.href}>{next.label}</a>
         </li>
       </ul>
+
+      <AvisoRespaldo />
 
       <footer class="week">
         <ol class="dots" aria-label="Días con estudio en la última semana: {active} de 7">

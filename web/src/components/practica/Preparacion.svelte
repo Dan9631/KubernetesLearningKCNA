@@ -18,6 +18,7 @@
   // tipos de pregunta que te cuestan más que el resto (lib/preparacion.ts trampas)
   const traps = $derived(trampas(progress));
   const TECNICAS = `${moduleUrl(13)}#4-técnicas-para-preguntas-de-opción-múltiple-en-inglés`;
+  import AvisoRespaldo from '../AvisoRespaldo.svelte';
 </script>
 
 <section class="prep" class:ready={r.ready} aria-labelledby="h-prep">
@@ -109,6 +110,8 @@
       </div>
     </li>
   </ol>
+
+  <AvisoRespaldo />
 
   <p class="fine">Es una estimación sobre el banco del curso, no sobre el examen real. Tu progreso vive en este navegador: si lo borras, el examen de graduación vuelve a aparecer, pero ya conocerías sus preguntas.</p>
 </section>

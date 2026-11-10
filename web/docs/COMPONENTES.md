@@ -12,6 +12,8 @@ web/
   src/lib/progress.svelte.ts      progreso del alumno en localStorage (runas)
   src/lib/motion.ts               ms(n) / wait(n): respetan prefers-reduced-motion
   src/lib/sync.svelte.ts          sincronización opcional y cifrada con el Worker (sync/); PUBLIC_SYNC_URL al compilar
+  src/lib/respaldo.ts             copia del progreso en archivo: formato, validación de lo importado y regla del aviso (respaldo.test.mjs)
+  src/lib/respaldo.svelte.ts      exportar, importar (combinar o reemplazar), posponer el aviso y almacenamiento persistente
   src/lib/hoja.ts                 hoja de recuperación del código (HTML autónomo con código, enlace y QR)
   src/lib/lectura.ts              marcador de lectura, enlace ?r= y QR
   src/lib/plegar.ts               HTML del módulo: quita el h1 del markdown, pliega ficha, Comandos clave y Fuentes, inserta las comprobaciones (vía Prosa.astro)
@@ -30,6 +32,8 @@ web/
   src/data/preguntas.json         292 preguntas, 60 reservadas (generado por scripts/sync-data.mjs)
   src/data/flashcards.json        150 términos
   src/components/Hoy.svelte       portada de quien ya empezó: cuenta atrás, Repaso del día, seguir leyendo, siguiente paso, semana
+  src/components/AvisoRespaldo.svelte  aviso de progreso sin respaldo (portada y panel de preparación); se puede posponer 7 días
+  src/components/Respaldo.svelte  sección «Copia en un archivo» de /sincronizar
   src/components/MapaMemoria.svelte memoria por competencia según la caja de Leitner (crece desde la visita anterior)
   src/pages/index.astro           portada (bienvenida; "Hoy" arriba si ya hay progreso)
   src/pages/modulos/[id].astro    página de módulo (no tocar salvo acuerdo)

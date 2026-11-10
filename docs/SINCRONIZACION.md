@@ -26,6 +26,17 @@ El sitio no maneja vouchers, pagos ni credenciales del examen, y no debe hacerlo
 
 **El riesgo que asume el alumno:** si pierde el código, nadie puede recuperar los datos del servidor, ni siquiera el dueño del sitio. Por eso la página de sincronización lo muestra junto con su QR y ofrece una **hoja de recuperación** para descargar o imprimir, como los códigos de recuperación de la verificación en dos pasos. La hoja es una página HTML autónoma con el código, el enlace `/sincronizar/#c=…` y el QR; se genera en el navegador y nunca pasa por el servidor. Mientras el alumno no copie, descargue ni imprima el código, la página le recuerda guardarlo. Su progreso local sigue intacto.
 
+## Respaldo sin el servidor
+
+Dos apoyos que no dependen del Worker (`web/src/lib/respaldo.ts` y `respaldo.svelte.ts`):
+
+- **Copia en un archivo.** En `/sincronizar`, «Descargar copia» guarda el progreso como `kcna-progreso-AAAA-MM-DD.json` (sin cifrar: es el progreso de estudio, sin datos personales). «Cargar una copia» valida el archivo, descarta todo campo que no tenga la forma del progreso y ofrece dos opciones:
+  - *Combinar*: une la copia con el progreso actual con las mismas reglas de la tabla de abajo. Antes iguala las fechas de borrado, para que un «Borrar mi progreso» anterior no descarte uno de los dos lados.
+  - *Reemplazar*: deja solo lo de la copia y la marca como un borrado reciente (`resetAt`), de modo que, con la sincronización activa, lo guardado en el servidor no vuelve a mezclarse y los demás dispositivos quedan igual.
+- **Aviso de progreso sin respaldo.** En la portada y en el panel de preparación, cuando hay al menos 3 días de estudio o un módulo terminado y no hay respaldo: sincronización sin activar y sin copia en archivo de los últimos 14 días, o sincronización activa con el código sin guardar. «Ahora no» lo pospone 7 días. Estas fechas se guardan en `kcna.respaldo.v1` y no se sincronizan: son de cada navegador.
+
+Además se pide al navegador **almacenamiento persistente** (`navigator.storage.persist()`), para que no borre los datos por falta de espacio o inactividad: al cargar en los navegadores que deciden sin preguntar, y con un botón en `/sincronizar` en los que muestran un permiso. No es un respaldo; solo reduce el riesgo.
+
 ## Cómo se combinan dos dispositivos
 
 Cada sincronización descarga el registro, lo descifra, lo **combina** con el progreso local y sube el resultado. Si otro dispositivo escribió en medio, el servidor responde 409 y se repite el proceso (concurrencia optimista por `rev`).
