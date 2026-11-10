@@ -3,7 +3,7 @@
 // y no dispare ningún error del analizador (un ejercicio cuya solución el tutor marca como mala enseña mal).
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { DRILLS, PASO } from '../src/lib/kube/drills.ts';
+import { DRILLS, PASO, FUENTES } from '../src/lib/kube/drills.ts';
 import { analizar, comparar, canon, esqueleto } from '../src/lib/kube/analizador.ts';
 
 const errores = [];
@@ -29,6 +29,15 @@ for (const d of DRILLS) {
   // la tarea no debe contener la respuesta
   if (d.acepta.some((cmd) => d.tarea.includes(cmd))) errores.push(`${at}: la tarea contiene el comando`);
 }
+// cada ejercicio lleva al menos una fuente oficial (los mismos dominios que exige el banco de preguntas)
+const validador = readFileSync(fileURLToPath(new URL('../../quiz/src/validate.js', import.meta.url)), 'utf8');
+const OFFICIAL = new RegExp(validador.match(/const OFFICIAL = \/(.+)\/;/)[1]);
+for (const d of DRILLS) {
+  const fs = FUENTES[d.id] ?? [];
+  if (!fs.length) errores.push(`ejercicio ${d.id}: sin fuente oficial (FUENTES en drills.ts)`);
+  for (const u of fs) if (!OFFICIAL.test(u)) errores.push(`ejercicio ${d.id}: fuente no oficial ${u}`);
+}
+for (const id of Object.keys(FUENTES)) if (!DRILLS.some((d) => d.id === id)) errores.push(`FUENTES: no existe el ejercicio ${id}`);
 // cada ejercicio enlazado a un paso del laboratorio: el paso existe y usa un comando con ese mismo verbo (y recurso)
 const curso = fileURLToPath(new URL('../../curso/', import.meta.url));
 const FENCE = '`'.repeat(3);
@@ -51,4 +60,4 @@ for (const [id, n] of Object.entries(PASO)) {
 }
 if (errores.length) { console.error(`validar-comandos: ${errores.length} problema(s)\n  ` + errores.join('\n  ')); process.exit(1); }
 const porMod = Object.entries(Object.groupBy(DRILLS, (d) => d.mod)).map(([m, l]) => `${m}:${l.length}`).join(' ');
-console.log(`validar-comandos: ${DRILLS.length} ejercicios correctos (${porMod}); ${Object.keys(PASO).length} enlazados a un paso del laboratorio`);
+console.log(`validar-comandos: ${DRILLS.length} ejercicios correctos (${porMod}); ${Object.keys(PASO).length} enlazados a un paso del laboratorio; todos con fuente oficial`);

@@ -3,7 +3,8 @@
   // parte por parte (verbo, recurso, nombre, flags). No se ejecuta nada. Ayuda graduada: idea, forma, solución.
   // Comparte la repetición espaciada de las preguntas (progress.quiz con clave "cmd:<id>").
   import { tick } from 'svelte';
-  import { DRILLS, drillsOf, drillKey, type Drill, type Cierre } from '../../lib/kube/drills.ts';
+  import { DRILLS, FUENTES, drillsOf, drillKey, type Drill, type Cierre } from '../../lib/kube/drills.ts';
+  import SourceLinks from '../SourceLinks.svelte';
   import { analizar, comparar, esqueleto, type Veredicto, type Nota } from '../../lib/kube/analizador.ts';
   import { progress, recordAnswer } from '../../lib/progress.svelte';
   import { priority, isDue, endOfToday } from '../../lib/preparacion';
@@ -134,6 +135,7 @@
         <p>Solución:</p>
         {#each d.acepta.slice(0, 2) as c}<code class="sol mono">{c}</code>{/each}
         <p>{d.porque}</p>
+        <SourceLinks source={FUENTES[d.id]} />
         <p class="hint">Ahora escríbelo tú, entero, sin copiar y pegar. Volverá a salir mañana.</p>
       </div>
     {/if}
@@ -169,6 +171,7 @@
         <div class="explain ok">
           <p><strong>Correcto.</strong> <code class="mono">{input.trim()}</code></p>
           <p>{d.porque}</p>
+          <SourceLinks source={FUENTES[d.id]} />
           {#if otras.length}<p class="hint">También vale: {#each otras as c, k}{k ? ' · ' : ''}<code class="mono">{c}</code>{/each}</p>{/if}
           {#if !limpio}<p class="hint">Salió con ayuda o tras varios intentos: volverá mañana para comprobar que ya sale solo.</p>{/if}
         </div>

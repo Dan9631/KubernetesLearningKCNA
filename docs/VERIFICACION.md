@@ -25,6 +25,10 @@ Las preguntas nuevas cubren los huecos que mostró el [mapa de cobertura](../web
 
 Al reservar 60 preguntas para el Examen de graduación se añadieron 40 preguntas verificadas en las competencias con menos material: Storage (+14), Application Delivery (+12) y Debugging (+14). El banco pasa de 252 a **292 preguntas** (232 para practicar y 60 reservadas). Detalle y fuentes en [verificacion/preguntas-ampliacion-2026-10-29.md](verificacion/preguntas-ampliacion-2026-10-29.md).
 
+### Comandos de memoria (2026-11-10)
+
+Los 89 ejercicios de «Comandos de memoria» (`web/src/lib/kube/drills.ts`) se verificaron con el mismo método: 75 correctos y 14 explicaciones precisadas; ningún comando era incorrecto. Cada ejercicio enlaza su fuente oficial y el prebuild del sitio lo exige. Detalle, variantes retiradas y lo que queda pendiente en [verificacion/comandos-2026-11-10.md](verificacion/comandos-2026-11-10.md).
+
 ## Correcciones más relevantes
 
 Datos que estaban mal o desactualizados y que el examen puede preguntar:
