@@ -22,6 +22,13 @@ for (const g of GUIAS) {
   if (g.secuencia && tipo !== 'sequenceDiagram') errores.push(`${at}: pide secuencia y el diagrama es ${tipo}`);
   if ((g.recorrido || g.huecos) && !tipo.startsWith('flowchart') && !tipo.startsWith('graph')) errores.push(`${at}: recorrido y huecos solo valen para flowchart (es ${tipo})`);
   if (!g.secuencia && !g.recorrido && !g.huecos) errores.push(`${at}: no define nada`);
+  if ((g.pistas || g.pregunta) && !g.secuencia) errores.push(`${at}: pistas y pregunta solo valen para una secuencia`);
+  // mensajes de una secuencia: líneas con flecha (->>, -->>, ->, -->, -x, -))
+  const nMensajes = src.split(/\r?\n/).filter((l) => /^\s*\w+\s*--?(>>|>|x|\))/.test(l)).length;
+  if (g.pistas && g.pistas.length !== nMensajes) errores.push(`${at}: ${g.pistas.length} pistas para ${nMensajes} mensajes (si se dan, una por mensaje)`);
+  for (const h of g.huecos ?? []) if (h.opcion !== undefined && h.opcion.length < 2) errores.push(`${at}: hueco con opción vacía`);
+  const opciones = (g.huecos ?? []).map((h) => h.opcion).filter(Boolean);
+  if (new Set(opciones).size !== opciones.length) errores.push(`${at}: dos huecos comparten la misma opción`);
   // un nodo existe si su id aparece como palabra seguida de una forma, una flecha o un fin de línea
   const tiene = (id) => new RegExp(`(^|[\\s>|])${id}(\\s*[\\[({]|\\s*(-|<|=|$))`, 'm').test(src);
   const ids = [...(g.recorrido ?? []).flatMap((p) => p.foco), ...(g.huecos ?? []).flatMap((h) => h.nodos)];

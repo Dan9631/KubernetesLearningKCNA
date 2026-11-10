@@ -1,12 +1,12 @@
 <script lang="ts">
   // Guía de un diagrama Mermaid ya dibujado (lo monta Enhance.svelte junto al diagrama):
   //   flowchart  "Recorrer paso a paso" (ilumina nodos y explica) y "Completar de memoria" (vacía nodos y pregunta cuál es).
-  //   secuencia  "Predecir el orden": antes de mostrar cada mensaje pregunta qué componente actúa.
+  //   secuencia  "Predecir el orden": antes de mostrar cada mensaje pregunta qué componente actúa (o a quién se dirige).
   // Solo añade y quita clases sobre el SVG (estilos en global.css); al redibujarse el diagrama (cambio de tema)
   // Enhance emite "dg:redraw" y el estado se vuelve a aplicar.
   import { untrack } from 'svelte';
   import { progress, addReto } from '../lib/progress.svelte';
-  import { guiaKey, type Guia } from '../lib/diagramas';
+  import { guiaKey, type Guia, type Hueco } from '../lib/diagramas';
 
   let { host, guia }: { host: HTMLDivElement; guia: Guia } = $props();
 
@@ -39,7 +39,13 @@
 
   // etiquetas originales de los nodos (se leen una vez por dibujo, antes de vaciar ninguno)
   let etiquetas = new Map<string, string>();
-  function leerEtiquetas() { etiquetas = new Map(nodes().map((n) => [nodeId(n), (n.dataset.dgLabel ?? labelOf(n)?.textContent ?? '').trim()])); }
+  // el texto de una etiqueta, con los saltos de línea (<br>) como espacios; dgLabel guarda el HTML original mientras el nodo está vacío
+  const textoHtml = (html: string) => { const c = document.createElement('span'); c.innerHTML = html; for (const br of c.querySelectorAll('br')) br.replaceWith(' '); return (c.textContent ?? '').replace(/\s+/g, ' ').trim(); };
+  function leerEtiquetas() { etiquetas = new Map(nodes().map((n) => [nodeId(n), textoHtml(n.dataset.dgLabel ?? labelOf(n)?.innerHTML ?? '')])); }
+  /** Texto de la opción correcta de un hueco: el suyo propio o la etiqueta del nodo */
+  const opcionDe = (h: Hueco) => h.opcion ?? etiquetas.get(h.nodos[0]) ?? '';
+  /** (predecir) el participante por el que se pregunta: quien envía el mensaje o, con pregunta "destino", quien lo recibe */
+  const respuesta = (m: Msg) => nombreDe(guia.pregunta === 'destino' ? m.to : m.from);
 
   // ---------- secuencia: mensajes y participantes, tal como los dibuja mermaid ----------
   interface Msg { els: Element[]; from: string; to: string; texto: string }
@@ -73,7 +79,7 @@
   function limpiar(s: SVGSVGElement) {
     s.classList.remove('dg-on');
     for (const el of s.querySelectorAll('.dg-foco, .dg-visto, .dg-oculto, .dg-hueco')) el.classList.remove('dg-foco', 'dg-visto', 'dg-oculto', 'dg-hueco');
-    for (const n of nodes()) { const l = labelOf(n); if (l && n.dataset.dgLabel !== undefined) { l.textContent = n.dataset.dgLabel; delete n.dataset.dgLabel; } }
+    for (const n of nodes()) { const l = labelOf(n); if (l && n.dataset.dgLabel !== undefined) { l.innerHTML = n.dataset.dgLabel; delete n.dataset.dgLabel; } }
   }
   function centrar(el: Element | undefined) {
     if (!el) return;
@@ -104,7 +110,7 @@
       const actual = new Set(guia.huecos[orden[i]]?.nodos ?? []);
       for (const n of nodes()) {
         const id = nodeId(n);
-        if (pendientes.includes(id)) { const l = labelOf(n); if (l) { n.dataset.dgLabel = etiquetas.get(id) ?? ''; l.textContent = '?'; } n.classList.add('dg-hueco'); }
+        if (pendientes.includes(id)) { const l = labelOf(n); if (l) { n.dataset.dgLabel = l.innerHTML; l.textContent = '?'; } n.classList.add('dg-hueco'); }
         n.classList.toggle('dg-foco', actual.has(id));
         n.classList.toggle('dg-visto', !actual.has(id));
       }
@@ -146,7 +152,7 @@
     i = 0; fallos = 0; malas = []; acertado = false; origen = m;
     if (m === 'completar' && guia.huecos) {
       orden = shuffle(guia.huecos.map((_, k) => k));
-      opciones = shuffle([...new Set([...guia.huecos.map((h) => etiquetas.get(h.nodos[0]) ?? ''), ...(guia.distractores ?? [])])]);
+      opciones = shuffle([...new Set([...guia.huecos.map(opcionDe), ...(guia.distractores ?? [])])]);
     }
     if (m === 'predecir') opciones = actores().map((a) => a.nombre);
     if (!full && host.classList.contains('ancho') && innerWidth > 700) abrir();
@@ -159,11 +165,11 @@
   }
   function elegir(op: string) {
     if (modo === 'completar' && guia.huecos) {
-      if (op !== etiquetas.get(guia.huecos[orden[i]].nodos[0])) { if (!malas.length) fallos++; malas = [...malas, op]; return; }
+      if (op !== opcionDe(guia.huecos[orden[i]])) { if (!malas.length) fallos++; malas = [...malas, op]; return; }
       malas = [];
       if (i + 1 < guia.huecos.length) i++; else cerrar();
     } else if (modo === 'predecir' && msg && !acertado) {
-      if (op !== nombreDe(msg.from)) { if (!malas.length) fallos++; malas = [...malas, op]; return; }
+      if (op !== respuesta(msg)) { if (!malas.length) fallos++; malas = [...malas, op]; return; }
       malas = []; acertado = true;
     }
   }
@@ -210,7 +216,7 @@
       {:else if modo === 'predecir' && msg}
         <p class="k">Paso {i + 1} de {total}</p>
         {#if !acertado}
-          <p><strong>¿Qué componente actúa ahora?</strong> {i === 0 ? 'Todo empieza con alguien que envía el manifiesto.' : 'Piensa quién se entera del cambio anterior y reacciona.'}</p>
+          <p><strong>{guia.pregunta === 'destino' ? `${nombreDe(msg.from)} actúa: ¿a quién se dirige?` : '¿Qué componente actúa ahora?'}</strong> {guia.pistas?.[i] ?? (i === 0 ? 'Piensa quién da el primer paso.' : 'Piensa quién se entera del cambio anterior y reacciona.')}</p>
           <div class="row ops" role="group" aria-label="Componentes">
             {#each opciones as op}<button type="button" class="btn small" class:mala={malas.includes(op)} disabled={malas.includes(op)} onclick={() => elegir(op)}>{op}</button>{/each}
           </div>

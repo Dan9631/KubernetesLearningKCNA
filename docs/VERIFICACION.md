@@ -33,6 +33,10 @@ Los 89 ejercicios de «Comandos de memoria» (`web/src/lib/kube/drills.ts`) se v
 
 Se verificaron además las pistas de las 16 misiones, los mensajes del tutor y las guías de los diagramas del módulo 02: 67 textos, 63 correctos y 4 corregidos. Hallazgo principal: en kubectl v1.37 `describe` no muestra eventos cuando encuentra el objeto por prefijo o describe varios; se corrigieron una misión, el simulador y el paso 4 del laboratorio del módulo 09. Detalle en [verificacion/terminal-diagramas-2026-11-10.md](verificacion/terminal-diagramas-2026-11-10.md).
 
+### Diagramas con guía de los módulos 01, 03, 04, 07 y 12 (2026-11-10)
+
+Se verificaron las guías de nueve diagramas más: 79 textos, 76 correctos y 3 corregidos (dos pistas que también valían para otra opción y una imprecisión en el filtrado del scheduler). Detalle, matices y limitaciones en [verificacion/diagramas-01-03-04-07-12-2026-11-10.md](verificacion/diagramas-01-03-04-07-12-2026-11-10.md).
+
 ## Correcciones más relevantes
 
 Datos que estaban mal o desactualizados y que el examen puede preguntar:

@@ -48,8 +48,9 @@ web/
 
 Un diagrama Mermaid de un módulo se vuelve interactivo añadiendo una entrada en `src/lib/diagramas.ts` (no se toca el markdown). `Enhance.svelte` monta `DiagramaGuia.svelte` debajo del diagrama; el componente solo añade y quita clases sobre el SVG (`dg-on`, `dg-foco`, `dg-visto`, `dg-oculto`, `dg-hueco`, estilos en `global.css`).
 
-- **flowchart**: `recorrido` (pasos con los ids de nodo que se iluminan y su explicación) y `huecos` (nodos que se vacían en «Completar de memoria», con una `pista` que describe la función del componente; los nodos con la misma etiqueta van en el mismo hueco). Las flechas entre dos nodos en foco se iluminan solas.
-- **sequenceDiagram**: `secuencia: true`. «Predecir el orden» oculta los mensajes y pregunta antes de cada uno qué componente actúa; no necesita más contenido.
+- **flowchart**: `recorrido` (pasos con los ids de nodo que se iluminan y su explicación) y `huecos` (nodos que se vacían en «Completar de memoria», con una `pista` que describe la función del componente; los nodos con la misma etiqueta van en el mismo hueco). Las flechas entre dos nodos en foco se iluminan solas; para iluminar una flecha que llega a un subgrafo, se cita el id del subgrafo en el `foco`. Si la etiqueta de un nodo es larga o delata la respuesta, el hueco lleva `opcion` (el texto del botón correcto); las etiquetas con `<br/>` se muestran en los botones con un espacio.
+- **sequenceDiagram**: `secuencia: true`. «Predecir el orden» oculta los mensajes y pregunta antes de cada uno qué componente actúa. Opcionales: `pistas` (una por mensaje: el contexto que acompaña a cada pregunta) y `pregunta: 'destino'` (pregunta a quién se dirige el mensaje en vez de quién lo envía; se usa cuando casi todos salen del mismo participante, como el kubelet en el módulo 07).
+- Los árboles de decisión y los resúmenes visuales llevan solo `recorrido`: completarlos de memoria no aporta.
 - Regla de diseño: cada modo pide algo al alumno (predecir o recordar) antes de enseñar. No se añaden animaciones que no exijan una respuesta.
 - Completar un diagrama sin fallos guarda el reto `dg:<módulo>-<n>` en `progress.retos`.
 - `n` es la posición del diagrama en el módulo: si se inserta un diagrama antes, hay que renumerar. `scripts/validar-diagramas.mjs` (prebuild) falla si la guía apunta a un diagrama o a un nodo que no existe.
