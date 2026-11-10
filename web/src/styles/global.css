@@ -231,3 +231,27 @@ p { margin: 0; }
 .prose .predice-dicho { font-size: 0.9rem; color: var(--ink-2); border-left: 3px solid var(--wait); padding-left: 12px; }
 .prose .paso-cmd { margin: 18px 0 8px; padding-top: 14px; border-top: 1px dashed var(--line); }
 @media (pointer: coarse) { .prose .predice-lab input { font-size: 16px; min-height: 44px; } }
+
+/* Diagramas con guía (DiagramaGuia.svelte): lo que no está en foco se atenúa; los huecos y el foco se marcan */
+.prose .mermaid svg.dg-on :is(g.node, path[data-edge], g.edgeLabel) { opacity: 0.2; transition: opacity 0.25s; }
+.prose .mermaid svg.dg-on :is(.messageText, .messageLine0, .messageLine1, .sequenceNumber) { transition: opacity 0.25s; }
+/* .dg-on repetido: tiene que ganar a la regla de atenuado de arriba */
+.prose .mermaid svg.dg-on.dg-on .dg-visto { opacity: 0.5; }
+.prose .mermaid svg.dg-on.dg-on .dg-foco { opacity: 1; }
+.prose .mermaid svg.dg-on.dg-on .dg-oculto { opacity: 0; }
+.prose .mermaid svg.dg-on g.node.dg-foco { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--helm) 55%, transparent)); }
+.prose .mermaid svg.dg-on g.node.dg-foco :is(.label-container, rect, polygon, path, circle) { stroke: var(--helm); stroke-width: 3px; }
+.prose .mermaid svg.dg-on g.node.dg-hueco :is(.label-container, rect, polygon, path, circle) { stroke-dasharray: 6 4; }
+.prose .mermaid svg.dg-on g.node.dg-hueco .nodeLabel { font-weight: 600; color: var(--helm-ink); }
+.prose .mermaid svg.dg-on path.dg-foco { stroke: var(--helm); stroke-width: 3px; }
+.prose .mermaid svg.dg-on rect.actor.dg-foco { stroke: var(--helm); stroke-width: 3px; }
+.prose .mermaid svg.dg-on :is(.messageLine0, .messageLine1).dg-foco { stroke: var(--helm); stroke-width: 3px; }
+@media (prefers-reduced-motion: reduce) { .prose .mermaid svg.dg-on * { transition: none !important; } }
+
+/* Diagrama a pantalla completa (DiagramaGuia.svelte): ocupa la ventana por encima de la cabecera; --dg-bottom es el alto del panel */
+.prose .mermaid.dg-full { position: fixed; inset: 0 0 var(--dg-bottom, 0px) 0; z-index: 60; margin: 0; border: 0; border-radius: 0; padding: 20px; overflow: auto; background: var(--panel); }
+.prose .mermaid.dg-full::after { display: none; }
+.prose .mermaid.dg-full svg { margin: auto; }
+/* ajustado: el diagrama entero cabe en la ventana, sin barras de desplazamiento */
+.prose .mermaid.dg-full.dg-fit { display: grid; place-items: center; overflow: hidden; }
+.prose .mermaid.dg-full.dg-fit svg { width: 100% !important; height: 100% !important; max-width: none !important; }

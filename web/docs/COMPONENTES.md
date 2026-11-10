@@ -44,6 +44,17 @@ web/
   src/components/practica/Comandos.svelte  el ejercicio; lo montan /comandos y cada módulo (sección #comandos)
 ```
 
+## Diagramas con guía
+
+Un diagrama Mermaid de un módulo se vuelve interactivo añadiendo una entrada en `src/lib/diagramas.ts` (no se toca el markdown). `Enhance.svelte` monta `DiagramaGuia.svelte` debajo del diagrama; el componente solo añade y quita clases sobre el SVG (`dg-on`, `dg-foco`, `dg-visto`, `dg-oculto`, `dg-hueco`, estilos en `global.css`).
+
+- **flowchart**: `recorrido` (pasos con los ids de nodo que se iluminan y su explicación) y `huecos` (nodos que se vacían en «Completar de memoria», con una `pista` que describe la función del componente; los nodos con la misma etiqueta van en el mismo hueco). Las flechas entre dos nodos en foco se iluminan solas.
+- **sequenceDiagram**: `secuencia: true`. «Predecir el orden» oculta los mensajes y pregunta antes de cada uno qué componente actúa; no necesita más contenido.
+- Regla de diseño: cada modo pide algo al alumno (predecir o recordar) antes de enseñar. No se añaden animaciones que no exijan una respuesta.
+- Completar un diagrama sin fallos guarda el reto `dg:<módulo>-<n>` en `progress.retos`.
+- `n` es la posición del diagrama en el módulo: si se inserta un diagrama antes, hay que renumerar. `scripts/validar-diagramas.mjs` (prebuild) falla si la guía apunta a un diagrama o a un nodo que no existe.
+- El texto de las guías es contenido del curso y se verifica como los módulos (`../docs/VERIFICACION-GUIA.md`).
+
 ## Analizador de comandos y ejercicios
 
 - **Añadir un ejercicio**: una línea `D(id, módulo, tarea, acepta, idea, porque)` en `drills.ts`. El id (`NN-nombre`) queda guardado en el progreso del alumno como `cmd:<id>`: no se cambia ni se reutiliza. En `acepta` solo hacen falta variantes que de verdad se escriben distinto: el orden de los flags, `k`, las abreviaturas de recurso, `tipo/nombre` y `-n`/`--namespace` ya cuentan igual. `porque` es el concepto que fija el comando (lo que entra en el examen).

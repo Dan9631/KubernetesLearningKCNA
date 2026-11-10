@@ -3,6 +3,8 @@
   import { untrack, mount } from 'svelte';
   import Comandos from './practica/Comandos.svelte';
   import { drillsAt, type Cierre } from '../lib/kube/drills';
+  import DiagramaGuia from './DiagramaGuia.svelte';
+  import { guiasDe } from '../lib/diagramas';
   import { progress, toggleStep, toggleDone, markToday, save } from '../lib/progress.svelte';
 
   // checklist=false: páginas que no son módulos (instalación) no muestran la barra de progreso
@@ -39,6 +41,7 @@
         const fits = !natural || natural <= (div.clientWidth - 32) * 1.25;
         if (el && fits) el.style.maxWidth = '100%';
         div.classList.toggle('ancho', !fits);
+        div.dispatchEvent(new CustomEvent('dg:redraw')); // la guía del diagrama vuelve a pintar su estado
       } catch (e) {
         console.warn('mermaid:', e);
         div.innerHTML = `<pre>${src.replace(/</g, '&lt;')}</pre>`;
@@ -60,6 +63,14 @@
       return { div, src };
     });
     await drawDiagrams();
+    // diagramas con guía (lib/diagramas.ts): se recorren paso a paso y se completan de memoria
+    for (const guia of guiasDe(module)) {
+      const d = diagrams[guia.n];
+      if (!d || !d.div.querySelector('svg')) continue;
+      const target = document.createElement('div');
+      d.div.after(target);
+      mount(DiagramaGuia, { target, props: { host: d.div, guia } });
+    }
     // al cambiar de tema se vuelven a dibujar con los colores nuevos
     new MutationObserver(() => drawDiagrams()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
