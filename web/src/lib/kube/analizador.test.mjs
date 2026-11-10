@@ -49,6 +49,13 @@ nota('kubectl taint node kcna-worker2 dedicated=db', 'taint-efecto');
 nota('kubectl get pods -n lab', 'ns-inexistente');
 nota('kubectl config get-context', 'config-sub', 'kubectl config get-contexts');
 
+// describe sin eventos (kubectl 1.37: por prefijo o con varios objetos)
+nota('kubectl describe pod catalogo', 'describe-prefijo', 'kubectl describe pod catalogo --show-events');
+nota('kubectl describe pods', 'describe-varios');
+nota('kubectl describe pod -l app=catalogo', null);
+nota('kubectl describe pod catalogo --show-events', null);
+nota('kubectl get pods -o kyaml', null);
+
 // comandos correctos: ni una nota (un tutor que se equivoca enseña mal)
 for (const ok of [
   'kubectl get pods', 'k get po -A -o wide', 'kubectl get deploy,svc', 'kubectl get pods -l app=web --show-labels', 'kubectl get pod tools -o jsonpath=\'{.status.phase}\'',
@@ -69,6 +76,11 @@ ex('kubectl get pods --namespace', /^error: flag needs an argument: --namespace/
 ex('kubectl get pods -n', /^error: flag needs an argument: 'n' in -n/, false);
 ex('kubectl get pods -n kube-system -owide', /NODE/, true);
 ex('kubectl exec -it tools -- env', /HOSTNAME=tools/, true);
+ex('kubectl describe pod catalogo', /^Name:\s+catalogo-(?![\s\S]*Events:)/, true);
+ex('kubectl describe pod catalogo --show-events', /Events:/, true);
+ex('kubectl describe pod -l app=catalogo', /Events:/, true);
+ex('kubectl describe pods -l app=web', /^Name:\s+web-(?![\s\S]*Events:)/, true);
+ex('kubectl describe pod tools', /Events:/, true);
 
 // objeto en otro namespace que el del contexto
 execute(c, 'kubectl config set-context --current --namespace=kube-system');

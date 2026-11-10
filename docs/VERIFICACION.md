@@ -29,6 +29,10 @@ Al reservar 60 preguntas para el Examen de graduación se añadieron 40 pregunta
 
 Los 89 ejercicios de «Comandos de memoria» (`web/src/lib/kube/drills.ts`) se verificaron con el mismo método: 75 correctos y 14 explicaciones precisadas; ningún comando era incorrecto. Cada ejercicio enlaza su fuente oficial y el prebuild del sitio lo exige. Detalle, variantes retiradas y lo que queda pendiente en [verificacion/comandos-2026-11-10.md](verificacion/comandos-2026-11-10.md).
 
+### Misiones, tutor de la Terminal y diagramas (2026-11-10)
+
+Se verificaron además las pistas de las 16 misiones, los mensajes del tutor y las guías de los diagramas del módulo 02: 67 textos, 63 correctos y 4 corregidos. Hallazgo principal: en kubectl v1.37 `describe` no muestra eventos cuando encuentra el objeto por prefijo o describe varios; se corrigieron una misión, el simulador y el paso 4 del laboratorio del módulo 09. Detalle en [verificacion/terminal-diagramas-2026-11-10.md](verificacion/terminal-diagramas-2026-11-10.md).
+
 ## Correcciones más relevantes
 
 Datos que estaban mal o desactualizados y que el examen puede preguntar:

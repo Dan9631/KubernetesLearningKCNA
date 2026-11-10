@@ -5,7 +5,7 @@
 //                               (helm, podman, kcna.ps1 y los kubectl que el simulador no modela).
 // No depende de kubectl.ts (que sí depende de este archivo).
 import { type Cluster, PRELOADED_IMAGES } from './cluster.ts';
-import { parseFlags, kindOf, KINDS, SHORT, VALUE, BOOL_IN, flag, has, type Parsed } from './common.ts';
+import { parseFlags, kindOf, KINDS, SHORT, VALUE, BOOL_IN, flag, has, listOf, parseSelector, type Parsed } from './common.ts';
 import { tokenize } from './exec.ts';
 
 export interface Nota {
@@ -51,7 +51,7 @@ function tramos(line: string): [string, string] {
 export const VERBOS = ['annotate', 'api-resources', 'api-versions', 'apply', 'attach', 'auth', 'autoscale', 'certificate', 'cluster-info', 'completion', 'config', 'cordon', 'cp', 'create', 'debug', 'delete', 'describe', 'diff', 'drain', 'edit', 'events', 'exec', 'explain', 'expose', 'get', 'help', 'kustomize', 'label', 'logs', 'options', 'patch', 'plugin', 'port-forward', 'proxy', 'replace', 'rollout', 'run', 'scale', 'set', 'taint', 'top', 'uncordon', 'version', 'wait'];
 
 /** Flags largos que kubectl conoce (unión de los comandos del curso). Solo se marca como desconocido lo que se parece a uno de estos. */
-const BOOLEANOS = ['all', 'all-namespaces', 'all-containers', 'allow-missing-template-keys', 'append-hash', 'attach', 'cached', 'client', 'containers', 'current', 'delete-emptydir-data', 'disable-eviction', 'dry-run', 'edit-last-applied', 'expose', 'flatten', 'follow', 'force', 'force-conflicts', 'help', 'ignore-daemonsets', 'ignore-errors', 'ignore-not-found', 'insecure-skip-tls-verify', 'leave-stdin-open', 'list', 'local', 'merge', 'minify', 'namespaced', 'no-headers', 'now', 'output-watch-events', 'overwrite', 'prefix', 'previous', 'privileged', 'prune', 'quiet', 'raw', 'record', 'recursive', 'rm', 'save-config', 'server-side', 'short', 'show-kind', 'show-labels', 'show-managed-fields', 'stdin', 'tcp', 'timestamps', 'tty', 'validate', 'wait', 'watch', 'watch-only', 'windows-line-endings'];
+const BOOLEANOS = ['all', 'all-namespaces', 'all-containers', 'allow-missing-template-keys', 'append-hash', 'attach', 'cached', 'client', 'containers', 'current', 'delete-emptydir-data', 'disable-eviction', 'dry-run', 'edit-last-applied', 'expose', 'flatten', 'follow', 'force', 'force-conflicts', 'help', 'ignore-daemonsets', 'ignore-errors', 'ignore-not-found', 'insecure-skip-tls-verify', 'leave-stdin-open', 'list', 'local', 'merge', 'minify', 'namespaced', 'no-headers', 'now', 'output-watch-events', 'overwrite', 'prefix', 'previous', 'privileged', 'prune', 'quiet', 'raw', 'record', 'recursive', 'rm', 'save-config', 'server-side', 'short', 'show-events', 'show-kind', 'show-labels', 'show-managed-fields', 'stdin', 'tcp', 'timestamps', 'tty', 'validate', 'wait', 'watch', 'watch-only', 'windows-line-endings'];
 const OTROS_VALOR = ['api-group', 'as-group', 'audience', 'bound-object-kind', 'cache-dir', 'cert', 'certificate-authority', 'class', 'client-certificate', 'client-key', 'clusterrole', 'container', 'default-backend', 'docker-email', 'docker-password', 'docker-server', 'docker-username', 'duration', 'field-manager', 'group', 'hard', 'key', 'limit-bytes', 'load-balancer-ip', 'max-log-requests', 'node-port', 'password', 'patch', 'patch-file', 'profile', 'request-timeout', 'resource-version', 'role', 'rule', 'scopes', 'session-affinity', 'since-time', 'subresource', 'tls-server-name', 'token', 'type', 'username', 'v', 'verbs', 'allow-privilege-escalation', 'env-from', 'set-image', 'mode', 'ttl', 'from', 'prefix-length', 'to', 'tolerations', 'node-name', 'address', 'pod-selector', 'match', 'http-method', 'jsonpath', 'value', 'description', 'preemption-policy', 'global-default', 'min-available', 'max-unavailable', 'max-surge'];
 const CONOCIDOS = new Set<string>([...VALUE, ...BOOLEANOS, ...OTROS_VALOR]);
 /** Flags con valor cuyo valor nunca empieza por guion: si les sigue otro flag, falta el valor. */
@@ -124,7 +124,7 @@ function tipo(line: string, verbTxt: string, args: string[], c: Cluster | undefi
   const t = a.includes('/') ? a.split('/')[0] : a;
   if (t.split(',').every((x) => kindOf(x) || x === 'all')) return null;
   const malo = t.split(',').find((x) => !kindOf(x) && x !== 'all')!;
-  if (REALES.has(malo.toLowerCase().split('.')[0])) return c ? { nivel: 'aviso', clave: 'no-simulado', msg: `El tipo «${malo}» existe en Kubernetes, pero este simulador no lo modela: por eso responde que no lo conoce. Practícalo en el clúster real del curso (.\\kcna.ps1 up).` } : null;
+  if (REALES.has(malo.toLowerCase().split('.')[0])) return c ? { nivel: 'aviso', clave: 'no-simulado', msg: `El tipo «${malo}» existe en Kubernetes o en sus extensiones (CRD), pero este simulador no lo modela: por eso responde que no lo conoce. Practícalo en el clúster real del curso (.\\kcna.ps1 up).` } : null;
   if (!a.includes('/') && !a.includes(',')) {
     const real = c ? tipoDe(c, ns, a, opts.prefer) : undefined;
     const ins = real ?? (args.length === 1 ? opts.insertar : undefined);
@@ -166,8 +166,17 @@ function estructura(line: string, { verb, p }: Cmd, c?: Cluster): Nota[] {
       const n = tipo(line, verb, a, c, ns);
       add(n);
       if (!n && kindOf(a[0] ?? '')?.kind === 'Pod' && verb !== 'get' && verb !== 'describe') podPrefijo(a[1], verb);
+      // describe sin eventos: kubectl los omite si encontró el objeto por prefijo o si describe varios a la vez
+      const k = kindOf((a[0] ?? '').split('/')[0]);
+      if (!n && c && verb === 'describe' && k && !k.synthetic && !has(p, 'show-events')) {
+        const todos = listOf(c, k).filter((x) => !k.namespaced || has(p, 'all-namespaces') || x.meta.namespace === ns);
+        const nombre = (a[0] ?? '').includes('/') ? a[0].split('/')[1] : a[1];
+        const sel = flag(p, 'selector'); const match = sel ? parseSelector(sel) : null;
+        if (nombre && !todos.some((x) => x.meta.name === nombre) && todos.some((x) => x.meta.name.startsWith(nombre))) add({ nivel: 'aviso', clave: 'describe-prefijo', msg: `No hay ningún objeto llamado exactamente «${nombre}»: kubectl lo encontró por prefijo, y en ese caso describe no muestra la sección Events. Para ver los eventos usa el nombre completo (Tab lo completa), un selector que dé un solo objeto (-l) o añade --show-events.`, fix: `${line.trim()} --show-events` });
+        else if (!nombre && (match ? todos.filter((x) => match(x.meta.labels)) : todos).length > 1) add({ nivel: 'aviso', clave: 'describe-varios', msg: 'Al describir varios objetos a la vez kubectl no muestra la sección Events de cada uno. Describe uno solo (por nombre completo) o añade --show-events.', fix: `${line.trim()} --show-events` });
+      }
       const o = flag(p, 'output');
-      if (verb === 'get' && o && !/^(wide|yaml|json|name|jsonpath|custom-columns|go-template|template)/.test(o)) { const near = cercano(o, ['wide', 'yaml', 'json', 'name', 'jsonpath']); add(E('salida', `«${o}» no es un formato de salida de -o. Los que más vas a usar: wide (más columnas), yaml y json (el objeto completo), name y jsonpath='{...}' (un campo).`, near ? line.replace(new RegExp(`${esc(o)}(?=\\s|$)`), near) : undefined)); }
+      if (verb === 'get' && o && !/^(wide|yaml|kyaml|json|name|jsonpath|custom-columns|go-template|template)/.test(o)) { const near = cercano(o, ['wide', 'yaml', 'json', 'name', 'jsonpath']); add(E('salida', `«${o}» no es un formato de salida de -o. Los que más vas a usar: wide (más columnas), yaml y json (el objeto completo), name y jsonpath='{...}' (un campo).`, near ? line.replace(new RegExp(`${esc(o)}(?=\\s|$)`), near) : undefined)); }
       break;
     }
     case 'run': {
@@ -180,7 +189,7 @@ function estructura(line: string, { verb, p }: Cmd, c?: Cluster): Nota[] {
       if (has(p, 'filename') || has(p, 'kustomize') || !a[0]) break;
       const sub = a[0];
       if (['pod', 'pods', 'po'].includes(sub)) { add(E('create-pod', 'No existe kubectl create pod. Un Pod suelto se crea de forma imperativa con kubectl run NOMBRE --image=IMAGEN, o de forma declarativa con kubectl apply -f pod.yaml.', line.replace(/create\s+(pods?|po)\b/, 'run'))); break; }
-      if (!SUB_CREATE.includes(sub)) { const near = cercano(sub, SUB_CREATE); add(E('create-sub', `kubectl create no sabe crear «${sub}»${near ? `. ¿Querías decir ${near}?` : '. Lo que crea de forma imperativa: deployment, namespace, configmap, secret, job, cronjob, service, serviceaccount, role, rolebinding. Para el resto, kubectl apply -f archivo.yaml.'}`, near ? sust(line, sub, near) : undefined)); break; }
+      if (!SUB_CREATE.includes(sub)) { const near = cercano(sub, SUB_CREATE); add(E('create-sub', `kubectl create no sabe crear «${sub}»${near ? `. ¿Querías decir ${near}?` : '. Crea de forma imperativa, entre otros: deployment, namespace, configmap, secret, job, cronjob, service, serviceaccount, role, rolebinding. Para el resto, kubectl apply -f archivo.yaml.'}`, near ? sust(line, sub, near) : undefined)); break; }
       if (['deployment', 'deploy'].includes(sub)) {
         if (!a[1]) add(E('create-nombre', 'Falta el nombre del Deployment: kubectl create deployment NOMBRE --image=IMAGEN.'));
         else if (!has(p, 'image')) add(E('create-imagen', 'Falta --image: el Deployment necesita saber qué imagen llevan sus Pods. kubectl create deployment NOMBRE --image=IMAGEN:TAG [--replicas=N].'));

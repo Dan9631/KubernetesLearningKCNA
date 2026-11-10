@@ -233,10 +233,10 @@ Qué observar: casi todo el catálogo de estados en una sola pantalla. Fíjate e
 ### 4. Caso 1 guiado — `frontend`: `describe` y eventos
 
 ```powershell
-k describe pod -n lab-09 -l app=frontend
+k describe pod -n lab-09 -l app=frontend --show-events
 ```
 
-Baja hasta la sección `Events` (resumida):
+`frontend` tiene dos réplicas, y cuando `describe` muestra varios objetos a la vez (o encuentra uno por prefijo del nombre) omite los eventos salvo que los pidas con `--show-events`. Baja hasta la sección `Events` (resumida):
 
 ```text
 Events:

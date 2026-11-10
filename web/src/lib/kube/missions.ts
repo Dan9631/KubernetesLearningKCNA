@@ -76,11 +76,12 @@ export const MISSIONS: Mission[] = [
     check: (c) => { const s = c.service('default', 'web-np'); return !!s && s.spec.type === 'NodePort' && s.spec.selector.app === 'web'; } },
 
   { id: 'diag-causa', group: 'diagnostico', title: 'Averigua por qué el pod de catalogo no arranca: lee sus eventos',
-    idea: 'El estado de get dice qué pasa; el porqué está en los eventos, al final de la descripción del Pod.',
-    hint: 'kubectl describe pod catalogo',
-    check: (_c, ctx) => ctx.ran(new RegExp(K + '(describe\\s+(pods?|po)(\\s+|\\/)catalogo|describe\\s+(pods?|po)\\s+-l\\s*app=catalogo|(get\\s+)?events\\b)')) },
+    idea: 'El estado de get dice qué pasa; el porqué está en los eventos, al final de la descripción del Pod. Ojo: describe solo los muestra si describes un único objeto, por su nombre completo o por selector.',
+    hint: 'kubectl describe pod -l app=catalogo',
+    // "describe pod catalogo" lo encuentra por prefijo y no muestra eventos: vale el nombre completo, el selector o --show-events
+    check: (_c, ctx) => ctx.ran(new RegExp(K + '(describe\\s+(pods?|po)(\\s+|\\/)catalogo-[a-z0-9]+-[a-z0-9]+|describe\\s+(pods?|po)\\s+.*(-l\\s*app=catalogo|--selector[= ]app=catalogo)|describe\\s+(pods?|po)\\s+catalogo.*--show-events|(get\\s+)?events\\b)')) },
   { id: 'arreglar', group: 'diagnostico', title: 'Arregla el deployment catalogo: su pod está en ImagePullBackOff',
-    idea: 'La imagen que pide no está en los nodos. Corrige la imagen en el Deployment (no en el Pod: el ReplicaSet lo recrearía igual). La que hay cargada es redis:7.4-alpine.',
+    idea: 'La imagen que pide no está en los nodos. Corrige la imagen en el Deployment (no en el Pod: los Pods nuevos seguirían saliendo de la plantilla, con la imagen mala). La que hay cargada es redis:7.4-alpine.',
     hint: 'kubectl set image deployment/catalogo redis=redis:7.4-alpine',
     check: (c) => { const d = c.deployment('default', 'catalogo'); if (!d) return false; const st = c.deploymentStatus(d); return st.ready >= 1 && st.ready === d.spec.replicas && !c.pods.some((p) => p.meta.namespace === 'default' && p.meta.labels.app === 'catalogo' && ['ImagePullBackOff', 'ErrImagePull'].includes(c.podStatus(p))); } },
   { id: 'diag-eventos', group: 'diagnostico', title: 'Lista los eventos del namespace ordenados por tiempo',

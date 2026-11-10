@@ -225,27 +225,34 @@ function describe(c: Cluster, p: Parsed): Result {
   const sel = flag(p, 'selector');
   const match = sel ? parseSelector(sel) : null;
   const out: string[] = []; let failed = false;
+  // kubectl: --show-events vale true para un solo objeto y false con varios o cuando lo encuentra por prefijo
+  const pedido = flag(p, 'show-events');
   for (const { kind, names } of targets) {
+    let porPrefijo = false;
     if (kind.synthetic) { for (const n of names) out.push(`Error from server (NotFound): ${fullName(kind)} "${n}" not found`); if (!names.length) out.push(`No resources found in ${ns} namespace.`); failed = names.length > 0; continue; }
     let items = listOf(c, kind).filter((it) => !kind.namespaced || ns === null || it.meta.namespace === ns);
     if (names.length) {
       const found: Item[] = [];
-      for (const n of names) { const exact = items.find((x) => x.meta.name === n); const pref = exact ? [exact] : items.filter((x) => x.meta.name.startsWith(n)); if (!pref.length) { out.push(`Error from server (NotFound): ${fullName(kind)} "${n}" not found`); failed = true; } found.push(...pref); }
+      for (const n of names) { const exact = items.find((x) => x.meta.name === n); const pref = exact ? [exact] : items.filter((x) => x.meta.name.startsWith(n)); if (!exact && pref.length) porPrefijo = true; if (!pref.length) { out.push(`Error from server (NotFound): ${fullName(kind)} "${n}" not found`); failed = true; } found.push(...pref); }
       items = found;
     } else if (match) items = items.filter((it) => match(it.meta.labels));
     if (!items.length && !names.length) { out.push(`No resources found in ${ns} namespace.`); continue; }
+    const conEventos = pedido !== undefined ? pedido !== 'false' : !porPrefijo && items.length <= 1;
     items.forEach((it, i) => {
       if (i > 0 || out.length) out.push('', '');
+      let ls: string[] = [];
       switch (it.kind) {
-        case 'Pod': out.push(...describePod(c, it)); break;
-        case 'Deployment': out.push(...describeDeployment(c, it)); break;
-        case 'ReplicaSet': out.push(...describeReplicaSet(c, it)); break;
-        case 'Service': out.push(...describeService(c, it)); break;
-        case 'Node': out.push(...describeNode(c, it)); break;
-        case 'Namespace': out.push(...describeNamespace(c, it)); break;
-        case 'ConfigMap': out.push(...describeConfigMap(c, it)); break;
-        case 'Secret': out.push(...describeSecret(c, it)); break;
+        case 'Pod': ls = describePod(c, it); break;
+        case 'Deployment': ls = describeDeployment(c, it); break;
+        case 'ReplicaSet': ls = describeReplicaSet(c, it); break;
+        case 'Service': ls = describeService(c, it); break;
+        case 'Node': ls = describeNode(c, it); break;
+        case 'Namespace': ls = describeNamespace(c, it); break;
+        case 'ConfigMap': ls = describeConfigMap(c, it); break;
+        case 'Secret': ls = describeSecret(c, it); break;
       }
+      const ev = ls.findIndex((l) => /^Events:/.test(l));
+      out.push(...(!conEventos && ev >= 0 ? ls.slice(0, ev) : ls));
     });
   }
   return failed ? fail(out) : ok(out);
@@ -443,7 +450,7 @@ export function execute(c: Cluster, line: string): Result {
 // ---------- autocompletado ----------
 const FLAGS: Record<string, string[]> = {
   get: ['-n', '-A', '-o', '-l', '--show-labels', '--all-namespaces', '--namespace=', '--output=', '--selector=', '--sort-by=', '--field-selector=', '-L', '-w'],
-  describe: ['-n', '-l', '--namespace='],
+  describe: ['-n', '-l', '--namespace=', '--show-events'],
   run: ['--image=', '--port=', '--labels=', '--restart=Never', '--env=', '--dry-run=client', '-o', '-n', '--command'],
   create: ['--image=', '--replicas=', '--from-literal=', '--dry-run=client', '-o', '-n', '-f', '--port='],
   expose: ['--port=', '--target-port=', '--type=NodePort', '--type=ClusterIP', '--name=', '--dry-run=client', '-o', '-n'],
