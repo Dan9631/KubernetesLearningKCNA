@@ -32,8 +32,11 @@
   const hecho = $derived(progress.retos.includes(guiaKey(guia)));
 
   const svg = () => host.querySelector('svg');
-  const nodeId = (el: Element) => el.id.match(/-flowchart-(.+)-\d+$/)?.[1] ?? '';
-  const nodes = () => [...(svg()?.querySelectorAll<SVGGElement>('g.node') ?? [])];
+  // id de un nodo ("mmd-05-0-<n>-flowchart-API-3" -> API) o de un subgrafo ("mmd-05-0-<n>-Cloud" -> Cloud)
+  const nodeId = (el: Element) => el.id.match(/-flowchart-(.+)-\d+$/)?.[1] ?? el.id.match(/^mmd-[^-]+-\d+-\d+-(.+)$/)?.[1] ?? '';
+  // los subgrafos solo cuentan como nodos si la guía los cita (capas que se iluminan o se vacían, como las 4C)
+  const citados = new Set([...(guia.recorrido ?? []).flatMap((p) => p.foco), ...(guia.huecos ?? []).flatMap((h) => h.nodos)]);
+  const nodes = () => [...(svg()?.querySelectorAll<SVGGElement>('g.node, g.cluster') ?? [])].filter((n) => n.classList.contains('node') || citados.has(nodeId(n)));
   const labelOf = (el: Element) => el.querySelector<HTMLElement>('.nodeLabel');
   const shuffle = <T,>(a: T[]) => { a = a.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; };
 

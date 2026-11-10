@@ -37,6 +37,10 @@ Se verificaron además las pistas de las 16 misiones, los mensajes del tutor y l
 
 Se verificaron las guías de nueve diagramas más: 79 textos, 76 correctos y 3 corregidos (dos pistas que también valían para otra opción y una imprecisión en el filtrado del scheduler). Detalle, matices y limitaciones en [verificacion/diagramas-01-03-04-07-12-2026-11-10.md](verificacion/diagramas-01-03-04-07-12-2026-11-10.md).
 
+### Diagramas con guía de los módulos 05, 06, 08 y 09 (2026-11-10)
+
+Doce guías más (Orchestration): 117 textos, 112 correctos y 5 corregidos (tres pistas que también describían un distractor y dos pistas imprecisas). Detalle en [verificacion/diagramas-05-06-08-09-2026-11-10.md](verificacion/diagramas-05-06-08-09-2026-11-10.md).
+
 ## Correcciones más relevantes
 
 Datos que estaban mal o desactualizados y que el examen puede preguntar:

@@ -243,6 +243,10 @@ p { margin: 0; }
 .prose .mermaid svg.dg-on g.node.dg-foco :is(.label-container, rect, polygon, path, circle) { stroke: var(--helm); stroke-width: 3px; }
 .prose .mermaid svg.dg-on g.node.dg-hueco :is(.label-container, rect, polygon, path, circle) { stroke-dasharray: 6 4; }
 .prose .mermaid svg.dg-on g.node.dg-hueco .nodeLabel { font-weight: 600; color: var(--helm-ink); }
+/* subgrafos citados por la guía (capas): mismo resaltado que un nodo */
+.prose .mermaid svg.dg-on g.cluster.dg-foco rect { stroke: var(--helm); stroke-width: 3px; }
+.prose .mermaid svg.dg-on g.cluster.dg-hueco rect { stroke-dasharray: 6 4; }
+.prose .mermaid svg.dg-on g.cluster.dg-hueco .nodeLabel { font-weight: 600; color: var(--helm-ink); }
 .prose .mermaid svg.dg-on path.dg-foco { stroke: var(--helm); stroke-width: 3px; }
 .prose .mermaid svg.dg-on rect.actor.dg-foco { stroke: var(--helm); stroke-width: 3px; }
 .prose .mermaid svg.dg-on :is(.messageLine0, .messageLine1).dg-foco { stroke: var(--helm); stroke-width: 3px; }
