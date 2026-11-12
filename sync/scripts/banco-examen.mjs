@@ -14,7 +14,15 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const [entrada, salida = 'banco-examen.sql'] = process.argv.slice(2);
 if (!entrada) { console.error('Uso: node scripts/banco-examen.mjs <banco.json> [salida.sql]'); process.exit(1); }
 
-const banco = JSON.parse(readFileSync(entrada, 'utf8'));
+let banco;
+try {
+  banco = JSON.parse(readFileSync(entrada, 'utf8'));
+} catch (e) {
+  console.error(e.code === 'ENOENT'
+    ? `No existe ${entrada}. Ese archivo lo escribes tú: una lista de preguntas con el formato que explica la cabecera de este script.`
+    : `${entrada} no es JSON válido: ${e.message}`);
+  process.exit(1);
+}
 if (!Array.isArray(banco)) { console.error('El archivo debe ser una lista de preguntas.'); process.exit(1); }
 
 const errores = [];
