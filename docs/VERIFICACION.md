@@ -25,9 +25,9 @@ Las preguntas nuevas cubren los huecos que mostró el [mapa de cobertura](../web
 
 Al reservar 60 preguntas para el Examen de graduación se añadieron 40 preguntas verificadas en las competencias con menos material: Storage (+14), Application Delivery (+12) y Debugging (+14). El banco pasa de 252 a **292 preguntas** (232 para practicar y 60 reservadas). Detalle y fuentes en [verificacion/preguntas-ampliacion-2026-10-29.md](verificacion/preguntas-ampliacion-2026-10-29.md).
 
-### Guías de los diagramas restantes (2026-11-12), pendientes de verificar
+### Guías de los diagramas restantes (2026-11-12)
 
-Los 37 diagramas del curso tienen ya guía. Se añadieron 13 (00-0, 03-0, 07-1, 07-2, 10-0, 10-1, 11-0, 11-1, 12-0, 12-1, 12-2, 12-4 y 12-5) y la explicación paso a paso de las tres secuencias (02-1, 07-0 y 12-3). Los textos se redactaron a partir del propio módulo, cuyo contenido ya estaba verificado, pero **no se han contrastado todavía uno a uno con la documentación oficial** según [VERIFICACION-GUIA.md](VERIFICACION-GUIA.md). El diagrama de fases del Pod (03-0) pasó de `stateDiagram` a `flowchart`, con el mismo contenido, para poder recorrerlo.
+Los 37 diagramas del curso tienen ya guía. Se añadieron 13 (00-0, 03-0, 07-1, 07-2, 10-0, 10-1, 11-0, 11-1, 12-0, 12-1, 12-2, 12-4 y 12-5), la explicación paso a paso de las tres secuencias (02-1, 07-0 y 12-3) y «Completar de memoria» en cinco guías que solo tenían recorrido. Se contrastaron con la documentación oficial y, en lo propio del laboratorio, con los archivos del repositorio: dos correcciones (el nombre de una label del laboratorio y la descripción de Karpenter) y ningún error de hecho. El diagrama de fases del Pod (03-0) pasó de `stateDiagram` a `flowchart`, con el mismo contenido, para poder recorrerlo. Detalle en [verificacion/diagramas-restantes-2026-11-12.md](verificacion/diagramas-restantes-2026-11-12.md).
 
 ### Ampliación del 2026-11-12
 

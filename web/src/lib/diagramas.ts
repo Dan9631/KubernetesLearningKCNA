@@ -444,7 +444,7 @@ export const GUIAS: Guia[] = [
       { foco: ['BR', 'CP'], texto: 'El navegador llega a las aplicaciones del clúster por puertos mapeados (localhost:8080 y 30080) hacia el contenedor del control plane.' },
       { foco: ['WSL', 'Net'], texto: 'El clúster entero vive dentro de la máquina de Podman, que corre en WSL2. Con kind, cada nodo es un contenedor conectado a la red «kind».' },
       { foco: ['CP'], texto: 'kcna-control-plane ejecuta el control plane (API server, etcd, scheduler y controller-manager) y también Traefik, que recibe el tráfico de entrada.' },
-      { foco: ['CP', 'W1', 'W2'], texto: 'Los dos workers ejecutan tus cargas. Llevan labels distintas (disktype y zona) que usarás en los laboratorios de scheduling.' },
+      { foco: ['CP', 'W1', 'W2'], texto: 'Los dos workers ejecutan tus cargas. Llevan labels distintas (disktype y zone) que usarás en los laboratorios de scheduling.' },
     ],
     huecos: [
       { nodos: ['CP'], opcion: 'Nodo control-plane', pista: 'El contenedor donde corren el API server, etcd, el scheduler y el controller-manager.' },
@@ -511,7 +511,7 @@ export const GUIAS: Guia[] = [
       { foco: ['VPA'], texto: 'El VPA escala en vertical: ajusta la CPU y la memoria que pide cada Pod, sin cambiar cuántos hay.' },
       { foco: ['KEDA'], texto: 'KEDA escala según eventos externos, como los mensajes pendientes en una cola o un horario, y puede bajar la carga a cero réplicas.' },
       { foco: ['HPA', 'CA'], texto: 'Si las réplicas nuevas no caben en ningún nodo, quedan en Pending. Ahí actúa el Cluster Autoscaler: añade nodos de grupos ya definidos y retira los que sobran.' },
-      { foco: ['HPA', 'KAR'], texto: 'Karpenter resuelve lo mismo de otra forma: en vez de ampliar un grupo predefinido, crea el nodo del tamaño que necesitan esos Pods pendientes.' },
+      { foco: ['HPA', 'KAR'], texto: 'Karpenter resuelve lo mismo de otra forma: en vez de ampliar un grupo predefinido, aprovisiona directamente nodos a la medida de esos Pods pendientes, dentro de los límites que fija el operador (NodePools).' },
     ],
     huecos: [
       { nodos: ['HPA'], opcion: 'HPA', pista: 'Cambia el número de réplicas según métricas como la CPU.' },
@@ -607,7 +607,7 @@ export const GUIAS: Guia[] = [
   {
     mod: '12', n: 2, titulo: 'Modelo push frente a modelo pull',
     recorrido: [
-      { foco: ['G1', 'CI1'], texto: 'Modelo push: un pipeline externo reacciona al cambio en Git. Para desplegar necesita guardar las credenciales del clúster.' },
+      { foco: ['G1', 'CI1'], texto: 'Modelo push: un pipeline externo reacciona al cambio en Git. Para desplegar necesita tener guardadas las credenciales del clúster.' },
       { foco: ['CI1', 'K1'], texto: 'El pipeline aplica los cambios desde fuera (kubectl apply o helm upgrade) y ahí termina: si alguien modifica el clúster a mano, nadie lo detecta hasta el siguiente pipeline.' },
       { foco: ['K2', 'AG'], texto: 'Modelo pull (GitOps): el agente, Argo CD o Flux, corre dentro del clúster.' },
       { foco: ['AG', 'G2'], texto: 'Es el agente quien vigila y clona el repositorio. Solo necesita leer Git, así que las credenciales del clúster no salen de él.' },
