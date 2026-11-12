@@ -5,8 +5,9 @@
 //   huecos     (flowchart) nodos que se vacían en "Completar de memoria"; `pista` describe la función del componente,
 //              que es lo que pregunta el examen. Varios nodos con la misma etiqueta van juntos (kubelet de cada nodo).
 //   distractores  opciones falsas añadidas a las etiquetas de los huecos.
-//   secuencia  (sequenceDiagram) "Predecir el orden": antes de mostrar cada mensaje se pregunta qué componente actúa.
-//              No necesita más contenido: sale del propio diagrama.
+//   secuencia  (sequenceDiagram) "Recorrer paso a paso" (los mensajes aparecen uno a uno) y "Predecir el orden":
+//              antes de mostrar cada mensaje se pregunta qué componente actúa. Salen del propio diagrama.
+//   pasos      (secuencia) explicación de cada mensaje en el recorrido; si se dan, una por mensaje.
 //   opcion     (hueco) texto de la opción correcta cuando la etiqueta del nodo es larga o delata la respuesta.
 //   pistas     (secuencia) contexto que acompaña a la pregunta de cada mensaje; si se dan, una por mensaje.
 //   pregunta   (secuencia) 'destino' pregunta a quién se dirige el mensaje en vez de quién lo envía: sirve cuando
@@ -16,7 +17,7 @@
 // scripts/validar-diagramas.mjs comprueba en el prebuild que cada guía apunta a un diagrama y a nodos que existen.
 export interface Paso { foco: string[]; texto: string }
 export interface Hueco { nodos: string[]; pista: string; opcion?: string }
-export interface Guia { mod: string; n: number; titulo: string; recorrido?: Paso[]; huecos?: Hueco[]; distractores?: string[]; secuencia?: boolean; pistas?: string[]; pregunta?: 'destino' }
+export interface Guia { mod: string; n: number; titulo: string; recorrido?: Paso[]; huecos?: Hueco[]; distractores?: string[]; secuencia?: boolean; pasos?: string[]; pistas?: string[]; pregunta?: 'destino' }
 
 export const GUIAS: Guia[] = [
   {
@@ -91,7 +92,21 @@ export const GUIAS: Guia[] = [
     ],
     distractores: ['CoreDNS', 'kubectl'],
   },
-  { mod: '02', n: 1, titulo: 'Del kubectl apply al contenedor en marcha', secuencia: true },
+  {
+    mod: '02', n: 1, titulo: 'Del kubectl apply al contenedor en marcha', secuencia: true,
+    pasos: [
+      'kubectl lee del kubeconfig la dirección del clúster y tus credenciales, y envía el manifiesto por HTTPS. Solo habla con el API server: no conoce al scheduler ni a los nodos.',
+      'Antes de aceptar nada, el API server comprueba quién eres (autenticación), si puedes hacerlo (autorización, normalmente RBAC), pasa el objeto por los controladores de admisión y valida que esté bien formado.',
+      'Solo entonces guarda el Deployment en etcd. El API server es el único componente que lee y escribe en etcd.',
+      'kubectl ya tiene su respuesta, y todavía no existe ningún Pod. Lo que has guardado es el estado deseado; todo lo demás ocurre después, de forma asíncrona.',
+      'Nadie le ordena nada al controller-manager: su controlador de Deployments observa (watch) el API server, ve un Deployment nuevo y crea su ReplicaSet.',
+      'El controlador de ReplicaSets ve que se piden 2 Pods y no hay ninguno, y los crea. Nacen sin nodo asignado (spec.nodeName vacío), por eso quedan en Pending.',
+      'El scheduler observa los Pods sin nodo, filtra los nodos que sirven, los puntúa y escribe su decisión en el API server (binding). No arranca nada: solo decide dónde.',
+      'El kubelet de cada nodo observa los Pods asignados al suyo. El del nodo elegido es el que se da por aludido.',
+      'El kubelet pide el trabajo al runtime por CRI: crear el sandbox del Pod (la red la pone el plugin CNI), descargar la imagen y arrancar los contenedores.',
+      'El kubelet informa del resultado al API server: fase Running, IP del Pod, condición Ready. De ahí sale lo que ves con kubectl get pods.',
+    ],
+  },
   {
     mod: '02', n: 2, titulo: 'El bucle de reconciliación',
     recorrido: [
@@ -151,6 +166,12 @@ export const GUIAS: Guia[] = [
       { foco: ['P1', 'W2', 'B'], texto: 'El Pod batch lleva la toleration, así que puede entrar en kcna-worker2. Pero una toleration solo permite, no obliga: con ella sola, el Pod también podría caer en kcna-worker.' },
       { foco: ['P1', 'W2', 'B'], texto: 'Por eso lleva además node affinity hacia zona-b: ahora solo puede ir a kcna-worker2. Taint y toleration, para que no entre nadie más; node affinity, para que tus Pods no vayan a otro sitio. Juntos dan un nodo dedicado de verdad.' },
     ],
+    huecos: [
+      { nodos: ['W2'], opcion: 'Nodo con taint NoSchedule', pista: 'Solo admite los Pods que toleran su taint.' },
+      { nodos: ['P1'], opcion: 'Pod con toleration y node affinity', pista: 'Puede entrar en el nodo con taint y, además, no puede ir a ningún otro.' },
+      { nodos: ['P2'], opcion: 'Pod sin toleration', pista: 'El taint del nodo dedicado lo mantiene fuera: acaba en otro nodo.' },
+    ],
+    distractores: ['Pod con nodeName fijo', 'Nodo marcado con cordon'],
   },
   {
     mod: '04', n: 2, titulo: '¿Qué herramienta de scheduling uso?',
@@ -163,6 +184,14 @@ export const GUIAS: Guia[] = [
       { foco: ['Q', 'TS'], texto: 'Para repartir las réplicas de forma equilibrada entre zonas o nodos, topologySpreadConstraints.' },
       { foco: ['Q', 'DS'], texto: 'Y si quieres una copia del Pod en cada nodo (un agente de logs o de red), no es una regla de scheduling: es un DaemonSet.' },
     ],
+    huecos: [
+      { nodos: ['NS'], pista: 'La forma más simple: el Pod solo va a nodos que tienen una label igual a la indicada.' },
+      { nodos: ['NA'], pista: 'Como la anterior, pero con operadores (In, NotIn, Exists) y con reglas preferidas.' },
+      { nodos: ['PA'], pista: 'La regla depende de dónde están otros Pods, no de las labels de los nodos.' },
+      { nodos: ['TS'], pista: 'Reparte las réplicas de forma equilibrada entre zonas o nodos.' },
+      { nodos: ['DS'], pista: 'No es una regla de scheduling: garantiza una copia del Pod en cada nodo.' },
+    ],
+    distractores: ['PriorityClass', 'PodDisruptionBudget'],
   },
   {
     mod: '05', n: 0, titulo: 'Las 4C de la seguridad',
@@ -274,6 +303,12 @@ export const GUIAS: Guia[] = [
       { foco: ['NP', 'S'], texto: 'kube-proxy redirige (DNAT) lo que llega a ese puerto hacia los Pods del Service. Trabaja en capa 4: no entiende de hosts ni de paths.' },
       { foco: ['S', 'P1', 'P2'], texto: 'Por los dos caminos se llega al mismo sitio: el Service, que reparte entre sus Pods.' },
     ],
+    huecos: [
+      { nodos: ['T'], opcion: 'Traefik (Ingress controller y Gateway)', pista: 'Enruta en capa 7: elige el Service según el host y el path.' },
+      { nodos: ['NP'], opcion: 'NodePort', pista: 'Un puerto abierto en todos los nodos, que kube-proxy redirige al Service en capa 4.' },
+      { nodos: ['S'], opcion: 'Service ClusterIP', pista: 'Donde confluyen los dos caminos: reparte entre sus Pods.' },
+    ],
+    distractores: ['CoreDNS', 'NetworkPolicy'],
   },
   {
     mod: '08', n: 0, titulo: 'Por qué se pierden los datos de un contenedor',
@@ -283,6 +318,11 @@ export const GUIAS: Guia[] = [
       { foco: ['W', 'L3'], texto: 'Si el contenedor modifica un archivo de la imagen, primero se copia a la capa escribible (copy-on-write). La imagen no cambia.' },
       { foco: ['W'], texto: 'Esa capa se borra con el contenedor. En Kubernetes los contenedores se reinician y los Pods se recrean a menudo: lo que no esté en un volumen se pierde.' },
     ],
+    huecos: [
+      { nodos: ['W'], opcion: 'Capa escribible del contenedor', pista: 'Se crea al arrancar el contenedor y se borra con él.' },
+      { nodos: ['L1'], opcion: 'Imagen base (solo lectura)', pista: 'La capa de más abajo: la comparten los contenedores de la misma imagen y nunca se modifica.' },
+    ],
+    distractores: ['PersistentVolume', 'ConfigMap'],
   },
   {
     mod: '08', n: 1, titulo: 'Pod, PVC, PV y StorageClass',
@@ -348,9 +388,22 @@ export const GUIAS: Guia[] = [
       { foco: ['X', 'SVC'], texto: 'Un Pod con otra label (app=tienda) no cuenta, por muy sano que esté. Un selector que no coincide con las labels es la causa típica de un Service sin endpoints.' },
       { foco: ['SVC', 'EPS'], texto: 'Por eso el primer paso es kubectl get endpointslices -l kubernetes.io/service-name=shop: si no hay direcciones, compara el selector del Service con las labels de los Pods.' },
     ],
+    huecos: [
+      { nodos: ['EPS'], opcion: 'EndpointSlice', pista: 'Guarda las direcciones de los Pods que respaldan al Service.' },
+      { nodos: ['P2'], opcion: 'Pod con la label correcta pero NotReady', pista: 'Coincide con el selector, pero no recibe tráfico hasta pasar su readiness.' },
+      { nodos: ['X'], opcion: 'Pod con otra label', pista: 'Está sano, pero el selector del Service no lo selecciona.' },
+    ],
+    distractores: ['Ingress', 'ConfigMap'],
   },
   {
     mod: '07', n: 0, titulo: 'Orden de arranque y parada con sidecar', secuencia: true, pregunta: 'destino',
+    pasos: [
+      'El sidecar nativo se declara como init container con restartPolicy: Always, y los init containers arrancan antes que los contenedores de la aplicación.',
+      'A diferencia de un init container normal, no tiene que terminar: al kubelet le basta con que haya arrancado para seguir con el siguiente.',
+      'La aplicación arranca con el sidecar ya en marcha. Si el sidecar es un proxy, la app tiene red a través de él desde el primer momento.',
+      'Al borrar el Pod, el kubelet para primero los contenedores de la aplicación.',
+      'El sidecar se para después que la app, en orden inverso al de arranque: así la aplicación conserva su proxy o su agente de logs hasta el final.',
+    ],
     pistas: [
       'El Pod acaba de asignarse al nodo: hay que arrancar sus contenedores.',
       'El contenedor que acaba de arrancar avisa de que ya está en marcha.',
@@ -361,6 +414,16 @@ export const GUIAS: Guia[] = [
   },
   {
     mod: '12', n: 3, titulo: 'CI/CD con GitOps: quién hace qué', secuencia: true,
+    pasos: [
+      'Todo empieza con un cambio de código en el repositorio de la aplicación, que es distinto del repositorio de configuración.',
+      'El push dispara el pipeline de integración continua (CI).',
+      'El pipeline compila, prueba y analiza el código. Si algo falla, se detiene aquí y nada llega al clúster.',
+      'La imagen se construye una sola vez y se publica en el registry con un tag que la identifica (1.4.2), no con latest.',
+      'El último paso de CI no toca el clúster: deja escrito en el repositorio de configuración qué versión se quiere, con un commit o un pull request.',
+      'El agente GitOps corre dentro del clúster y es él quien va a buscar los cambios a Git (modelo pull). Las credenciales del clúster no salen de él.',
+      'El agente compara lo que dice Git con lo que hay en el clúster y aplica la diferencia. Lo repite de forma continua, así que también corrige cambios hechos a mano.',
+      'Con el estado deseado ya actualizado, el kubelet descarga la imagen nueva del registry y arranca los Pods.',
+    ],
     pistas: [
       'Todo empieza con un cambio en el código.',
       'El código nuevo ya está en su repositorio: algo pone en marcha lo siguiente.',
@@ -371,6 +434,220 @@ export const GUIAS: Guia[] = [
       'Git y el clúster ya no coinciden: alguien los reconcilia.',
       'El clúster tiene un estado deseado nuevo: hace falta la imagen.',
     ],
+  },
+  // ---------- guías añadidas el 2026-11-12: los diagramas que quedaban sin recorrido ----------
+  {
+    mod: '00', n: 0, titulo: 'Cómo está montado tu laboratorio',
+    recorrido: [
+      { foco: ['PS', 'CP'], texto: 'Desde Windows, kubectl, helm y kcna.ps1 hablan con el API server del clúster por el puerto 6443, con el kubeconfig aislado del laboratorio.' },
+      { foco: ['HL', 'CP'], texto: 'Headlamp y k9s no son otra vía de entrada: son interfaces que consultan esa misma API.' },
+      { foco: ['BR', 'CP'], texto: 'El navegador llega a las aplicaciones del clúster por puertos mapeados (localhost:8080 y 30080) hacia el contenedor del control plane.' },
+      { foco: ['WSL', 'Net'], texto: 'El clúster entero vive dentro de la máquina de Podman, que corre en WSL2. Con kind, cada nodo es un contenedor conectado a la red «kind».' },
+      { foco: ['CP'], texto: 'kcna-control-plane ejecuta el control plane (API server, etcd, scheduler y controller-manager) y también Traefik, que recibe el tráfico de entrada.' },
+      { foco: ['CP', 'W1', 'W2'], texto: 'Los dos workers ejecutan tus cargas. Llevan labels distintas (disktype y zona) que usarás en los laboratorios de scheduling.' },
+    ],
+    huecos: [
+      { nodos: ['CP'], opcion: 'Nodo control-plane', pista: 'El contenedor donde corren el API server, etcd, el scheduler y el controller-manager.' },
+      { nodos: ['WSL'], opcion: 'Máquina de Podman (WSL2)', pista: 'La máquina Linux en la que Podman ejecuta los contenedores que hacen de nodos.' },
+      { nodos: ['PS'], opcion: 'PowerShell con kubectl y helm', pista: 'Desde aquí envías las órdenes al API server, por el puerto 6443.' },
+    ],
+    distractores: ['Docker Desktop', 'Máquina virtual por nodo'],
+  },
+  {
+    mod: '03', n: 0, titulo: 'Las fases de un Pod',
+    recorrido: [
+      { foco: ['I', 'PEN'], texto: 'Cuando la API acepta el Pod, su fase es Pending: todavía no tiene nodo, o está descargando imágenes o ejecutando init containers.' },
+      { foco: ['PEN', 'RUN'], texto: 'Pasa a Running cuando está asignado a un nodo y al menos un contenedor ha arrancado. Running no significa que ya reciba tráfico: eso lo indica la condición Ready.' },
+      { foco: ['RUN', 'SUC'], texto: 'Succeeded: todos los contenedores terminaron bien (exit 0) y no se van a reiniciar. Es el final normal de un Job.' },
+      { foco: ['RUN', 'FAIL'], texto: 'Failed: todos los contenedores terminaron y al menos uno lo hizo con error, sin que se vaya a reiniciar.' },
+      { foco: ['PEN', 'FAIL'], texto: 'Un Pod también puede acabar en Failed sin haber llegado a Running.' },
+      { foco: ['RUN', 'UNK'], texto: 'Unknown: no se puede saber el estado del Pod, normalmente porque se perdió el contacto con su nodo. Estados como CrashLoopBackOff o ImagePullBackOff no son fases: son motivos de un contenedor.' },
+    ],
+    huecos: [
+      { nodos: ['PEN'], pista: 'Aceptado por la API, pero aún sin nodo o preparando sus contenedores.' },
+      { nodos: ['RUN'], pista: 'Asignado a un nodo y con al menos un contenedor arrancado.' },
+      { nodos: ['SUC'], pista: 'Todos los contenedores terminaron con exit 0 y no se reinician.' },
+      { nodos: ['UNK'], pista: 'Se perdió el contacto con el nodo y no se puede saber cómo está el Pod.' },
+    ],
+    distractores: ['CrashLoopBackOff', 'Terminating'],
+  },
+  {
+    mod: '07', n: 1, titulo: 'Service mesh: data plane y control plane',
+    recorrido: [
+      { foco: ['A', 'PA'], texto: 'Cada Pod lleva un proxy junto a la aplicación, y todo el tráfico de la app entra y sale por él. La aplicación no cambia: cree que habla directamente con el otro servicio.' },
+      { foco: ['PA', 'PB'], texto: 'Los proxies se comunican entre sí con mTLS: el tráfico va cifrado y cada lado verifica la identidad del otro. Ese conjunto de proxies es el data plane.' },
+      { foco: ['PB', 'B'], texto: 'El proxy de destino termina la conexión mTLS y entrega la petición a la App B dentro del mismo Pod.' },
+      { foco: ['CP'], texto: 'El control plane (istiod en Istio) no está en la ruta del tráfico: ninguna petición pasa por él.' },
+      { foco: ['C1', 'C2', 'C3'], texto: 'Hace tres trabajos: reparte la configuración a los proxies (xDS), emite los certificados de mTLS como autoridad certificadora y descubre los servicios observando la API de Kubernetes.' },
+      { foco: ['CP', 'PA', 'PB'], texto: 'Cuando cambias una política, el control plane la distribuye a todos los proxies. No hay que tocar ni redesplegar las aplicaciones.' },
+    ],
+    huecos: [
+      { nodos: ['PA', 'PB'], opcion: 'Proxy (data plane)', pista: 'Intercepta todo el tráfico de la aplicación y aplica mTLS, reintentos y métricas.' },
+      { nodos: ['CP'], opcion: 'Control plane', pista: 'No toca el tráfico: configura los proxies y les entrega sus certificados.' },
+      { nodos: ['C2'], opcion: 'CA: certificados mTLS', pista: 'Emite la identidad con la que cada proxy se autentica ante los demás.' },
+    ],
+    distractores: ['kube-proxy', 'Ingress controller'],
+  },
+  {
+    mod: '07', n: 2, titulo: 'Canary con Gateway API',
+    recorrido: [
+      { foco: ['U', 'GW'], texto: 'Las peticiones de los clientes entran al clúster por el Gateway.' },
+      { foco: ['GW', 'R'], texto: 'Un HTTPRoute adjunto al Gateway decide a dónde va cada petición. Sus backendRefs llevan un weight cada uno.' },
+      { foco: ['R', 'V1', 'P1'], texto: 'Con peso 90, nueve de cada diez peticiones siguen yendo al Service de la versión estable.' },
+      { foco: ['R', 'V2', 'P2'], texto: 'Con peso 10, una de cada diez va a la versión nueva. Mientras tanto se vigilan sus errores y su latencia.' },
+      { foco: ['R'], texto: 'Si va bien, se sube el peso (10, 50, 100); si va mal, se vuelve a 0. El porcentaje no depende del número de Pods de cada versión, que es la limitación de un canary hecho solo con réplicas.' },
+    ],
+    huecos: [
+      { nodos: ['GW'], opcion: 'Gateway', pista: 'Punto de entrada del tráfico al clúster; lo gestiona el operador.' },
+      { nodos: ['R'], opcion: 'HTTPRoute con pesos', pista: 'Reparte las peticiones entre los backends según su weight.' },
+      { nodos: ['V2'], opcion: 'Service de la versión canary', pista: 'Recibe solo una parte pequeña del tráfico mientras se vigila la versión nueva.' },
+    ],
+    distractores: ['NetworkPolicy', 'HorizontalPodAutoscaler'],
+  },
+  {
+    mod: '10', n: 0, titulo: 'Las cuatro dimensiones del autoscaling',
+    recorrido: [
+      { foco: ['HPA'], texto: 'El HPA escala en horizontal: añade o quita réplicas según métricas como el uso de CPU.' },
+      { foco: ['VPA'], texto: 'El VPA escala en vertical: ajusta la CPU y la memoria que pide cada Pod, sin cambiar cuántos hay.' },
+      { foco: ['KEDA'], texto: 'KEDA escala según eventos externos, como los mensajes pendientes en una cola o un horario, y puede bajar la carga a cero réplicas.' },
+      { foco: ['HPA', 'CA'], texto: 'Si las réplicas nuevas no caben en ningún nodo, quedan en Pending. Ahí actúa el Cluster Autoscaler: añade nodos de grupos ya definidos y retira los que sobran.' },
+      { foco: ['HPA', 'KAR'], texto: 'Karpenter resuelve lo mismo de otra forma: en vez de ampliar un grupo predefinido, crea el nodo del tamaño que necesitan esos Pods pendientes.' },
+    ],
+    huecos: [
+      { nodos: ['HPA'], opcion: 'HPA', pista: 'Cambia el número de réplicas según métricas como la CPU.' },
+      { nodos: ['VPA'], opcion: 'VPA', pista: 'Cambia la CPU y la memoria que pide cada Pod, no cuántos Pods hay.' },
+      { nodos: ['KEDA'], opcion: 'KEDA', pista: 'Escala por eventos externos, como una cola, y puede llegar a cero réplicas.' },
+      { nodos: ['CA'], opcion: 'Cluster Autoscaler', pista: 'Añade nodos de grupos predefinidos cuando hay Pods en Pending que no caben.' },
+    ],
+    distractores: ['PodDisruptionBudget', 'ResourceQuota'],
+  },
+  {
+    mod: '10', n: 1, titulo: 'Niveles de madurez de un proyecto CNCF',
+    recorrido: [
+      { foco: ['S'], texto: 'Sandbox es la puerta de entrada: proyectos experimentales, con requisitos bajos para ser admitidos.' },
+      { foco: ['S', 'I'], texto: 'Un proyecto pasa a Incubating cuando ya se usa en producción y su comunidad crece.' },
+      { foco: ['I', 'G'], texto: 'Graduated es el nivel más alto: proyecto maduro, de adopción amplia y con una auditoría de seguridad superada. Kubernetes fue el primero en graduarse, en 2018.' },
+    ],
+    huecos: [
+      { nodos: ['S'], opcion: 'Sandbox', pista: 'Nivel de entrada, para proyectos experimentales.' },
+      { nodos: ['I'], opcion: 'Incubating', pista: 'Ya se usa en producción y su comunidad está creciendo.' },
+      { nodos: ['G'], opcion: 'Graduated', pista: 'Maduro, de adopción amplia y con auditoría de seguridad.' },
+    ],
+    distractores: ['Stable', 'Beta'],
+  },
+  {
+    mod: '11', n: 0, titulo: 'Cómo trabaja Prometheus',
+    recorrido: [
+      { foco: ['SD', 'RET'], texto: 'Prometheus no necesita una lista fija de objetivos: los descubre consultando la API de Kubernetes.' },
+      { foco: ['RET', 'APP'], texto: 'Modelo pull: Prometheus va a buscar las métricas por HTTP al endpoint /metrics de cada aplicación, cada scrape_interval.' },
+      { foco: ['RET', 'NE', 'KSM', 'KUB'], texto: 'Del mismo modo recoge las del nodo (node-exporter), las del estado de los objetos (kube-state-metrics) y las de los propios componentes de Kubernetes (kubelet, cAdvisor, API server).' },
+      { foco: ['JOB', 'PGW', 'RET'], texto: 'Un trabajo efímero puede terminar antes de que le toque el scrape. Por eso empuja sus métricas al Pushgateway, y Prometheus las recoge de ahí.' },
+      { foco: ['RET', 'TSDB'], texto: 'Todo se guarda como series temporales en una base de datos en el disco local.' },
+      { foco: ['TSDB', 'HTTP', 'G'], texto: 'Los datos se consultan con PromQL a través de la API HTTP. Grafana la usa para dibujar los paneles.' },
+      { foco: ['RULES', 'TSDB'], texto: 'El propio servidor evalúa periódicamente las reglas de alerta y de grabación contra esos datos.' },
+      { foco: ['RULES', 'AM', 'N'], texto: 'Cuando una regla de alerta se cumple, Prometheus la envía a Alertmanager, que agrupa, silencia y enruta las notificaciones a email, Slack o PagerDuty.' },
+    ],
+    huecos: [
+      { nodos: ['RET'], opcion: 'Retrieval (scrape)', pista: 'Va a buscar las métricas a cada objetivo por HTTP.' },
+      { nodos: ['PGW'], opcion: 'Pushgateway', pista: 'Recibe las métricas de trabajos que terminan antes de poder ser consultados.' },
+      { nodos: ['KSM'], opcion: 'kube-state-metrics', pista: 'Expone el estado de los objetos de Kubernetes, como las réplicas deseadas y las disponibles.' },
+      { nodos: ['TSDB'], opcion: 'TSDB', pista: 'Guarda las series temporales en el disco local.' },
+      { nodos: ['AM'], opcion: 'Alertmanager', pista: 'Agrupa, silencia y enruta las alertas hacia email, Slack o PagerDuty.' },
+    ],
+    distractores: ['metrics-server', 'Fluent Bit'],
+  },
+  {
+    mod: '11', n: 1, titulo: 'El camino de un log',
+    recorrido: [
+      { foco: ['P1', 'P2', 'F'], texto: 'Las aplicaciones escriben en stdout y stderr. El runtime guarda esa salida en archivos del nodo.' },
+      { foco: ['F', 'AG'], texto: 'Un agente por nodo, desplegado como DaemonSet (Fluent Bit o Fluentd), lee los archivos de todos los contenedores de ese nodo. Las aplicaciones no cambian.' },
+      { foco: ['AG', 'BE'], texto: 'El agente envía los logs a un backend fuera del nodo. Es lo que los salva: si el Pod se borra o el nodo se pierde, los archivos locales desaparecen.' },
+      { foco: ['BE', 'UI'], texto: 'Los logs se consultan desde una interfaz como Grafana o Kibana. Kubernetes no trae nada de esto: el logging a nivel de clúster hay que montarlo.' },
+    ],
+    huecos: [
+      { nodos: ['F'], opcion: 'Archivos de log en el nodo', pista: 'Donde el runtime guarda lo que cada contenedor escribe en stdout y stderr.' },
+      { nodos: ['AG'], opcion: 'Agente de nodo (DaemonSet)', pista: 'Hay uno por nodo: lee los logs de todos los contenedores y los envía fuera.' },
+      { nodos: ['BE'], opcion: 'Backend de logs', pista: 'Almacena los logs fuera del nodo, para que sobrevivan a los Pods y a los nodos.' },
+    ],
+    distractores: ['Prometheus', 'etcd'],
+  },
+  {
+    mod: '12', n: 0, titulo: 'El pipeline, del push a producción',
+    recorrido: [
+      { foco: ['A', 'B'], texto: 'Un git push pone en marcha el pipeline. La primera etapa compila el código.' },
+      { foco: ['B', 'C'], texto: 'Después se ejecutan las pruebas unitarias y de integración. Si fallan, el cambio no sigue adelante.' },
+      { foco: ['C', 'D'], texto: 'Luego se analiza: vulnerabilidades y reglas de estilo, antes de empaquetar nada.' },
+      { foco: ['D', 'E', 'F'], texto: 'El resultado se empaqueta como imagen OCI y se sube al registry con un tag que la identifica. Se construye una sola vez.' },
+      { foco: ['F', 'G'], texto: 'Esa misma imagen se despliega en staging. Entre entornos cambia la configuración, nunca la imagen.' },
+      { foco: ['G', 'H', 'I'], texto: 'La diferencia está en el último paso: en Continuous Delivery pasar a producción requiere una aprobación manual; en Continuous Deployment es automático.' },
+    ],
+    huecos: [
+      { nodos: ['D'], opcion: 'Scan', pista: 'Busca vulnerabilidades y problemas de estilo antes de empaquetar.' },
+      { nodos: ['F'], opcion: 'Registry', pista: 'Almacena y distribuye la imagen, que es la misma en todos los entornos.' },
+      { nodos: ['H'], opcion: 'Aprobación manual', pista: 'Lo que distingue Continuous Delivery de Continuous Deployment.' },
+    ],
+    distractores: ['Rollback', 'Service mesh'],
+  },
+  {
+    mod: '12', n: 1, titulo: 'Blue/green frente a canary',
+    recorrido: [
+      { foco: ['U1', 'S1', 'B1'], texto: 'Blue/green: todo el tráfico va a la versión actual (blue), mientras la nueva (green) se despliega completa al lado, sin recibir usuarios.' },
+      { foco: ['S1', 'G1'], texto: 'El cambio es de golpe: el Service pasa a apuntar a green y recibe el 100 %. Volver atrás es apuntar de nuevo a blue. El coste es mantener dos entornos completos a la vez.' },
+      { foco: ['U2', 'R2'], texto: 'Canary: delante hay un Ingress o un Gateway capaz de repartir el tráfico por pesos.' },
+      { foco: ['R2', 'V1'], texto: 'La mayor parte, aquí el 90 %, sigue yendo a la versión estable.' },
+      { foco: ['R2', 'V2'], texto: 'Una parte pequeña va a la versión nueva mientras se vigilan sus métricas. Si va bien se sube el porcentaje poco a poco; si va mal, se le retira el tráfico.' },
+    ],
+    huecos: [
+      { nodos: ['G1'], opcion: 'v2 green', pista: 'Entorno completo de la versión nueva: recibe todo el tráfico de golpe al cambiar.' },
+      { nodos: ['R2'], opcion: 'Ingress / Gateway con pesos', pista: 'Reparte el tráfico por porcentaje entre la versión estable y la nueva.' },
+      { nodos: ['V2'], opcion: 'v2 canary', pista: 'Recibe primero una parte pequeña del tráfico mientras se vigilan sus métricas.' },
+    ],
+    distractores: ['Recreate', 'A/B testing'],
+  },
+  {
+    mod: '12', n: 2, titulo: 'Modelo push frente a modelo pull',
+    recorrido: [
+      { foco: ['G1', 'CI1'], texto: 'Modelo push: un pipeline externo reacciona al cambio en Git. Para desplegar necesita guardar las credenciales del clúster.' },
+      { foco: ['CI1', 'K1'], texto: 'El pipeline aplica los cambios desde fuera (kubectl apply o helm upgrade) y ahí termina: si alguien modifica el clúster a mano, nadie lo detecta hasta el siguiente pipeline.' },
+      { foco: ['K2', 'AG'], texto: 'Modelo pull (GitOps): el agente, Argo CD o Flux, corre dentro del clúster.' },
+      { foco: ['AG', 'G2'], texto: 'Es el agente quien vigila y clona el repositorio. Solo necesita leer Git, así que las credenciales del clúster no salen de él.' },
+      { foco: ['AG', 'K2'], texto: 'Aplica los cambios desde dentro y reconcilia de forma continua: si el clúster se desvía de lo que dice Git, lo corrige.' },
+    ],
+    huecos: [
+      { nodos: ['CI1'], opcion: 'Pipeline con credenciales del clúster', pista: 'En el modelo push, aplica los cambios desde fuera del clúster.' },
+      { nodos: ['AG'], opcion: 'Agente GitOps', pista: 'Corre dentro del clúster, lee Git y reconcilia de forma continua.' },
+    ],
+    distractores: ['Registry', 'kube-scheduler'],
+  },
+  {
+    mod: '12', n: 4, titulo: 'Kustomize: base y overlays',
+    recorrido: [
+      { foco: ['B'], texto: 'La base contiene los manifiestos comunes a todos los entornos. Es YAML válido y completo: se podría aplicar tal cual.' },
+      { foco: ['B', 'D'], texto: 'Cada overlay declara solo lo que cambia. El de dev añade el prefijo dev- y deja 1 réplica.' },
+      { foco: ['B', 'P'], texto: 'El de prod parte de la misma base y cambia otras cosas: prefijo prod-, 3 réplicas, otra versión de nginx y más CPU.' },
+      { foco: ['D', 'P', 'K'], texto: 'kubectl apply -k combina la base con el overlay y aplica el resultado. No hay plantillas ni un binario aparte: Kustomize viene dentro de kubectl.' },
+    ],
+    huecos: [
+      { nodos: ['B'], opcion: 'base/', pista: 'Los manifiestos comunes a todos los entornos, YAML válido y completo.' },
+      { nodos: ['P'], opcion: 'overlays/prod', pista: 'Declara solo lo que cambia en producción respecto de lo común.' },
+    ],
+    distractores: ['values.yaml', 'Chart.yaml'],
+  },
+  {
+    mod: '12', n: 5, titulo: 'GitOps con Argo CD en tu laboratorio',
+    recorrido: [
+      { foco: ['GIT', 'GS'], texto: 'Desde Windows haces commit y push contra el servidor Git del clúster, a través de un port-forward al puerto 9418.' },
+      { foco: ['GS'], texto: 'Ese git-server vive en el namespace lab-12 y guarda el repositorio en un PVC. Existe porque los Pods de tu laboratorio no salen a internet y Argo CD no podría clonar GitHub.' },
+      { foco: ['RS', 'GS'], texto: 'El repo-server de Argo CD clona el repositorio por el DNS interno del clúster y genera los manifiestos.' },
+      { foco: ['CTRL', 'APP'], texto: 'El application-controller compara lo que dice Git con lo que hay en el clúster y sincroniza: aplica los cambios, deshace los hechos a mano (self-heal) y borra lo que ya no está en Git (prune).' },
+      { foco: ['BR', 'SRV'], texto: 'La interfaz web la sirve argocd-server; la abres en el navegador con otro port-forward, al puerto 8443.' },
+    ],
+    huecos: [
+      { nodos: ['GS'], opcion: 'git-server', pista: 'Servidor Git dentro del clúster, porque los Pods no llegan a GitHub.' },
+      { nodos: ['RS'], opcion: 'repo-server', pista: 'Clona el repositorio Git y genera los manifiestos.' },
+      { nodos: ['CTRL'], opcion: 'application-controller', pista: 'Compara el estado deseado con el real y sincroniza, corrige y poda.' },
+    ],
+    distractores: ['kube-scheduler', 'Registry'],
   },
 ];
 

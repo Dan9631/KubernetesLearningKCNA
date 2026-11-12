@@ -247,10 +247,13 @@ p { margin: 0; }
 .prose .mermaid svg.dg-on g.cluster.dg-foco rect { stroke: var(--helm); stroke-width: 3px; }
 .prose .mermaid svg.dg-on g.cluster.dg-hueco rect { stroke-dasharray: 6 4; }
 .prose .mermaid svg.dg-on g.cluster.dg-hueco .nodeLabel { font-weight: 600; color: var(--helm-ink); }
-.prose .mermaid svg.dg-on path.dg-foco { stroke: var(--helm); stroke-width: 3px; }
+.prose .mermaid svg.dg-on path.dg-foco { stroke: var(--helm) !important; stroke-width: 3px !important; }
 .prose .mermaid svg.dg-on rect.actor.dg-foco { stroke: var(--helm); stroke-width: 3px; }
-.prose .mermaid svg.dg-on :is(.messageLine0, .messageLine1).dg-foco { stroke: var(--helm); stroke-width: 3px; }
-@media (prefers-reduced-motion: reduce) { .prose .mermaid svg.dg-on * { transition: none !important; } }
+/* la flecha del paso actual «fluye»: guiones que avanzan en el sentido del trazo */
+@keyframes dg-flow { to { stroke-dashoffset: -28; } }
+.prose .mermaid svg.dg-on :is(path.dg-foco, .messageLine0.dg-foco, .messageLine1.dg-foco) { stroke-dasharray: 9 5 !important; animation: dg-flow 0.75s linear infinite; }
+.prose .mermaid svg.dg-on :is(.messageLine0, .messageLine1).dg-foco { stroke: var(--helm) !important; stroke-width: 3px !important; }
+@media (prefers-reduced-motion: reduce) { .prose .mermaid svg.dg-on * { transition: none !important; animation: none !important; } }
 
 /* Diagrama a pantalla completa (DiagramaGuia.svelte): ocupa la ventana por encima de la cabecera; --dg-bottom es el alto del panel */
 .prose .mermaid.dg-full { position: fixed; inset: 0 0 var(--dg-bottom, 0px) 0; z-index: 60; margin: 0; border: 0; border-radius: 0; padding: 20px; overflow: auto; background: var(--panel); }

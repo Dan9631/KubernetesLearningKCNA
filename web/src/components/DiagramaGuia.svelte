@@ -1,7 +1,9 @@
 <script lang="ts">
   // Guía de un diagrama Mermaid ya dibujado (lo monta Enhance.svelte junto al diagrama):
   //   flowchart  "Recorrer paso a paso" (ilumina nodos y explica) y "Completar de memoria" (vacía nodos y pregunta cuál es).
-  //   secuencia  "Predecir el orden": antes de mostrar cada mensaje pregunta qué componente actúa (o a quién se dirige).
+  //   secuencia  "Recorrer paso a paso" (los mensajes aparecen uno a uno, con su explicación) y "Predecir el orden":
+  //              antes de mostrar cada mensaje pregunta qué componente actúa (o a quién se dirige).
+  // El recorrido se puede reproducir solo; la flecha del paso actual se anima (estilos dg-* en global.css).
   // Solo añade y quita clases sobre el SVG (estilos en global.css); al redibujarse el diagrama (cambio de tema)
   // Enhance emite "dg:redraw" y el estado se vuelve a aplicar.
   import { untrack } from 'svelte';
@@ -17,6 +19,7 @@
   let malas = $state<string[]>([]); // opciones falladas en la pregunta actual
   let acertado = $state(false);   // (predecir) mensaje ya revelado, a la espera de "Siguiente"
   let redraw = $state(0);
+  let auto = $state(false);      // el recorrido avanza solo
   let orden = $state<number[]>([]);
   let opciones = $state<string[]>([]);
   let origen: Modo = 'ver';
@@ -74,8 +77,10 @@
     }
     return [...seen].sort((a, b) => a[1].x - b[1].x).map(([id, v]) => ({ id, nombre: v.nombre }));
   }
-  const total = $derived.by(() => { void redraw; return modo === 'recorrer' ? guia.recorrido?.length ?? 0 : modo === 'completar' ? guia.huecos?.length ?? 0 : modo === 'predecir' || origen === 'predecir' ? mensajes().length : origen === 'completar' ? guia.huecos?.length ?? 0 : 0; });
-  const msg = $derived.by(() => { void redraw; return modo === 'predecir' ? mensajes()[i] : undefined; });
+  const total = $derived.by(() => { void redraw; return modo === 'recorrer' ? (guia.secuencia ? mensajes().length : guia.recorrido?.length ?? 0) : modo === 'completar' ? guia.huecos?.length ?? 0 : modo === 'predecir' || origen === 'predecir' ? mensajes().length : origen === 'completar' ? guia.huecos?.length ?? 0 : 0; });
+  const msg = $derived.by(() => { void redraw; return modo === 'predecir' || (modo === 'recorrer' && guia.secuencia) ? mensajes()[i] : undefined; });
+  /** texto que se lee en el paso actual del recorrido: marca cuánto dura en la reproducción automática */
+  const textoPaso = $derived(modo !== 'recorrer' ? '' : guia.secuencia ? `${msg?.texto ?? ''} ${guia.pasos?.[i] ?? ''}` : guia.recorrido?.[i]?.texto ?? '');
   const nombreDe = (id: string) => actores().find((a) => a.id === id)?.nombre ?? id;
 
   // ---------- pintar el estado sobre el SVG ----------
@@ -102,7 +107,14 @@
     limpiar(s);
     if (modo === 'ver' || modo === 'fin') return;
     s.classList.add('dg-on');
-    if (modo === 'recorrer' && guia.recorrido) {
+    if (modo === 'recorrer' && guia.secuencia) {
+      // los mensajes van apareciendo: los anteriores quedan atenuados, los siguientes aún no se ven
+      const ms = mensajes();
+      ms.forEach((m, k) => { for (const el of m.els) el.classList.add(k < i ? 'dg-visto' : k === i ? 'dg-foco' : 'dg-oculto'); });
+      const m = ms[i];
+      if (m) for (const id of new Set([m.from, m.to])) for (const r of s.querySelectorAll(`rect.actor[name="${id}"]`)) r.classList.add('dg-foco');
+      centrar(m?.els.find((x) => /messageLine/.test(x.getAttribute('class') ?? '')));
+    } else if (modo === 'recorrer' && guia.recorrido) {
       const foco = new Set(guia.recorrido[i].foco);
       const vistos = new Set(guia.recorrido.slice(0, i).flatMap((p) => p.foco));
       for (const n of nodes()) { const id = nodeId(n); n.classList.toggle('dg-foco', foco.has(id)); n.classList.toggle('dg-visto', !foco.has(id) && vistos.has(id)); }
@@ -149,10 +161,18 @@
     return () => host.removeEventListener('dg:redraw', on);
   });
 
+  // reproducción automática: cada paso dura lo que se tarda en leerlo
+  $effect(() => {
+    if (!auto || modo !== 'recorrer') return;
+    const ms = Math.min(14000, 2600 + 55 * textoPaso.length);
+    const t = setTimeout(() => { if (i + 1 < total) i++; else auto = false; }, ms);
+    return () => clearTimeout(t);
+  });
+
   // ---------- acciones ----------
   function empezar(m: Modo) {
     leerEtiquetas();
-    i = 0; fallos = 0; malas = []; acertado = false; origen = m;
+    i = 0; fallos = 0; malas = []; acertado = false; origen = m; auto = false;
     if (m === 'completar' && guia.huecos) {
       orden = shuffle(guia.huecos.map((_, k) => k));
       opciones = shuffle([...new Set([...guia.huecos.map(opcionDe), ...(guia.distractores ?? [])])]);
@@ -161,7 +181,8 @@
     if (!full && host.classList.contains('ancho') && innerWidth > 700) abrir();
     modo = m;
   }
-  function salir() { modo = 'ver'; full = false; }
+  function salir() { modo = 'ver'; full = false; auto = false; }
+  function ir(d: number) { auto = false; i += d; }
   function cerrar() {
     if (fallos === 0) addReto(guiaKey(guia));
     modo = 'fin';
@@ -191,7 +212,7 @@
 <div class="dg" class:activo={modo !== 'ver'} class:full bind:this={panelEl}>
   {#if modo === 'ver'}
     <div class="row" class:barra={full}>
-      {#if guia.recorrido}<button type="button" class="btn small" onclick={() => empezar('recorrer')}>Recorrer paso a paso</button>{/if}
+      {#if guia.recorrido || guia.secuencia}<button type="button" class="btn small primary" onclick={() => empezar('recorrer')}>Recorrer paso a paso</button>{/if}
       {#if guia.huecos}<button type="button" class="btn small" onclick={() => empezar('completar')}>Completar de memoria</button>{/if}
       {#if guia.secuencia}<button type="button" class="btn small" onclick={() => empezar('predecir')}>Predecir el orden</button>{/if}
       {#if hecho}<span class="ok">Completado sin fallos ✓</span>{/if}
@@ -199,13 +220,21 @@
     </div>
   {:else}
     <div class="panel" aria-live="polite">
-      {#if modo === 'recorrer' && guia.recorrido}
-        <p class="k">Paso {i + 1} de {total}</p>
-        <p>{guia.recorrido[i].texto}</p>
+      {#if modo === 'recorrer' && (guia.recorrido || guia.secuencia)}
+        <p class="k">Paso {i + 1} de {total}{auto ? ' · reproduciendo' : ''}</p>
+        {#if guia.secuencia && msg}
+          <p><strong>{nombreDe(msg.from)}{msg.to !== msg.from ? ` → ${nombreDe(msg.to)}` : ''}</strong>: {msg.texto}</p>
+          {#if guia.pasos?.[i]}<p>{guia.pasos[i]}</p>{/if}
+        {:else if guia.recorrido}
+          <p>{guia.recorrido[i].texto}</p>
+        {/if}
         <div class="row">
-          <button type="button" class="btn small" onclick={() => i--} disabled={i === 0}>Anterior</button>
-          {#if i + 1 < total}<button type="button" class="btn small primary" onclick={() => i++}>Siguiente</button>
-          {:else if guia.huecos}<button type="button" class="btn small primary" onclick={() => empezar('completar')}>Ahora complétalo de memoria</button>{/if}
+          <button type="button" class="btn small" onclick={() => ir(-1)} disabled={i === 0}>Anterior</button>
+          {#if i + 1 < total}<button type="button" class="btn small primary" onclick={() => ir(1)}>Siguiente</button>
+          {:else if guia.huecos}<button type="button" class="btn small primary" onclick={() => empezar('completar')}>Ahora complétalo de memoria</button>
+          {:else if guia.secuencia}<button type="button" class="btn small primary" onclick={() => empezar('predecir')}>Ahora predice el orden</button>{/if}
+          {#if i + 1 < total}<button type="button" class="btn small" aria-pressed={auto} onclick={() => (auto = !auto)}>{auto ? 'Pausar' : 'Reproducir'}</button>
+          {:else if total > 1}<button type="button" class="btn small" onclick={() => { i = 0; auto = true; }}>Ver de nuevo</button>{/if}
           <span class="vista">{@render vista()}<button type="button" class="btn small" onclick={salir}>Cerrar</button></span>
         </div>
       {:else if modo === 'completar' && guia.huecos}

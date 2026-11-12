@@ -67,13 +67,13 @@ spec:
 **Fases** (`status.phase`), un resumen de alto nivel:
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Pending: aceptado por la API
-    Pending --> Running: asignado a nodo y al menos un contenedor arrancado
-    Running --> Succeeded: todos terminaron con exit 0 (y no se reinician)
-    Running --> Failed: alguno terminó con error (y no se reinicia)
-    Pending --> Failed
-    Running --> Unknown: se perdió contacto con el nodo
+flowchart LR
+    I([Pod creado]) -->|aceptado por la API| PEN[Pending]
+    PEN -->|asignado a nodo y al menos<br/>un contenedor arrancado| RUN[Running]
+    RUN -->|todos terminaron con exit 0<br/>y no se reinician| SUC[Succeeded]
+    RUN -->|alguno terminó con error<br/>y no se reinicia| FAIL[Failed]
+    PEN --> FAIL
+    RUN -->|se perdió contacto<br/>con el nodo| UNK[Unknown]
 ```
 
 | Fase | Significado |

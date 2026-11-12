@@ -29,12 +29,13 @@ web/
   src/components/Lector.svelte    "Escuchar este módulo" párrafo a párrafo (salta código y diagramas)
   src/components/Escuchar.svelte  botón Escuchar/Detener; preguntas en inglés, explicaciones en español
   src/components/VozAjustes.svelte voz en español, voz en inglés y velocidad (localStorage)
-  src/data/preguntas.json         292 preguntas, 60 reservadas (generado por scripts/sync-data.mjs)
+  src/data/preguntas.json         367 preguntas, 60 reservadas (generado por scripts/sync-data.mjs)
   src/data/flashcards.json        150 términos
   src/components/Hoy.svelte       portada de quien ya empezó: cuenta atrás, Repaso del día, seguir leyendo, siguiente paso, semana
   src/components/AvisoRespaldo.svelte  aviso de progreso sin respaldo (portada y panel de preparación); se puede posponer 7 días
   src/components/Respaldo.svelte  sección «Copia en un archivo» de /sincronizar
   src/components/CopiasAnteriores.svelte  sección «Copias anteriores» de /sincronizar: lista las copias del servidor y restaura una
+  src/components/EvaluacionModulo.svelte  sección «Evaluación del módulo»: una tarjeta con dos modos sobre el mismo banco, Examen (ExamenModulo) y Práctica con explicaciones (ModuleQuiz); #practica abre el segundo
   src/components/ExamenModulo.svelte  examen al final de cada módulo (10 preguntas, 80 %, sin explicación hasta entregar); lo califica el navegador y guarda el aprobado como reto `mod:NN` (lib/examenModulo.ts)
   src/components/ExamenFinal.svelte  /diploma: examen final con código de invitación (30 preguntas, reloj, se retoma al recargar) y resultado
   src/components/PedirDiploma.svelte  último paso de /diploma: nombre para el diploma de un intento aprobado; muestra el enlace de verificación
@@ -58,6 +59,8 @@ web/
 ## Diagramas con guía
 
 Un diagrama Mermaid de un módulo se vuelve interactivo añadiendo una entrada en `src/lib/diagramas.ts` (no se toca el markdown). `Enhance.svelte` monta `DiagramaGuia.svelte` debajo del diagrama; el componente solo añade y quita clases sobre el SVG (`dg-on`, `dg-foco`, `dg-visto`, `dg-oculto`, `dg-hueco`, estilos en `global.css`).
+
+Todos los diagramas tienen guía. Un flowchart ofrece «Recorrer paso a paso» y, si define `huecos`, «Completar de memoria»; una secuencia ofrece el recorrido (los mensajes aparecen uno a uno, con la explicación de `pasos`) y «Predecir el orden». El recorrido se puede reproducir solo («Reproducir») y la flecha del paso actual se anima. Un `stateDiagram` no se puede guiar: se escribe como flowchart.
 
 - **flowchart**: `recorrido` (pasos con los ids de nodo que se iluminan y su explicación) y `huecos` (nodos que se vacían en «Completar de memoria», con una `pista` que describe la función del componente; los nodos con la misma etiqueta van en el mismo hueco). Las flechas entre dos nodos en foco se iluminan solas; un subgrafo citado por su id en un `foco` o en un hueco se comporta como un nodo más (se resalta su borde, se vacía su etiqueta y se iluminan las flechas que llegan a él), que es lo que usan los diagramas de capas como las 4C. Si la etiqueta de un nodo es larga o delata la respuesta, el hueco lleva `opcion` (el texto del botón correcto); las etiquetas con `<br/>` se muestran en los botones con un espacio.
 - **sequenceDiagram**: `secuencia: true`. «Predecir el orden» oculta los mensajes y pregunta antes de cada uno qué componente actúa. Opcionales: `pistas` (una por mensaje: el contexto que acompaña a cada pregunta) y `pregunta: 'destino'` (pregunta a quién se dirige el mensaje en vez de quién lo envía; se usa cuando casi todos salen del mismo participante, como el kubelet en el módulo 07).

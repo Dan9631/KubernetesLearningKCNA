@@ -25,6 +25,8 @@ for (const g of GUIAS) {
   if ((g.pistas || g.pregunta) && !g.secuencia) errores.push(`${at}: pistas y pregunta solo valen para una secuencia`);
   // mensajes de una secuencia: líneas con flecha (->>, -->>, ->, -->, -x, -))
   const nMensajes = src.split(/\r?\n/).filter((l) => /^\s*\w+\s*--?(>>|>|x|\))/.test(l)).length;
+  if (g.pasos && !g.secuencia) errores.push(`${at}: pasos solo vale para una secuencia`);
+  if (g.pasos && g.pasos.length !== nMensajes) errores.push(`${at}: ${g.pasos.length} pasos para ${nMensajes} mensajes (si se dan, uno por mensaje)`);
   if (g.pistas && g.pistas.length !== nMensajes) errores.push(`${at}: ${g.pistas.length} pistas para ${nMensajes} mensajes (si se dan, una por mensaje)`);
   for (const h of g.huecos ?? []) if (h.opcion !== undefined && h.opcion.length < 2) errores.push(`${at}: hueco con opción vacía`);
   const opciones = (g.huecos ?? []).map((h) => h.opcion).filter(Boolean);
