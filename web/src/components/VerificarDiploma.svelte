@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { diplomasDisponibles, consultar, comprobarFirma, UUID, type Diploma } from '../lib/diploma';
   import { fmtDate } from './practica/quiz';
+  import HojaDiploma from './Diploma.svelte';
 
   let input = $state('');
   let state = $state<'idle' | 'loading' | 'found' | 'missing' | 'error'>('idle');
@@ -70,6 +71,7 @@
           </p>
         {/if}
       </div>
+      {#if !mala && !diploma.revocado}<HojaDiploma {diploma} />{/if}
     {/if}
   </div>
 {/if}

@@ -7,6 +7,8 @@ import { SYNC_URL, syncAvailable } from './sync.svelte';
 /** Llave pública Ed25519 (32 bytes en base64) con la que se comprueban las firmas; vacía = no se comprueban aquí */
 export const LLAVE_PUBLICA = (import.meta.env.PUBLIC_DIPLOMA_KEY ?? '').trim();
 export const diplomasDisponibles = syncAvailable;
+/** Quien firma los diplomas, tal como sale impreso; sin nombre, la hoja lleva solo el del curso */
+export const FIRMANTE = { nombre: '', cargo: '' };
 
 export interface Diploma {
   id: string;

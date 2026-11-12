@@ -2,6 +2,7 @@
   // Último paso de /diploma: con un intento de examen aprobado, escribir el nombre que llevará el diploma.
   import { pedir, comprobarFirma, urlVerificar, type Diploma } from '../lib/diploma';
   import { fmtDate } from './practica/quiz';
+  import HojaDiploma from './Diploma.svelte';
 
   let { intento, onemitido }: { intento: string; onemitido?: (d: Diploma) => void } = $props();
 
@@ -49,6 +50,7 @@
     </div>
     {#if firma === 'invalida'}<p class="err" role="alert">La firma que devolvió el servicio no es válida. Avisa a quien te dio el código.</p>{/if}
   </div>
+  {#if firma !== 'invalida'}<HojaDiploma {diploma} />{/if}
 {:else}
   <form class="form" onsubmit={(e) => { e.preventDefault(); if (listo && !busy) submit(); }}>
     <label for="nombre">Tu nombre, como quieres que aparezca en el diploma</label>

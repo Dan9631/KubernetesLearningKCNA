@@ -1,6 +1,6 @@
 # Plan: diplomas de finalización firmados y verificables
 
-Estado (2026-11-12): **fases 1, 2 y 3 implementadas en la rama `diplomas`**. Falta el PDF (fase 4).
+Estado (2026-11-12): **fases 1 a 4 implementadas en la rama `diplomas`**. Falta escribir el nombre y cargo del firmante.
 
 Hecho:
 
@@ -99,6 +99,10 @@ CREATE TABLE IF NOT EXISTS diploma (
 ### Fase 4 — El diploma en sí
 
 - PDF generado en el navegador con nombre, curso, fecha, ID, QR a `/verificar/<id>`, firmante y cargo.
+- Hecho en `web/src/components/Diploma.svelte`: la hoja se ve en `/diploma` al emitirla y en `/verificar`
+  mientras el diploma sea válido, y «Guardar como PDF» abre la impresión del navegador con solo la hoja
+  (A4 apaisado). No se usa ninguna librería de PDF: así cabe cualquier nombre, en cualquier alfabeto.
+- El firmante se escribe en `FIRMANTE` (`web/src/lib/diploma.ts`); vacío, la hoja lleva el nombre del curso.
 - Texto obligatorio: **"Constancia de finalización del curso"**. No es la certificación KCNA, que solo
   emiten CNCF y la Linux Foundation. No usar sus logos ni marcas.
 

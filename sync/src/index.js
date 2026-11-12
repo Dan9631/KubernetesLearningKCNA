@@ -10,7 +10,7 @@ const DAY = 86_400_000;
 const HEX64 = /^[0-9a-f]{64}$/;
 const B64 = /^[A-Za-z0-9+/]+={0,2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const CURSO = 'Curso de preparación para KCNA';
+const CURSO = 'Ruta Cloud Native';
 const MAX_DIPLOMA_BODY = 2048;
 const EXAMEN_PREGUNTAS = 30;         // preguntas al azar por intento
 const EXAMEN_APROBAR = 75;           // porcentaje mínimo de aciertos
