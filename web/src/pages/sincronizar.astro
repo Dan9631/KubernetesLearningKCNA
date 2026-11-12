@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import SyncPanel from '../components/SyncPanel.svelte';
+import CopiasAnteriores from '../components/CopiasAnteriores.svelte';
 import Respaldo from '../components/Respaldo.svelte';
 ---
 <Base title="Sincronizar" description="Mantén tu progreso del curso KCNA igual en todos tus dispositivos, cifrado y sin cuentas, o guárdalo en un archivo." width="read">
@@ -11,6 +12,7 @@ import Respaldo from '../components/Respaldo.svelte';
       <p class="lead">Practica en la PC y repasa en el teléfono: preguntas, repasos del día, lectura y laboratorios se mantienen al día, sin crear una cuenta.</p>
     </header>
     <SyncPanel client:load />
+    <CopiasAnteriores client:load />
     <Respaldo client:load />
   </article>
 </Base>

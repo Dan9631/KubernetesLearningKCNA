@@ -111,8 +111,8 @@ function apply(p: Progress) {
   applying = false;
 }
 
-async function api(method: string, id: string, token: string, body?: unknown) {
-  return fetch(`${SYNC_URL}/v1/sync/${id}`, {
+async function api(method: string, id: string, token: string, body?: unknown, path = '') {
+  return fetch(`${SYNC_URL}/v1/sync/${id}${path}`, {
     method,
     headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined,
@@ -175,6 +175,29 @@ export async function deleteRemote(keep = false) {
   const res = await api('DELETE', id, token);
   if (!res.ok) throw new Error(`El servidor respondió ${res.status}.`);
   if (keep) { sync.rev = 0; persist(); await syncNow(); } else disconnect();
+}
+
+// ---------- copias anteriores: el servidor guarda el estado con el que terminó cada uno de los últimos días con cambios ----------
+export interface Copia { rev: number; updated: number }
+
+/** Lista de copias, de la más reciente a la más antigua. null si el servicio no las ofrece (Worker sin actualizar). */
+export async function listCopias(): Promise<Copia[] | null> {
+  if (!syncAvailable || !sync.code) return null;
+  const { id, token } = await derive(sync.code);
+  const res = await api('GET', id, token, undefined, '/copias');
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`El servidor respondió ${res.status}.`);
+  const list = (await res.json()).copias;
+  return Array.isArray(list) ? list.filter((c) => Number.isInteger(c?.rev) && Number.isFinite(c?.updated)) : null;
+}
+
+/** Descarga y descifra una copia */
+export async function getCopia(rev: number): Promise<Progress> {
+  const { id, token, key } = await derive(sync.code);
+  const res = await api('GET', id, token, undefined, `/copias/${rev}`);
+  if (!res.ok) throw new Error(res.status === 404 ? 'Esa copia ya no está disponible.' : `El servidor respondió ${res.status}.`);
+  const r = await res.json();
+  return decrypt(key, r.iv, r.data);
 }
 
 /** Enlace para conectar otro dispositivo: el código va en el fragmento (#), que el navegador nunca envía al servidor */

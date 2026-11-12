@@ -3,6 +3,8 @@
 
 const MAX_BODY = 96 * 1024;          // bytes del cuerpo JSON
 const TTL_DAYS = 400;                // registros sin escribir en este tiempo se borran (cron diario)
+const MAX_COPIAS = 7;                // copias anteriores que se conservan por registro
+const DAY = 86_400_000;
 const HEX64 = /^[0-9a-f]{64}$/;
 const B64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
@@ -38,6 +40,9 @@ function sameHash(a, b) {
   return r === 0;
 }
 
+/** La base aún no tiene la tabla de copias (schema.sql sin aplicar) */
+const sinTabla = (e) => /no such table/i.test(String(e?.message ?? e));
+
 export default {
   async fetch(req, env) {
     const h = corsHeaders(req, env);
@@ -45,9 +50,10 @@ export default {
 
     const { pathname } = new URL(req.url);
     if (pathname === '/v1/health') return reply({ ok: true }, 200, h);
-    const m = pathname.match(/^\/v1\/sync\/([0-9a-f]{64})$/);
+    const m = pathname.match(/^\/v1\/sync\/([0-9a-f]{64})(?:\/copias(?:\/([1-9][0-9]{0,8}))?)?$/);
     if (!m) return reply({ error: 'not_found' }, 404, h);
     const id = m[1];
+    const copias = pathname.includes('/copias'); // lista de copias anteriores, o una si trae versión
 
     const auth = req.headers.get('Authorization') ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -63,13 +69,38 @@ export default {
     const row = await env.DB.prepare('SELECT token_hash, rev, iv, data, updated FROM progreso WHERE id = ?').bind(id).first();
     if (row && !sameHash(row.token_hash, th)) return reply({ error: 'unauthorized' }, 401, h);
 
+    // Copias anteriores (solo lectura): la versión que había al terminar cada día con cambios
+    if (copias) {
+      if (req.method !== 'GET') return reply({ error: 'method_not_allowed' }, 405, { ...h, Allow: 'GET, OPTIONS' });
+      if (!row) return reply({ error: 'not_found' }, 404, h);
+      try {
+        if (m[2]) {
+          const c = await env.DB.prepare('SELECT rev, iv, data, updated FROM copia WHERE id = ? AND rev = ?').bind(id, Number(m[2])).first();
+          return c ? reply(c, 200, h) : reply({ error: 'not_found' }, 404, h);
+        }
+        const { results } = await env.DB.prepare('SELECT rev, updated FROM copia WHERE id = ? ORDER BY rev DESC').bind(id).all();
+        return reply({ copias: results }, 200, h);
+      } catch (e) {
+        if (!sinTabla(e)) throw e;
+        return reply({ error: 'not_found' }, 404, h); // como un Worker sin copias: el sitio oculta la sección
+      }
+    }
+
     if (req.method === 'GET') {
       if (!row) return reply({ error: 'not_found' }, 404, h);
       return reply({ rev: row.rev, iv: row.iv, data: row.data, updated: row.updated }, 200, h);
     }
 
     if (req.method === 'DELETE') {
-      if (row) await env.DB.prepare('DELETE FROM progreso WHERE id = ? AND token_hash = ?').bind(id, th).run();
+      if (row) {
+        const del = env.DB.prepare('DELETE FROM progreso WHERE id = ? AND token_hash = ?').bind(id, th);
+        try {
+          await env.DB.batch([env.DB.prepare('DELETE FROM copia WHERE id = ?').bind(id), del]);
+        } catch (e) {
+          if (!sinTabla(e)) throw e;
+          await del.run();
+        }
+      }
       return reply(null, 204, h);
     }
 
@@ -92,9 +123,27 @@ export default {
         if (!r.meta.changes) return reply({ error: 'conflict', rev: 1 }, 409, h);
         return reply({ rev: 1, updated: now }, 200, h);
       }
-      // concurrencia optimista: solo se escribe si nadie lo hizo desde la versión que leyó el cliente
-      const r = await env.DB.prepare('UPDATE progreso SET rev = rev + 1, iv = ?, data = ?, updated = ? WHERE id = ? AND rev = ? AND token_hash = ?')
-        .bind(iv, data, now, id, rev, th).run();
+      // concurrencia optimista: solo se escribe si nadie lo hizo desde la versión que leyó el cliente.
+      // Si la versión que se va a sobrescribir es de un día anterior (UTC), antes se guarda como copia: queda
+      // el estado con el que terminó cada día con cambios. Las tres sentencias van en una transacción y las dos
+      // primeras comparten condición (misma versión), así que no se archiva nada si la escritura no ocurre.
+      const today = now - (now % DAY);
+      const update = () => env.DB.prepare('UPDATE progreso SET rev = rev + 1, iv = ?, data = ?, updated = ? WHERE id = ? AND rev = ? AND token_hash = ?')
+        .bind(iv, data, now, id, rev, th);
+      let r;
+      try {
+        [, r] = await env.DB.batch([
+          env.DB.prepare('INSERT OR IGNORE INTO copia (id, rev, iv, data, updated) SELECT id, rev, iv, data, updated FROM progreso WHERE id = ? AND rev = ? AND token_hash = ? AND updated < ?')
+            .bind(id, rev, th, today),
+          update(),
+          env.DB.prepare('DELETE FROM copia WHERE id = ? AND rev NOT IN (SELECT rev FROM copia WHERE id = ? ORDER BY rev DESC LIMIT ?)')
+            .bind(id, id, MAX_COPIAS),
+        ]);
+      } catch (e) {
+        // base sin la tabla `copia` (falta aplicar schema.sql): la sincronización sigue, sin copias
+        if (!sinTabla(e)) throw e;
+        r = await update().run();
+      }
       if (!r.meta.changes) {
         const cur = await env.DB.prepare('SELECT rev FROM progreso WHERE id = ?').bind(id).first();
         return reply({ error: 'conflict', rev: cur?.rev ?? 0 }, 409, h);
@@ -105,8 +154,13 @@ export default {
     return reply({ error: 'method_not_allowed' }, 405, { ...h, Allow: 'GET, PUT, DELETE, OPTIONS' });
   },
 
-  // Limpieza diaria: registros abandonados
+  // Limpieza diaria: registros abandonados y las copias que quedaron sin registro
   async scheduled(_event, env) {
-    await env.DB.prepare('DELETE FROM progreso WHERE updated < ?').bind(Date.now() - TTL_DAYS * 86_400_000).run();
+    await env.DB.prepare('DELETE FROM progreso WHERE updated < ?').bind(Date.now() - TTL_DAYS * DAY).run();
+    try {
+      await env.DB.prepare('DELETE FROM copia WHERE id NOT IN (SELECT id FROM progreso)').run();
+    } catch (e) {
+      if (!sinTabla(e)) throw e;
+    }
   },
 };

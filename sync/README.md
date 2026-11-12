@@ -54,6 +54,20 @@ $env:PUBLIC_SYNC_URL = "http://127.0.0.1:8787"; npm run build; npx astro preview
 
 Si publicas el sitio en otra dirección, añádela a `ALLOWED_ORIGINS` en `wrangler.jsonc` y vuelve a desplegar.
 
+## Actualizar un Worker ya desplegado
+
+Cuando cambia `schema.sql` o `src/index.js` (por ejemplo, al añadir las copias anteriores), en este orden:
+
+```powershell
+npm run db:remote         # aplica schema.sql a la base real; solo crea lo que falta, no toca los datos
+npm run deploy            # publica el Worker nuevo
+$env:SYNC_URL = "https://<tu-worker>.workers.dev"; npm test
+```
+
+`wrangler.jsonc` tiene que apuntar al mismo Worker y a la misma base que ya usas: revisa que `name` sea el nombre del Worker desplegado y que `database_id` sea el de tu base (`npx wrangler d1 list` los muestra). Si `name` es otro, `npm run deploy` crea un Worker nuevo en vez de actualizar el que usa el sitio.
+
+Si se despliega el Worker antes de aplicar el esquema, la sincronización sigue funcionando, sin copias anteriores, hasta que se aplique.
+
 ## Opcional
 
 - **Límite de peticiones:** descomenta el bloque `ratelimits` de `wrangler.jsonc` si tu plan lo admite. Limita por registro y es aproximado ([documentación](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)).

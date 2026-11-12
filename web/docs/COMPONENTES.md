@@ -34,6 +34,7 @@ web/
   src/components/Hoy.svelte       portada de quien ya empezó: cuenta atrás, Repaso del día, seguir leyendo, siguiente paso, semana
   src/components/AvisoRespaldo.svelte  aviso de progreso sin respaldo (portada y panel de preparación); se puede posponer 7 días
   src/components/Respaldo.svelte  sección «Copia en un archivo» de /sincronizar
+  src/components/CopiasAnteriores.svelte  sección «Copias anteriores» de /sincronizar: lista las copias del servidor y restaura una
   src/components/MapaMemoria.svelte memoria por competencia según la caja de Leitner (crece desde la visita anterior)
   src/pages/index.astro           portada (bienvenida; "Hoy" arriba si ya hay progreso)
   src/pages/modulos/[id].astro    página de módulo (no tocar salvo acuerdo)

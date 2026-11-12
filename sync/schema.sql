@@ -9,3 +9,14 @@ CREATE TABLE IF NOT EXISTS progreso (
   updated    INTEGER NOT NULL           -- epoch ms de la última escritura
 );
 CREATE INDEX IF NOT EXISTS progreso_updated ON progreso (updated);
+
+-- Copias anteriores: la versión con la que terminó cada día con cambios (se archiva al sobrescribirla al día
+-- siguiente). Como máximo 7 por registro; van cifradas igual que `progreso.data`.
+CREATE TABLE IF NOT EXISTS copia (
+  id      TEXT NOT NULL,                -- el mismo id de `progreso`
+  rev     INTEGER NOT NULL,             -- versión que tenía el registro
+  iv      TEXT NOT NULL,
+  data    TEXT NOT NULL,
+  updated INTEGER NOT NULL,             -- epoch ms en que se escribió esa versión
+  PRIMARY KEY (id, rev)
+);
