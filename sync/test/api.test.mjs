@@ -100,5 +100,75 @@ if (!process.env.SYNC_URL) {
 check((await fetch(`${BASE}/v1/sync/${id}`, { method: 'DELETE', headers: auth(other) })).status === 401, 'borrar con otro token: 401');
 check((await fetch(`${BASE}/v1/sync/${id}`, { method: 'DELETE', headers: auth() })).status === 204, 'DELETE: 204');
 check((await fetch(`${BASE}/v1/sync/${id}`, { headers: auth() })).status === 404, 'tras borrar: 404');
+
+// ---------- diplomas ----------
+const { randomUUID, createPublicKey, createPrivateKey, verify } = await import('node:crypto');
+const pedir = (body) => fetch(`${BASE}/v1/diplomas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: typeof body === 'string' ? body : JSON.stringify(body) });
+const diploma = (d) => fetch(`${BASE}/v1/diplomas/${d}`);
+check((await diploma(randomUUID())).status === 404, 'diploma inexistente: 404');
+check((await diploma('no-es-un-uuid')).status === 404, 'diploma con identificador inválido: 404');
+check((await fetch(`${BASE}/v1/diplomas`)).status === 405, 'diplomas: la lista no se puede leer, 405');
+check((await fetch(`${BASE}/v1/diplomas/${randomUUID()}`, { method: 'DELETE' })).status === 405, 'diploma: solo lectura, 405');
+
+if (!process.env.SYNC_URL) {
+  // contra el Worker local: se da de alta un código de dos usos y se comprueba la firma con la llave de .dev.vars
+  const { execSync } = await import('node:child_process');
+  const { readFileSync } = await import('node:fs');
+  const sql = (q) => String(execSync(`npx wrangler d1 execute kcna-sync --local --json --command "${q}"`, { stdio: 'pipe' }));
+  const listo = async () => { for (let i = 0; i < 40; i++) { try { if ((await fetch(`${BASE}/v1/health`)).ok) return; } catch { /* reintenta */ } await new Promise((ok) => setTimeout(ok, 250)); } };
+  const privada = readFileSync(new URL('../.dev.vars', import.meta.url), 'utf8').match(/^DIPLOMA_KEY=(.+)$/m)?.[1];
+  if (!privada) throw new Error('Falta la llave de prueba: ejecuta `node scripts/llave-diploma.mjs --local` y reinicia `npm run dev`');
+  const publica = createPublicKey(createPrivateKey({ key: Buffer.from(privada, 'base64'), format: 'der', type: 'pkcs8' }));
+  const firmaOk = (d) => verify(null, Buffer.from(JSON.stringify([1, d.id, d.nombre, d.curso, d.nota, d.emitido])), publica, Buffer.from(d.firma, 'base64'));
+
+  const codigo = randomBytes(10).toString('hex').toUpperCase();
+  const ch = createHash('sha256').update(codigo).digest('hex');
+  sql(`INSERT INTO invitacion (codigo_hash, usos_max, usos, creado) VALUES ('${ch}', 2, 0, ${Date.now()})`);
+  await listo();
+  const usos = () => JSON.parse(sql(`SELECT usos FROM invitacion WHERE codigo_hash = '${ch}'`))[0].results[0].usos;
+
+  check((await pedir('{')).status === 400, 'diploma: cuerpo que no es JSON, 400');
+  check((await pedir({ codigo })).status === 400, 'diploma: sin nombre, 400');
+  for (const malo of ['Al', 'x'.repeat(81), '<b>Ana</b>', 'Ana 2', '  ']) {
+    r = await pedir({ codigo, nombre: malo });
+    check(r.status === 400 && (await r.json()).error === 'nombre_invalido', `diploma: nombre inválido (${malo.slice(0, 12)}), 400`);
+  }
+  check((await pedir({ codigo: 'x'.repeat(3000), nombre: 'Ana Pérez' })).status === 413, 'diploma: cuerpo demasiado grande, 413');
+  r = await pedir({ codigo: randomBytes(10).toString('hex'), nombre: 'Ana Pérez' });
+  check(r.status === 403 && (await r.json()).error === 'codigo_invalido', 'diploma: código inexistente, 403');
+  await listo();
+  check(usos() === 0, 'los intentos fallidos no gastan usos del código');
+
+  // el código se acepta con guiones y en minúsculas; el nombre se guarda sin espacios sobrantes
+  r = await pedir({ codigo: codigo.toLowerCase().match(/.{4}/g).join('-'), nombre: '  María  José   O’Brien-Núñez ' });
+  const d1 = await r.json();
+  check(r.status === 201 && d1.nombre === 'María José O’Brien-Núñez' && d1.revocado === null && d1.nota === null, 'diploma emitido: 201 con el nombre normalizado');
+  check(firmaOk(d1), 'la firma del diploma es válida');
+  check(!firmaOk({ ...d1, nombre: 'Otra Persona' }) && !firmaOk({ ...d1, emitido: d1.emitido + 1 }), 'un diploma alterado no pasa la firma');
+  r = await diploma(d1.id);
+  const visto = await r.json();
+  check(r.status === 200 && JSON.stringify(visto) === JSON.stringify(d1), 'la consulta devuelve el diploma emitido');
+
+  r = await pedir({ codigo, nombre: 'Ana Pérez' });
+  const d2 = await r.json();
+  check(r.status === 201 && d2.id !== d1.id && firmaOk(d2), 'segundo uso del código: otro diploma');
+  r = await pedir({ codigo, nombre: 'Luis Gómez' });
+  check(r.status === 403 && (await r.json()).error === 'codigo_invalido', 'código agotado: 403');
+  await listo();
+  check(usos() === 2, 'el código queda con sus dos usos gastados');
+
+  sql(`UPDATE diploma SET revocado = ${Date.now()} WHERE id = '${d2.id}'`);
+  await listo();
+  const rev2 = await (await diploma(d2.id)).json();
+  check(rev2.revocado > 0 && firmaOk(rev2), 'diploma revocado: se consulta con su fecha de revocación');
+
+  sql(`DELETE FROM diploma WHERE id IN ('${d1.id}', '${d2.id}'); DELETE FROM invitacion WHERE codigo_hash = '${ch}'`);
+  await listo();
+  check((await diploma(d1.id)).status === 404, 'diploma borrado: 404');
+} else {
+  r = await pedir({ codigo: randomBytes(10).toString('hex'), nombre: 'Prueba Automática' });
+  check(r.status === 403 || r.status === 503, `diploma con código inexistente: ${r.status === 503 ? '503, la emisión aún no está configurada' : '403'}`);
+  console.log('     (emisión y firma de diplomas: solo se prueban contra el Worker local)');
+}
 console.log(fails ? `\n${fails} fallos` : '\nTodo OK');
 process.exitCode = fails ? 1 : 0;

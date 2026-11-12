@@ -8,7 +8,9 @@
     "db:local": "wrangler d1 execute kcna-sync --local --file=./schema.sql",
     "db:remote": "wrangler d1 execute kcna-sync --remote --file=./schema.sql",
     "deploy": "wrangler deploy",
-    "test": "node test/api.test.mjs"
+    "test": "node test/api.test.mjs",
+    "diploma:llave": "node scripts/llave-diploma.mjs",
+    "diploma:invitacion": "node scripts/invitacion.mjs"
   },
   "devDependencies": {
     "wrangler": "4.151.0"

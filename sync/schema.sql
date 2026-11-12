@@ -20,3 +20,23 @@ CREATE TABLE IF NOT EXISTS copia (
   updated INTEGER NOT NULL,             -- epoch ms en que se escribió esa versión
   PRIMARY KEY (id, rev)
 );
+
+-- Diplomas (ver docs/PLAN-DIPLOMAS.md). Es el único dato personal del sistema: el nombre que el titular pide
+-- imprimir. No se relaciona con `progreso` ni caduca con su limpieza.
+CREATE TABLE IF NOT EXISTS diploma (
+  id        TEXT PRIMARY KEY,           -- UUID, va en el diploma y en el QR
+  nombre    TEXT NOT NULL,              -- tal como aparece en el diploma
+  curso     TEXT NOT NULL,
+  nota      INTEGER,                    -- porcentaje del examen; NULL si se emitió sin examen
+  emitido   INTEGER NOT NULL,           -- epoch ms
+  firma     TEXT NOT NULL,              -- Ed25519 (base64) sobre [1, id, nombre, curso, nota, emitido] en JSON
+  revocado  INTEGER                     -- epoch ms; NULL si sigue vigente
+);
+
+-- Códigos de invitación para pedir un diploma. Solo se guarda el SHA-256 del código.
+CREATE TABLE IF NOT EXISTS invitacion (
+  codigo_hash TEXT PRIMARY KEY,
+  usos_max    INTEGER NOT NULL DEFAULT 1,
+  usos        INTEGER NOT NULL DEFAULT 0,
+  creado      INTEGER NOT NULL          -- epoch ms
+);

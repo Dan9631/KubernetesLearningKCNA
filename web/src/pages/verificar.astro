@@ -1,0 +1,22 @@
+---
+import Base from '../layouts/Base.astro';
+import VerificarDiploma from '../components/VerificarDiploma.svelte';
+---
+<Base title="Verificar un diploma" description="Comprueba que una constancia de finalización del curso KCNA es auténtica y sigue vigente." width="read">
+  <article class="page">
+    <header class="head">
+      <p class="kicker">Diplomas</p>
+      <h1>Verificar un diploma</h1>
+      <p class="lead">Escribe el identificador que aparece en el diploma para comprobar a quién se emitió, cuándo, y si sigue vigente.</p>
+    </header>
+    <VerificarDiploma client:load />
+    <p class="note">Estos diplomas son constancias de finalización de este curso. No son la certificación KCNA, que solo emiten la CNCF y la Linux Foundation.</p>
+  </article>
+</Base>
+
+<style>
+  .page { max-width: 860px; margin: 0 auto; padding-top: 28px; }
+  .kicker { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 8px; }
+  .lead { font-size: 1.15rem; color: var(--ink-2); margin-top: 10px; max-width: var(--measure); }
+  .note { color: var(--ink-3); font-size: 0.86rem; margin-top: 28px; max-width: var(--measure); }
+</style>

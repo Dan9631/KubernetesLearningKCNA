@@ -41,6 +41,8 @@ jobs:
           PUBLIC_BASE: /${{ github.event.repository.name }}
           # URL del Worker de sincronización (variable del repositorio SYNC_URL); vacía = sin sincronización
           PUBLIC_SYNC_URL: ${{ vars.SYNC_URL }}
+          # Llave pública con la que /verificar comprueba la firma de los diplomas (variable DIPLOMA_PUBLIC_KEY)
+          PUBLIC_DIPLOMA_KEY: ${{ vars.DIPLOMA_PUBLIC_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist

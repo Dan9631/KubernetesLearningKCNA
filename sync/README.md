@@ -68,6 +68,35 @@ $env:SYNC_URL = "https://<tu-worker>.workers.dev"; npm test
 
 Si se despliega el Worker antes de aplicar el esquema, la sincronización sigue funcionando, sin copias anteriores, hasta que se aplique.
 
+## Diplomas
+
+El Worker también emite las constancias de finalización firmadas (diseño: [docs/PLAN-DIPLOMAS.md](../docs/PLAN-DIPLOMAS.md)). Es opcional: sin estos pasos, la sincronización funciona igual y `POST /v1/diplomas` responde 503.
+
+1. **Tablas.** `schema.sql` crea `diploma` e `invitacion`. Aplícalo con `npm run db:remote`, o pega las dos sentencias `CREATE TABLE` en la consola de la base D1 del panel de Cloudflare.
+2. **Llave de firma.** Genera el par de llaves:
+   ```powershell
+   npm run diploma:llave
+   ```
+   - La **privada** va como secreto del Worker con el nombre `DIPLOMA_KEY`: `npx wrangler secret put DIPLOMA_KEY`, o en el panel, en el Worker, **Settings › Variables and Secrets › Add**, de tipo *Secret*. No la guardes en ningún otro sitio: quien la tenga puede firmar diplomas.
+   - La **pública** va en GitHub como variable del repositorio `DIPLOMA_PUBLIC_KEY` (junto a `SYNC_URL`). Con ella, la página `/verificar` comprueba la firma en el navegador. Vuelve a publicar el sitio.
+3. **Código del Worker.** Despliégalo como en la sección anterior.
+4. **Códigos de invitación.** Cada diploma se pide con un código:
+   ```powershell
+   npm run diploma:invitacion        # un código de un solo uso
+   npm run diploma:invitacion -- 25  # un código que sirve para 25 diplomas
+   ```
+   Imprime el código y una sentencia `INSERT`; ejecútala en la consola de D1. En la base solo queda el hash del código.
+
+Tareas de mantenimiento, en la consola de D1:
+
+- **Revocar:** `UPDATE diploma SET revocado = unixepoch() * 1000 WHERE id = '<id>';`
+- **Borrar a petición del titular:** `DELETE FROM diploma WHERE id = '<id>';`
+- **Ver los emitidos:** `SELECT id, nombre, emitido, revocado FROM diploma ORDER BY emitido DESC;`
+
+Si cambias la llave, los diplomas ya emitidos dejan de pasar la comprobación de firma.
+
+Para las pruebas locales hace falta una llave de prueba: `npm run diploma:llave -- --local` la escribe en `.dev.vars` (reinicia `npm run dev` después).
+
 ## Opcional
 
 - **Límite de peticiones:** descomenta el bloque `ratelimits` de `wrangler.jsonc` si tu plan lo admite. Limita por registro y es aproximado ([documentación](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)).

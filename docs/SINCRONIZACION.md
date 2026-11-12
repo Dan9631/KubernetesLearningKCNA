@@ -15,9 +15,14 @@ Opcional. Sin ella, el sitio funciona igual que siempre: el progreso vive en el 
 
 | Si alguien… | Obtiene | Por qué |
 |---|---|---|
-| Roba la base de datos D1 | Bloques cifrados sin ningún dato personal | No hay correos, nombres ni IPs guardadas; sin el código no hay clave |
+| Roba la base de datos D1 | Bloques cifrados sin ningún dato personal | No hay correos, nombres ni IPs guardadas con el progreso; sin el código no hay clave. Los diplomas van aparte: ver la nota de abajo |
 | Conoce un `id` | Nada | Para leer o escribir hace falta el `token`, y del `id` no se puede obtener |
 | Intercepta el tráfico | Nada útil | HTTPS; el cuerpo además va cifrado |
+
+**Diplomas.** El mismo Worker emite los diplomas de finalización ([PLAN-DIPLOMAS.md](PLAN-DIPLOMAS.md)). Quien pide
+uno entrega voluntariamente su nombre, que se guarda sin cifrar en la tabla `diploma` y lo ve cualquiera que tenga
+el enlace del diploma. Esa tabla no guarda el `id` de sincronización ni ningún otro dato que la relacione con el
+progreso, así que la sincronización sigue siendo anónima.
 | Lee los registros del servidor | Peticiones con un `id` | El código va en el fragmento `#` del QR, que el navegador nunca envía |
 | Llena la base de basura | Molestia, no datos | Límite de 96 KB por registro, límite de peticiones opcional, borrado tras 400 días sin uso |
 | Tumba el servicio | Nada | El sitio sigue funcionando con el progreso local |
