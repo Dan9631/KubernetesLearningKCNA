@@ -6,6 +6,7 @@
   import DiagramaGuia from './DiagramaGuia.svelte';
   import { guiasDe } from '../lib/diagramas';
   import { progress, toggleStep, toggleDone, markToday, save } from '../lib/progress.svelte';
+  import { tieneExamen, aprobado } from '../lib/examenModulo';
 
   // checklist=false: páginas que no son módulos (instalación) no muestran la barra de progreso
   let { module, checklist = true }: { module: string; checklist?: boolean } = $props();
@@ -215,15 +216,30 @@
   });
 
   const done = $derived(progress.done.includes(module));
+  // los módulos con examen no se marcan a mano: se completan al aprobarlo
+  const conExamen = $derived(tieneExamen(Number(module)));
+  const pasado = $derived(aprobado(progress, Number(module)));
+  const pasos = $derived(doneCount ? `${doneCount} paso${doneCount === 1 ? '' : 's'} del laboratorio hechos. ` : '');
   const doneCount = $derived((progress.steps[module] ?? []).length);
 </script>
 
 <div bind:this={root} class="status" style:display={checklist ? null : 'none'}>
-  <span class="hint">{doneCount ? `${doneCount} paso${doneCount === 1 ? '' : 's'} del laboratorio hechos. ` : ''}{done ? 'Aparece como terminado en tu Ruta.' : '¿Terminaste la lectura y el laboratorio? Márcalo para verlo en tu Ruta.'}</span>
-  <button type="button" class="btn small" class:primary={!done} onclick={() => toggleDone(module)}>{done ? 'Módulo terminado ✓' : 'Marcar módulo terminado'}</button>
+  {#if conExamen}
+    {#if pasado}
+      <span class="hint">{pasos}Aprobaste el examen: el módulo aparece como completado en tu Ruta.</span>
+      <span class="ok">Módulo completado ✓</span>
+    {:else}
+      <span class="hint">{pasos}Este módulo se completa al aprobar su examen.</span>
+      <a class="btn small primary" href="#examen">Ir al examen</a>
+    {/if}
+  {:else}
+    <span class="hint">{pasos}{done ? 'Aparece como completado en tu Ruta.' : '¿Terminaste la lectura? Márcalo para verlo en tu Ruta.'}</span>
+    <button type="button" class="btn small" class:primary={!done} onclick={() => toggleDone(module)}>{done ? 'Módulo completado ✓' : 'Marcar módulo completado'}</button>
+  {/if}
 </div>
 
 <style>
   .status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 20px 0 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel); }
   .hint { color: var(--ink-2); font-size: 0.92rem; }
+  .ok { color: var(--ready); font-weight: 600; font-size: 0.92rem; }
 </style>

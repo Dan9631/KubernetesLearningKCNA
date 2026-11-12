@@ -3,23 +3,23 @@
   import { MODULES, DOMAINS, pad } from '../lib/modules';
   import { progress } from '../lib/progress.svelte';
   import { pctOf } from '../lib/lectura';
-  import { CON_EXAMEN, aprobado, aprobados } from '../lib/examenModulo';
+  import { completo, tieneExamen } from '../lib/examenModulo';
 
   let { current = -1, compact = false, base = '/' }: { current?: number; compact?: boolean; base?: string } = $props();
   const href = (n: number) => `${base.replace(/\/$/, '')}/modulos/${pad(n)}`;
   const isDone = (n: number) => progress.done.includes(pad(n));
   const started = (n: number) => (progress.steps[pad(n)]?.length ?? 0) > 0 || progress.sims.some((s) => s.startsWith(pad(n) + ':'));
-  const doneCount = $derived(MODULES.filter((m) => isDone(m.n)).length);
-  // aprobado = pasó el examen del módulo; terminado = lo marcó el alumno al acabar la lectura y el laboratorio
-  const isPass = (n: number) => aprobado(progress, n);
-  const passCount = $derived(aprobados(progress).length);
+  // completado = aprobó el examen del módulo (o lo marcó a mano, en los de preparación, que no tienen examen).
+  // isDone sin completar: módulos marcados a mano antes de que existiera el examen
+  const isPass = (n: number) => completo(progress, n);
+  const passCount = $derived(MODULES.filter((m) => isPass(m.n)).length);
   // hasta dónde se ha leído cada módulo (la marca más lejana)
   const readPct = (n: number) => { const r = progress.reading[pad(n)]; return r ? pctOf(r.far) : 0; };
 </script>
 
 <nav class="ruta" class:compact aria-label="Ruta del curso">
   {#if !compact}
-    <p class="sum">{passCount} de {CON_EXAMEN.length} exámenes de módulo aprobados · {doneCount} de {MODULES.length} módulos terminados</p>
+    <p class="sum">{passCount} de {MODULES.length} módulos completados</p>
   {/if}
   <ol>
     {#each MODULES as m}
@@ -27,7 +27,7 @@
         <a href={href(m.n)} aria-current={m.n === current ? 'page' : undefined}>
           <span class="mark" aria-hidden="true">{isDone(m.n) || isPass(m.n) ? '✓' : pad(m.n)}</span>
           <span class="body">
-            <span class="t">{m.title}{#if isPass(m.n)}<span class="sr"> (examen aprobado)</span>{:else if isDone(m.n)}<span class="sr"> (terminado)</span>{/if}</span>
+            <span class="t">{m.title}{#if isPass(m.n)}<span class="sr"> (completado)</span>{:else if isDone(m.n)}<span class="sr"> (falta aprobar el examen)</span>{/if}</span>
             {#if readPct(m.n) > 0 && !isDone(m.n)}<span class="read" role="img" aria-label="Leído {readPct(m.n)} %"><span style="width:{readPct(m.n)}%"></span></span>{/if}
             {#if !compact}
               <span class="s">{m.summary}</span>
@@ -35,7 +35,7 @@
                 {#if m.domain !== 'base'}<span class="chip {m.domain}">{DOMAINS[m.domain].short} · {DOMAINS[m.domain].weight}%</span>{/if}
                 <span class="h">{m.hours}</span>
                 {#if m.lab}<span class="h">lab verificable</span>{/if}
-                {#if isPass(m.n)}<span class="h ok">examen aprobado</span>{:else if isDone(m.n) && m.domain !== 'base'}<span class="h">terminado, falta el examen</span>{/if}
+                {#if isPass(m.n)}<span class="h ok">{tieneExamen(m.n) ? 'examen aprobado' : 'completado'}</span>{:else if isDone(m.n)}<span class="h">falta aprobar el examen</span>{/if}
                 {#if readPct(m.n) > 0 && !isDone(m.n)}<span class="h">leído {readPct(m.n)} %</span>{/if}
               </span>
             {/if}
@@ -55,7 +55,7 @@
   a:hover .t { color: var(--helm-ink); text-decoration: underline; text-underline-offset: 3px; }
   .mark { position: relative; z-index: 1; flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font: 500 0.78rem var(--mono); background: var(--paper); border: 2px solid var(--line); color: var(--ink-3); transition: background var(--dur), border-color var(--dur); }
   .started .mark { border-color: var(--wait); color: var(--wait); }
-  /* terminado: aro verde; examen aprobado: relleno */
+  /* completado: relleno; aro verde: marcado a mano pero sin aprobar el examen */
   .done .mark { border-color: var(--ready); color: var(--ready); }
   .pass .mark { background: var(--ready); border-color: var(--ready); color: #fff; }
   .h.ok { color: var(--ready); font-weight: 600; }

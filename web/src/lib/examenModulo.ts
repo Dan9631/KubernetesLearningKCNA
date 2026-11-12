@@ -14,6 +14,8 @@ export const CON_EXAMEN = MODULES.filter((m) => m.domain !== 'base');
 /** Clave con la que queda guardado el aprobado en progress.retos; no se cambia ni se reutiliza */
 export const claveExamen = (n: number) => `mod:${pad(n)}`;
 export const aprobado = (p: Progress, n: number) => p.retos.includes(claveExamen(n));
-export const aprobados = (p: Progress) => CON_EXAMEN.filter((m) => aprobado(p, m.n));
+export const tieneExamen = (n: number) => CON_EXAMEN.some((m) => m.n === n);
+/** Un módulo con examen se completa al aprobarlo; los de preparación, al marcarlos a mano */
+export const completo = (p: Progress, n: number) => (tieneExamen(n) ? aprobado(p, n) : p.done.includes(pad(n)));
 /** aciertos necesarios en un examen de `total` preguntas */
 export const minimo = (total: number) => Math.ceil((total * APROBAR) / 100);

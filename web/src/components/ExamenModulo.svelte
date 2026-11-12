@@ -3,7 +3,8 @@
   // Aprobarlo deja el módulo «aprobado» en la Ruta. Ver lib/examenModulo.ts.
   import { onMount } from 'svelte';
   import preguntas from '../data/preguntas.json';
-  import { progress, recordAnswer, addReto } from '../lib/progress.svelte';
+  import { progress, recordAnswer, addReto, toggleDone } from '../lib/progress.svelte';
+  import { pad } from '../lib/modules';
   import { PREGUNTAS, APROBAR, claveExamen, aprobado, minimo } from '../lib/examenModulo';
   import SourceLinks from './SourceLinks.svelte';
 
@@ -51,7 +52,11 @@
     // cada respuesta cuenta también para el repaso espaciado; las que quedaron en blanco, como fallo
     items.forEach((q, i) => recordAnswer(q.id, acierta(q, marcadas[i])));
     vistas = items.map((q) => q.id);
-    if (aciertos >= necesita) addReto(claveExamen(module));
+    if (aciertos >= necesita) {
+      addReto(claveExamen(module));
+      // aprobar es lo que completa el módulo: ya no se marca a mano
+      if (!progress.done.includes(pad(module))) toggleDone(pad(module));
+    }
     confirmar = false; paso = 'resultado';
     arriba();
   }
@@ -106,7 +111,7 @@
     <h3>{paso_ok ? 'Módulo aprobado' : 'No alcanzó esta vez'}</h3>
     <p>Tu nota: <strong>{nota} %</strong> ({aciertos} de {items.length}). Se aprueba con el {APROBAR} % ({necesita} de {items.length}).</p>
     {#if paso_ok}
-      <p>Queda marcado como aprobado en tu Ruta.</p>
+      <p>Con esto el módulo queda completado en tu Ruta.</p>
     {:else if yaAprobado}
       <p>El módulo sigue aprobado por un intento anterior.</p>
     {:else}
