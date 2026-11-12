@@ -1,6 +1,6 @@
 // Worker del curso KCNA. Sincronización: guarda y devuelve un bloque cifrado por código de sincronización; no
 // puede leer el progreso (se cifra en el navegador). Ver docs/SINCRONIZACION.md.
-// Diplomas: emite constancias firmadas a quien trae un código de invitación y permite consultarlas. El nombre
+// Diplomas: califica el examen final, emite constancias firmadas a quien lo aprueba y permite consultarlas. El nombre
 // del titular es el único dato personal que se guarda. Ver docs/PLAN-DIPLOMAS.md.
 
 const MAX_BODY = 96 * 1024;          // bytes del cuerpo JSON
@@ -12,6 +12,10 @@ const B64 = /^[A-Za-z0-9+/]+={0,2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const CURSO = 'Curso de preparación para KCNA';
 const MAX_DIPLOMA_BODY = 2048;
+const EXAMEN_PREGUNTAS = 30;         // preguntas al azar por intento
+const EXAMEN_APROBAR = 75;           // porcentaje mínimo de aciertos
+const EXAMEN_INTENTOS = 3;           // intentos por cada diploma que permite el código
+const EXAMEN_MINUTOS = 60;           // plazo para entregar
 // letras de cualquier alfabeto con espacios, puntos, apóstrofos y guiones entre ellas
 const NOMBRE = /^[\p{L}\p{M}][\p{L}\p{M} .'’-]*$/u;
 
@@ -61,6 +65,113 @@ async function firmar(env, texto) {
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
+/** Lee un cuerpo JSON pequeño; devuelve una respuesta de error si no vale */
+async function cuerpo(req, h, max) {
+  if (Number(req.headers.get('Content-Length') ?? 0) > max) return { error: reply({ error: 'too_large' }, 413, h) };
+  const text = await req.text();
+  if (text.length > max) return { error: reply({ error: 'too_large' }, 413, h) };
+  try {
+    const body = JSON.parse(text);
+    if (body && typeof body === 'object') return { body };
+  } catch { /* cae abajo */ }
+  return { error: reply({ error: 'bad_request' }, 400, h) };
+}
+
+async function limitar(env, req, h, zona) {
+  if (!env.RATE_LIMITER) return null;
+  const { success } = await env.RATE_LIMITER.limit({ key: `${zona}:${req.headers.get('CF-Connecting-IP') ?? ''}` });
+  return success ? null : reply({ error: 'rate_limited' }, 429, { ...h, 'Retry-After': '60' });
+}
+
+// ---------- examen ----------
+// Todo lo que decide el resultado ocurre aquí: el sorteo de preguntas, el plazo, la calificación y el número de
+// intentos. El navegador solo recibe los enunciados y envía las opciones marcadas; las respuestas correctas no
+// salen nunca del servidor, así que modificar el sitio o llamar a la API a mano no permite aprobar.
+
+/** Lo que ve quien presenta el examen: enunciados y opciones, sin las respuestas */
+async function enunciados(env, ids) {
+  const { results } = await env.DB.prepare(`SELECT id, texto, opciones, correctas FROM pregunta WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all();
+  const porId = new Map(results.map((p) => [p.id, p]));
+  return ids.map((id) => {
+    const p = porId.get(id);
+    return p ? { texto: p.texto, opciones: JSON.parse(p.opciones), elige: JSON.parse(p.correctas).length } : { texto: '(pregunta retirada)', opciones: [], elige: 0 };
+  });
+}
+
+async function examen(req, env, h, intento) {
+  try {
+    // Empezar un intento: un código de invitación con usos e intentos disponibles
+    if (!intento) {
+      if (req.method !== 'POST') return reply({ error: 'method_not_allowed' }, 405, { ...h, Allow: 'POST, OPTIONS' });
+      const lim = await limitar(env, req, h, 'examen');
+      if (lim) return lim;
+      const { body, error } = await cuerpo(req, h, MAX_DIPLOMA_BODY);
+      if (error) return error;
+      if (typeof body.codigo !== 'string') return reply({ error: 'bad_request' }, 400, h);
+      const codigo = body.codigo.toUpperCase().replace(/[^0-9A-Z]/g, '');
+      if (codigo.length < 12 || codigo.length > 40) return reply({ error: 'codigo_invalido' }, 403, h);
+      const ch = await sha256hex(codigo);
+
+      const { results } = await env.DB.prepare('SELECT id FROM pregunta WHERE activa = 1 ORDER BY random() LIMIT ?').bind(EXAMEN_PREGUNTAS).all();
+      if (results.length < EXAMEN_PREGUNTAS) return reply({ error: 'unavailable' }, 503, h); // banco sin cargar
+      const ids = results.map((p) => p.id);
+      const secreto = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
+      const now = Date.now();
+      // El intento solo se crea si al código le quedan usos e intentos; se cuenta al crearlo, se entregue o no
+      const r = await env.DB.prepare(`INSERT INTO intento (id, codigo_hash, preguntas, creado)
+        SELECT ?, codigo_hash, ?, ? FROM invitacion
+        WHERE codigo_hash = ? AND usos < usos_max AND (SELECT COUNT(*) FROM intento WHERE codigo_hash = ?) < usos_max * ?`)
+        .bind(await sha256hex(secreto), JSON.stringify(ids), now, ch, ch, EXAMEN_INTENTOS).run();
+      if (!r.meta.changes) {
+        const inv = await env.DB.prepare('SELECT usos, usos_max FROM invitacion WHERE codigo_hash = ?').bind(ch).first();
+        return reply({ error: inv && inv.usos < inv.usos_max ? 'sin_intentos' : 'codigo_invalido' }, 403, h);
+      }
+      return reply({ intento: secreto, expira: now + EXAMEN_MINUTOS * 60_000, aprobar: EXAMEN_APROBAR, preguntas: await enunciados(env, ids) }, 201, h);
+    }
+
+    const ih = await sha256hex(intento);
+    const row = await env.DB.prepare('SELECT preguntas, creado, entregado, nota, aprobado, diploma_id FROM intento WHERE id = ?').bind(ih).first();
+    if (!row) return reply({ error: 'not_found' }, 404, h);
+    const ids = JSON.parse(row.preguntas);
+    const expira = row.creado + EXAMEN_MINUTOS * 60_000;
+    const resultado = () => ({ entregado: row.entregado, nota: row.nota, aprobado: !!row.aprobado, aprobar: EXAMEN_APROBAR, diploma: row.diploma_id });
+
+    // Retomar un intento (por ejemplo, tras recargar la página) o ver su resultado
+    if (req.method === 'GET') {
+      if (row.entregado) return reply(resultado(), 200, h);
+      if (Date.now() > expira) return reply({ error: 'expirado' }, 410, h);
+      return reply({ expira, aprobar: EXAMEN_APROBAR, preguntas: await enunciados(env, ids) }, 200, h);
+    }
+
+    // Entregar: se califica una sola vez y dentro del plazo (con un minuto de margen por la red)
+    if (req.method !== 'POST') return reply({ error: 'method_not_allowed' }, 405, { ...h, Allow: 'GET, POST, OPTIONS' });
+    if (row.entregado) return reply({ error: 'ya_entregado', ...resultado() }, 409, h);
+    const now = Date.now();
+    if (now > expira + 60_000) return reply({ error: 'expirado' }, 410, h);
+    const { body, error } = await cuerpo(req, h, 8192);
+    if (error) return error;
+    const marcadas = body.respuestas;
+    const valida = (r) => Array.isArray(r) && r.length <= 12 && r.every((n) => Number.isInteger(n) && n >= 0 && n < 100);
+    if (!Array.isArray(marcadas) || marcadas.length !== ids.length || !marcadas.every(valida)) return reply({ error: 'bad_request' }, 400, h);
+
+    const { results } = await env.DB.prepare(`SELECT id, correctas FROM pregunta WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all();
+    const correctas = new Map(results.map((p) => [p.id, JSON.parse(p.correctas)]));
+    // una pregunta cuenta solo si se marcaron exactamente sus opciones correctas
+    const aciertos = ids.filter((id, i) => {
+      const c = correctas.get(id), m = [...new Set(marcadas[i])];
+      return c && m.length === c.length && m.every((n) => c.includes(n));
+    }).length;
+    const nota = Math.round((aciertos * 100) / ids.length);
+    const aprobado = aciertos * 100 >= EXAMEN_APROBAR * ids.length ? 1 : 0;
+    const r = await env.DB.prepare('UPDATE intento SET entregado = ?, nota = ?, aprobado = ? WHERE id = ? AND entregado IS NULL').bind(now, nota, aprobado, ih).run();
+    if (!r.meta.changes) return reply({ error: 'ya_entregado' }, 409, h); // otra entrega llegó antes
+    return reply({ entregado: now, nota, aprobado: !!aprobado, aprobar: EXAMEN_APROBAR, aciertos, total: ids.length, diploma: null }, 200, h);
+  } catch (e) {
+    if (!sinTabla(e)) throw e;
+    return reply({ error: 'unavailable' }, 503, h); // base sin las tablas del examen
+  }
+}
+
 async function diplomas(req, env, h, id) {
   try {
     // Consulta pública: cualquiera con el identificador puede comprobar un diploma
@@ -70,36 +181,36 @@ async function diplomas(req, env, h, id) {
       return d ? reply(d, 200, h) : reply({ error: 'not_found' }, 404, h);
     }
 
-    // Emisión: un código de invitación con usos disponibles y el nombre que se imprimirá
+    // Emisión: un intento de examen aprobado que aún no dio diploma, y el nombre que se imprimirá.
+    // El aprobado se lee de la base; lo que diga el navegador sobre la nota no cuenta.
     if (req.method !== 'POST') return reply({ error: 'method_not_allowed' }, 405, { ...h, Allow: 'POST, OPTIONS' });
     if (!env.DIPLOMA_KEY) return reply({ error: 'unavailable' }, 503, h); // falta el secreto con la llave de firma
-    if (env.RATE_LIMITER) {
-      const { success } = await env.RATE_LIMITER.limit({ key: `diploma:${req.headers.get('CF-Connecting-IP') ?? ''}` });
-      if (!success) return reply({ error: 'rate_limited' }, 429, { ...h, 'Retry-After': '60' });
-    }
-    if (Number(req.headers.get('Content-Length') ?? 0) > MAX_DIPLOMA_BODY) return reply({ error: 'too_large' }, 413, h);
-    const text = await req.text();
-    if (text.length > MAX_DIPLOMA_BODY) return reply({ error: 'too_large' }, 413, h);
-    let body;
-    try { body = JSON.parse(text); } catch { return reply({ error: 'bad_request' }, 400, h); }
-    if (typeof body?.nombre !== 'string' || typeof body?.codigo !== 'string') return reply({ error: 'bad_request' }, 400, h);
+    const lim = await limitar(env, req, h, 'diploma');
+    if (lim) return lim;
+    const { body, error } = await cuerpo(req, h, MAX_DIPLOMA_BODY);
+    if (error) return error;
+    if (typeof body.nombre !== 'string' || typeof body.intento !== 'string') return reply({ error: 'bad_request' }, 400, h);
     const nombre = body.nombre.normalize('NFC').replace(/\s+/g, ' ').trim();
     if (nombre.length < 3 || nombre.length > 80 || !NOMBRE.test(nombre)) return reply({ error: 'nombre_invalido' }, 400, h);
-    const codigo = body.codigo.toUpperCase().replace(/[^0-9A-Z]/g, '');
-    if (codigo.length < 12 || codigo.length > 40) return reply({ error: 'codigo_invalido' }, 403, h);
-    const ch = await sha256hex(codigo);
+    if (!HEX64.test(body.intento)) return reply({ error: 'no_aprobado' }, 403, h);
+    const ih = await sha256hex(body.intento);
+    const it = await env.DB.prepare('SELECT codigo_hash, nota FROM intento WHERE id = ? AND aprobado = 1 AND diploma_id IS NULL').bind(ih).first();
+    if (!it) return reply({ error: 'no_aprobado' }, 403, h);
 
-    const d = { id: crypto.randomUUID(), nombre, curso: CURSO, nota: null, emitido: Date.now() };
+    const d = { id: crypto.randomUUID(), nombre, curso: CURSO, nota: it.nota, emitido: Date.now() };
     const firma = await firmar(env, mensajeDiploma(d));
-    // El diploma solo se inserta si al código le quedan usos, y el uso se descuenta en la misma transacción
-    const libre = 'codigo_hash = ? AND usos < usos_max';
+    // Una sola transacción: el diploma se inserta si el intento sigue sin diploma y al código le quedan usos;
+    // después se marca el intento y se descuenta el uso, solo si el diploma llegó a insertarse.
+    const emitido = 'EXISTS (SELECT 1 FROM diploma WHERE id = ?)';
     const [ins] = await env.DB.batch([
-      env.DB.prepare(`INSERT INTO diploma (id, nombre, curso, nota, emitido, firma) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM invitacion WHERE ${libre})`)
-        .bind(d.id, d.nombre, d.curso, d.nota, d.emitido, firma, ch),
-      env.DB.prepare(`UPDATE invitacion SET usos = usos + 1 WHERE ${libre} AND EXISTS (SELECT 1 FROM diploma WHERE id = ?)`).bind(ch, d.id),
+      env.DB.prepare(`INSERT INTO diploma (id, nombre, curso, nota, emitido, firma) SELECT ?, ?, ?, ?, ?, ?
+        WHERE EXISTS (SELECT 1 FROM intento WHERE id = ? AND aprobado = 1 AND diploma_id IS NULL)
+          AND EXISTS (SELECT 1 FROM invitacion WHERE codigo_hash = ? AND usos < usos_max)`)
+        .bind(d.id, d.nombre, d.curso, d.nota, d.emitido, firma, ih, it.codigo_hash),
+      env.DB.prepare(`UPDATE intento SET diploma_id = ? WHERE id = ? AND ${emitido}`).bind(d.id, ih, d.id),
+      env.DB.prepare(`UPDATE invitacion SET usos = usos + 1 WHERE codigo_hash = ? AND ${emitido}`).bind(it.codigo_hash, d.id),
     ]);
-    // la misma respuesta para un código inexistente y uno agotado
-    if (!ins.meta.changes) return reply({ error: 'codigo_invalido' }, 403, h);
+    if (!ins.meta.changes) return reply({ error: 'no_aprobado' }, 403, h);
     return reply({ ...d, firma, revocado: null }, 201, h);
   } catch (e) {
     if (!sinTabla(e)) throw e;
@@ -116,6 +227,8 @@ export default {
     if (pathname === '/v1/health') return reply({ ok: true }, 200, h);
     const dm = pathname.match(/^\/v1\/diplomas(?:\/([^/]+))?$/);
     if (dm) return dm[1] && !UUID.test(dm[1]) ? reply({ error: 'not_found' }, 404, h) : diplomas(req, env, h, dm[1]);
+    const em = pathname.match(/^\/v1\/examen(?:\/([^/]+))?$/);
+    if (em) return em[1] && !HEX64.test(em[1]) ? reply({ error: 'not_found' }, 404, h) : examen(req, env, h, em[1]);
     const m = pathname.match(/^\/v1\/sync\/([0-9a-f]{64})(?:\/copias(?:\/([1-9][0-9]{0,8}))?)?$/);
     if (!m) return reply({ error: 'not_found' }, 404, h);
     const id = m[1];

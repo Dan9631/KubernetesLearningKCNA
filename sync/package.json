@@ -10,7 +10,8 @@
     "deploy": "wrangler deploy",
     "test": "node test/api.test.mjs",
     "diploma:llave": "node scripts/llave-diploma.mjs",
-    "diploma:invitacion": "node scripts/invitacion.mjs"
+    "diploma:invitacion": "node scripts/invitacion.mjs",
+    "examen:banco": "node scripts/banco-examen.mjs"
   },
   "devDependencies": {
     "wrangler": "4.151.0"

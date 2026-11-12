@@ -1,18 +1,24 @@
 # Plan: diplomas de finalización firmados y verificables
 
-Estado (2026-11-12): **fases 2 y 3 implementadas en la rama `diplomas`, sin desplegar**. Faltan el examen
-(fase 1) y el PDF (fase 4).
+Estado (2026-11-12): **fases 1, 2 y 3 implementadas en la rama `diplomas`**. Falta el PDF (fase 4).
 
 Hecho:
 
-- Worker: tablas `diploma` e `invitacion`, `POST /v1/diplomas` (código de invitación + nombre) y
-  `GET /v1/diplomas/<id>`, firma Ed25519 con el secreto `DIPLOMA_KEY`. Pruebas en `sync/test/api.test.mjs`.
-- Sitio: `/diploma` (pedirlo) y `/verificar/?id=<id>` (consultarlo y comprobar la firma en el navegador con
-  la variable `DIPLOMA_PUBLIC_KEY`). El sitio es estático, así que el identificador va en `?id=` y no en la ruta.
+- Examen en el Worker: `POST /v1/examen` (código de invitación) sortea 30 preguntas de la tabla `pregunta` y
+  crea un `intento`; `POST /v1/examen/<intento>` lo califica una sola vez y dentro de 60 minutos. Se aprueba
+  con el 75 % y hay 3 intentos por cada diploma que permite el código.
+- Diplomas: `POST /v1/diplomas` (intento aprobado + nombre) firma con Ed25519 (secreto `DIPLOMA_KEY`) y gasta
+  el uso del código; `GET /v1/diplomas/<id>` lo consulta.
+- Sitio: `/diploma` (examen y petición) y `/verificar/?id=<id>` (consulta y comprobación de la firma en el
+  navegador con la variable `DIPLOMA_PUBLIC_KEY`). El sitio es estático: el identificador va en `?id=`.
 - Instalación y mantenimiento: sección «Diplomas» de `sync/README.md`.
 
-Mientras no exista el examen, un código de invitación basta para emitir: solo deben darse a personas de
-confianza. Los diplomas emitidos así llevan `nota` vacía.
+Contra las trampas: el navegador solo recibe enunciados y envía opciones marcadas. Las respuestas correctas, el
+plazo, la nota y el aprobado viven en la base; el diploma se emite leyendo el aprobado de la base, nunca de lo
+que envía el cliente. Las pruebas marcadas TRAMPA en `sync/test/api.test.mjs` lo comprueban.
+
+Lo que el sistema no puede impedir: que alguien busque las respuestas mientras hace el examen, que otra persona
+lo haga por él, o que se repartan las preguntas vistas. Lo limitan el plazo, los intentos y el tamaño del banco.
 
 ## Objetivo
 

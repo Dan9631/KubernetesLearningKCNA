@@ -16,3 +16,7 @@ web/src/data/*.json
 
 # Configuracion local de Claude Code
 .claude/
+
+# Banco del examen final: las respuestas no se publican
+sync/banco-examen.json
+sync/banco-examen.sql

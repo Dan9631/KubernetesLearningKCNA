@@ -70,9 +70,9 @@ Si se despliega el Worker antes de aplicar el esquema, la sincronización sigue 
 
 ## Diplomas
 
-El Worker también emite las constancias de finalización firmadas (diseño: [docs/PLAN-DIPLOMAS.md](../docs/PLAN-DIPLOMAS.md)). Es opcional: sin estos pasos, la sincronización funciona igual y `POST /v1/diplomas` responde 503.
+El Worker también califica el examen final y emite las constancias de finalización firmadas a quien lo aprueba (diseño: [docs/PLAN-DIPLOMAS.md](../docs/PLAN-DIPLOMAS.md)). Es opcional: sin estos pasos, la sincronización funciona igual y el examen responde 503.
 
-1. **Tablas.** `schema.sql` crea `diploma` e `invitacion`. Aplícalo con `npm run db:remote`, o pega las dos sentencias `CREATE TABLE` en la consola de la base D1 del panel de Cloudflare.
+1. **Tablas.** `schema.sql` crea `diploma`, `invitacion`, `pregunta` e `intento`. Aplícalo con `npm run db:remote`, o pega esas sentencias `CREATE` en la consola de la base D1 del panel de Cloudflare.
 2. **Llave de firma.** Genera el par de llaves:
    ```powershell
    npm run diploma:llave
@@ -80,7 +80,16 @@ El Worker también emite las constancias de finalización firmadas (diseño: [do
    - La **privada** va como secreto del Worker con el nombre `DIPLOMA_KEY`: `npx wrangler secret put DIPLOMA_KEY`, o en el panel, en el Worker, **Settings › Variables and Secrets › Add**, de tipo *Secret*. No la guardes en ningún otro sitio: quien la tenga puede firmar diplomas.
    - La **pública** va en GitHub como variable del repositorio `DIPLOMA_PUBLIC_KEY` (junto a `SYNC_URL`). Con ella, la página `/verificar` comprueba la firma en el navegador. Vuelve a publicar el sitio.
 3. **Código del Worker.** Despliégalo como en la sección anterior.
-4. **Códigos de invitación.** Cada diploma se pide con un código:
+4. **Banco de preguntas.** El examen sortea 30 preguntas de la tabla `pregunta` y necesita al menos 30 activas; conviene tener bastantes más, porque cada intento enseña 30. Escríbelas en `banco-examen.json`, en esta carpeta, con el formato del banco de práctica:
+   ```json
+   [{ "q": "enunciado", "options": ["a", "b", "c", "d"], "answer": [2] }]
+   ```
+   `answer` son las posiciones, desde 0, de las opciones correctas. Luego:
+   ```powershell
+   npm run examen:banco -- banco-examen.json
+   ```
+   Genera `banco-examen.sql`; pega su contenido en la consola de D1 o ejecútalo con `npx wrangler d1 execute kcna-sync --remote --file=banco-examen.sql`. Los dos archivos están en `.gitignore`: **no los subas**, porque quien tenga las respuestas aprueba. Por lo mismo, no uses las preguntas de `quiz/`, que son públicas.
+5. **Códigos de invitación.** Con un código se presenta el examen (3 intentos por cada diploma que permite) y, al aprobar, se pide el diploma:
    ```powershell
    npm run diploma:invitacion        # un código de un solo uso
    npm run diploma:invitacion -- 25  # un código que sirve para 25 diplomas
@@ -91,9 +100,13 @@ Tareas de mantenimiento, en la consola de D1:
 
 - **Revocar:** `UPDATE diploma SET revocado = unixepoch() * 1000 WHERE id = '<id>';`
 - **Borrar a petición del titular:** `DELETE FROM diploma WHERE id = '<id>';`
+- **Ver los intentos de examen:** `SELECT codigo_hash, creado, entregado, nota, aprobado, diploma_id FROM intento ORDER BY creado DESC;`
+- **Retirar una pregunta:** `UPDATE pregunta SET activa = 0 WHERE id = <n>;`
 - **Ver los emitidos:** `SELECT id, nombre, emitido, revocado FROM diploma ORDER BY emitido DESC;`
 
 Si cambias la llave, los diplomas ya emitidos dejan de pasar la comprobación de firma.
+
+El examen son 30 preguntas, 60 minutos, 75 % para aprobar y 3 intentos; se cambian en las constantes `EXAMEN_*` de `src/index.js`. Todo se decide en el Worker: el navegador nunca recibe las respuestas correctas ni puede declarar su nota.
 
 Para las pruebas locales hace falta una llave de prueba: `npm run diploma:llave -- --local` la escribe en `.dev.vars` (reinicia `npm run dev` después).
 

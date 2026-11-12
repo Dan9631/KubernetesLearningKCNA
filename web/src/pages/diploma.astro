@@ -1,16 +1,16 @@
 ---
 import Base from '../layouts/Base.astro';
-import PedirDiploma from '../components/PedirDiploma.svelte';
+import ExamenFinal from '../components/ExamenFinal.svelte';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
-<Base title="Diploma de finalización" description="Pide tu constancia de finalización del curso KCNA, firmada y verificable por cualquiera." width="read">
+<Base title="Diploma de finalización" description="Presenta el examen final del curso KCNA y recibe tu constancia de finalización, firmada y verificable por cualquiera." width="read">
   <article class="page">
     <header class="head">
       <p class="kicker">Diplomas</p>
       <h1>Diploma de finalización</h1>
-      <p class="lead">Si terminaste el curso y tienes un código de invitación, aquí pides tu constancia. Va firmada, y cualquiera puede <a href={`${base}/verificar/`}>comprobar que es auténtica</a>.</p>
+      <p class="lead">Si terminaste el curso y tienes un código de invitación, presenta aquí el examen final. Al aprobarlo recibes tu constancia: va firmada, y cualquiera puede <a href={`${base}/verificar/`}>comprobar que es auténtica</a>.</p>
     </header>
-    <PedirDiploma client:load />
+    <ExamenFinal client:load />
     <p class="note">Es una constancia de finalización de este curso. No es la certificación KCNA, que solo emiten la CNCF y la Linux Foundation.</p>
   </article>
 </Base>

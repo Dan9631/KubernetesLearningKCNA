@@ -40,3 +40,26 @@ CREATE TABLE IF NOT EXISTS invitacion (
   usos        INTEGER NOT NULL DEFAULT 0,
   creado      INTEGER NOT NULL          -- epoch ms
 );
+
+-- Banco de preguntas del examen final. Las respuestas solo viven aquí: no van en el sitio ni en el repositorio.
+-- Se carga con `npm run examen:banco` (ver README.md).
+CREATE TABLE IF NOT EXISTS pregunta (
+  id        INTEGER PRIMARY KEY,
+  texto     TEXT NOT NULL,
+  opciones  TEXT NOT NULL,              -- lista JSON de textos
+  correctas TEXT NOT NULL,              -- lista JSON con las posiciones de las opciones correctas
+  activa    INTEGER NOT NULL DEFAULT 1  -- 0 = retirada: no sale en intentos nuevos
+);
+
+-- Intentos de examen. Cada uno fija en el servidor qué preguntas tocaron, cuándo empezó y qué nota sacó.
+CREATE TABLE IF NOT EXISTS intento (
+  id          TEXT PRIMARY KEY,         -- SHA-256 del identificador secreto que recibe el navegador
+  codigo_hash TEXT NOT NULL,            -- código de invitación con el que se empezó
+  preguntas   TEXT NOT NULL,            -- lista JSON de ids de `pregunta`, en el orden mostrado
+  creado      INTEGER NOT NULL,         -- epoch ms; el plazo de entrega cuenta desde aquí
+  entregado   INTEGER,                  -- epoch ms; NULL si no se entregó
+  nota        INTEGER,                  -- porcentaje de aciertos
+  aprobado    INTEGER,                  -- 1 si alcanzó la nota mínima
+  diploma_id  TEXT                      -- diploma emitido con este intento; NULL si ninguno
+);
+CREATE INDEX IF NOT EXISTS intento_codigo ON intento (codigo_hash);

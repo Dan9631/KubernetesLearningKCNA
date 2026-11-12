@@ -35,9 +35,10 @@ web/
   src/components/AvisoRespaldo.svelte  aviso de progreso sin respaldo (portada y panel de preparación); se puede posponer 7 días
   src/components/Respaldo.svelte  sección «Copia en un archivo» de /sincronizar
   src/components/CopiasAnteriores.svelte  sección «Copias anteriores» de /sincronizar: lista las copias del servidor y restaura una
-  src/components/PedirDiploma.svelte  formulario de /diploma: código de invitación y nombre; muestra el enlace de verificación
+  src/components/ExamenFinal.svelte  /diploma: examen final con código de invitación (30 preguntas, reloj, se retoma al recargar) y resultado
+  src/components/PedirDiploma.svelte  último paso de /diploma: nombre para el diploma de un intento aprobado; muestra el enlace de verificación
   src/components/VerificarDiploma.svelte  /verificar?id=…: consulta el diploma y comprueba su firma en el navegador
-  src/lib/diploma.ts              llamadas a /v1/diplomas del Worker y comprobación de la firma Ed25519
+  src/lib/diploma.ts              llamadas a /v1/examen y /v1/diplomas del Worker y comprobación de la firma Ed25519
   src/components/MapaMemoria.svelte memoria por competencia según la caja de Leitner (crece desde la visita anterior)
   src/pages/index.astro           portada (bienvenida; "Hoy" arriba si ya hay progreso)
   src/pages/modulos/[id].astro    página de módulo (no tocar salvo acuerdo)

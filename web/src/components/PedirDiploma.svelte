@@ -1,9 +1,10 @@
 <script lang="ts">
-  // Página /diploma: pedir la constancia de finalización con un código de invitación y el nombre que llevará.
-  import { diplomasDisponibles, pedir, comprobarFirma, urlVerificar, type Diploma } from '../lib/diploma';
+  // Último paso de /diploma: con un intento de examen aprobado, escribir el nombre que llevará el diploma.
+  import { pedir, comprobarFirma, urlVerificar, type Diploma } from '../lib/diploma';
   import { fmtDate } from './practica/quiz';
 
-  let codigo = $state('');
+  let { intento, onemitido }: { intento: string; onemitido?: (d: Diploma) => void } = $props();
+
   let nombre = $state('');
   let acepta = $state(false);
   let busy = $state(false);
@@ -11,13 +12,14 @@
   let diploma = $state<Diploma | null>(null);
   let firma = $state<'valida' | 'invalida' | 'sin-comprobar'>('sin-comprobar');
   let copied = $state(false);
-  const listo = $derived(codigo.trim().length >= 12 && nombre.trim().length >= 3 && acepta);
+  const listo = $derived(nombre.trim().length >= 3 && acepta);
 
   async function submit() {
     busy = true; error = '';
     try {
-      diploma = await pedir(codigo, nombre);
+      diploma = await pedir(intento, nombre);
       firma = await comprobarFirma(diploma);
+      onemitido?.(diploma);
     } catch (e) {
       error = e instanceof TypeError ? 'Sin conexión con el servicio de diplomas.' : (e as Error).message;
     } finally {
@@ -30,15 +32,14 @@
   }
 </script>
 
-{#if !diplomasDisponibles}
-  <p class="muted">Esta copia del sitio se generó sin el servicio que emite los diplomas.</p>
-{:else if diploma}
+{#if diploma}
   <div class="card" role="status">
     <h2>Diploma emitido</h2>
     <dl>
       <dt>Emitido a</dt><dd>{diploma.nombre}</dd>
       <dt>Por</dt><dd>{diploma.curso}</dd>
       <dt>Fecha</dt><dd>{fmtDate(diploma.emitido)}</dd>
+      {#if diploma.nota !== null}<dt>Nota del examen</dt><dd>{diploma.nota} %</dd>{/if}
       <dt>Identificador</dt><dd class="mono">{diploma.id}</dd>
     </dl>
     <p>Guarda este enlace: es la única forma de volver a encontrar tu diploma, y con él cualquiera puede comprobar que es auténtico.</p>
@@ -50,10 +51,7 @@
   </div>
 {:else}
   <form class="form" onsubmit={(e) => { e.preventDefault(); if (listo && !busy) submit(); }}>
-    <label for="codigo">Código de invitación</label>
-    <input id="codigo" class="mono" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" bind:value={codigo} />
-
-    <label for="nombre">Tu nombre, como quieres que aparezca</label>
+    <label for="nombre">Tu nombre, como quieres que aparezca en el diploma</label>
     <input id="nombre" autocomplete="name" maxlength="80" bind:value={nombre} />
     <p class="muted">No se puede cambiar después de emitir el diploma.</p>
 
@@ -70,7 +68,7 @@
 {/if}
 
 <style>
-  .form { margin-top: 20px; max-width: 560px; }
+  .form { margin-top: 12px; max-width: 560px; }
   label { display: block; font-weight: 600; font-size: 0.92rem; margin-top: 16px; }
   input:not([type='checkbox']) { width: 100%; margin-top: 8px; font-size: 0.95rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel-2); color: var(--ink); }
   .check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; color: var(--ink-2); }
