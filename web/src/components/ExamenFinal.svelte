@@ -4,6 +4,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { diplomasDisponibles, empezarExamen, verIntento, entregarExamen, urlVerificar, type Examen, type Resultado } from '../lib/diploma';
   import PedirDiploma from './PedirDiploma.svelte';
+  import { progress } from '../lib/progress.svelte';
+  import { CON_EXAMEN, aprobado } from '../lib/examenModulo';
+  import { moduleUrl, pad } from '../lib/modules';
 
   // El intento en curso se recuerda en este navegador para poder seguir tras recargar la página
   const KEY = 'kcna-examen';
@@ -21,6 +24,8 @@
   let ahora = $state(Date.now());
   let reloj: ReturnType<typeof setInterval> | undefined;
 
+  // orientación, no requisito: los exámenes de módulo los califica el navegador
+  const pendientes = $derived(CON_EXAMEN.filter((m) => !aprobado(progress, m.n)));
   const sinResponder = $derived(marcadas.filter((m) => !m.length).length);
   const restante = $derived(examen ? Math.max(0, examen.expira - ahora) : 0);
   const mmss = $derived(`${Math.floor(restante / 60000)}:${String(Math.floor(restante / 1000) % 60).padStart(2, '0')}`);
@@ -116,6 +121,14 @@
       <li>Se aprueba con el 75 % (23 aciertos).</li>
       <li>Cada código permite 3 intentos. Empezar gasta uno, aunque no lo entregues.</li>
     </ul>
+    <p class="modulos" class:listo={!pendientes.length}>
+      {#if !pendientes.length}
+        Aprobaste los {CON_EXAMEN.length} exámenes de módulo: estás en buen punto para presentarlo.
+      {:else}
+        Llevas {CON_EXAMEN.length - pendientes.length} de {CON_EXAMEN.length} exámenes de módulo aprobados. No es obligatorio, pero conviene aprobar antes los que faltan:
+        {#each pendientes as m, k}<a href={moduleUrl(m.n) + '#examen'}>{pad(m.n)} {m.title}</a>{k < pendientes.length - 1 ? ', ' : '.'}{/each}
+      {/if}
+    </p>
     <label for="codigo">Código de invitación</label>
     <input id="codigo" class="mono" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" bind:value={codigo} />
     <div class="row">
@@ -176,6 +189,8 @@
   .form { margin-top: 20px; max-width: 560px; }
   .reglas { margin: 0 0 8px; padding-left: 20px; color: var(--ink-2); }
   .reglas li { margin-top: 4px; }
+  .modulos { margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--wait); border-radius: var(--r-m); background: var(--panel); font-size: 0.92rem; }
+  .modulos.listo { border-left-color: var(--ready); }
   label { display: block; font-weight: 600; font-size: 0.92rem; margin-top: 16px; }
   #codigo { width: 100%; margin-top: 8px; font-size: 0.95rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--panel-2); color: var(--ink); }
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }

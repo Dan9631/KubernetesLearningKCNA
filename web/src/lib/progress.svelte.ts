@@ -23,7 +23,8 @@ export interface Progress {
   ready: string[];
   /** marcador de lectura por módulo: última posición y la más lejana (ver lib/lectura.ts) */
   reading: Record<string, { last: ReadPos; far: ReadPos }>;
-  /** retos superados fuera del quiz: misiones de la Terminal ("term:crear") y casos de diagnóstico del módulo 09 ("diag:shop") */
+  /** retos superados fuera del quiz: misiones de la Terminal ("term:crear"), casos de diagnóstico del módulo 09 ("diag:shop")
+   *  y exámenes de módulo aprobados ("mod:04", ver lib/examenModulo.ts) */
   retos: string[];
   /** días con estudio (YYYY-MM-DD, hora local) para la constancia de la portada; se guardan los últimos KEEP_DAYS */
   days: string[];

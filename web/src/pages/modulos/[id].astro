@@ -8,6 +8,8 @@ import Marcador from '../../components/Marcador.svelte';
 import Acciones from '../../components/Acciones.svelte';
 import SimHost from '../../components/SimHost.svelte';
 import ModuleQuiz from '../../components/ModuleQuiz.svelte';
+import ExamenModulo from '../../components/ExamenModulo.svelte';
+import { CON_EXAMEN } from '../../lib/examenModulo';
 import Comandos from '../../components/practica/Comandos.svelte';
 import { drillsOf } from '../../lib/kube/drills';
 import Prosa from '../../components/Prosa.astro';
@@ -33,6 +35,7 @@ const toc = headings.filter((h) => h.depth === 2);
 const prev = MODULES.find((m) => m.n === meta.n - 1);
 const next = MODULES.find((m) => m.n === meta.n + 1);
 const domain = DOMAINS[meta.domain];
+const conExamen = CON_EXAMEN.some((m) => m.n === meta.n);
 const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
 ---
 <Base title={`${pad(meta.n)} · ${meta.title}`} description={meta.summary} width="read">
@@ -57,6 +60,7 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
             {toc.map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
             {drills > 0 && <a href="#comandos">Comandos de memoria</a>}
             <a href="#practica">Practica este módulo</a>
+            {conExamen && <a href="#examen">Examen del módulo</a>}
           </nav>
         )}
       </header>
@@ -93,6 +97,14 @@ const report = reportModule(meta.n, meta.title, `/modulos/${pad(meta.n)}`);
         <h2>Practica este módulo</h2>
         <ModuleQuiz client:visible module={meta.n} />
       </section>
+
+      {conExamen && (
+        <section id="examen" class="practica">
+          <h2>Examen del módulo</h2>
+          <p class="hint">Cuando la práctica te salga bien, compruébalo sin ayudas. Aprobarlo deja el módulo como aprobado en tu Ruta.</p>
+          <ExamenModulo client:visible module={meta.n} />
+        </section>
+      )}
 
       <!-- al final, junto a "Siguiente": marcar el módulo terminado (y el resumen de pasos del laboratorio) -->
       <Enhance client:load module={pad(meta.n)} />
