@@ -262,3 +262,13 @@ p { margin: 0; }
 /* ajustado: el diagrama entero cabe en la ventana, sin barras de desplazamiento */
 .prose .mermaid.dg-full.dg-fit { display: grid; place-items: center; overflow: hidden; }
 .prose .mermaid.dg-full.dg-fit svg { width: 100% !important; height: 100% !important; max-width: none !important; }
+
+/* Aviso de laboratorio en el navegador (Enhance.svelte, bajo "Laboratorio guiado") */
+.lab-web { margin: 1rem 0 1.5rem; padding: 0.9rem 1.1rem; border: 1px solid var(--line); border-left: 4px solid var(--helm); border-radius: var(--r-m); background: var(--helm-2); }
+.lab-web p { margin: 0; }
+.lab-web-t { font-weight: 600; color: var(--ink); }
+.lab-web-d { margin-top: 0.25rem !important; color: var(--ink-2); font-size: 0.95em; }
+.lab-web-l { margin: 0.6rem 0; padding-left: 1.2rem; }
+.lab-web-l li { margin: 0.2rem 0; }
+.lab-web-l a { font-weight: 600; }
+.lab-web-m { margin-left: 0.5rem; color: var(--ink-2); font-size: 0.9em; }

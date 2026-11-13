@@ -7,6 +7,7 @@
   import { guiasDe } from '../lib/diagramas';
   import { progress, toggleStep, toggleDone, markToday, save } from '../lib/progress.svelte';
   import { tieneExamen, aprobado } from '../lib/examenModulo';
+  import { labsWeb } from '../lib/labsWeb';
 
   // checklist=false: páginas que no son módulos (instalación) no muestran la barra de progreso
   let { module, checklist = true }: { module: string; checklist?: boolean } = $props();
@@ -110,12 +111,37 @@
     });
   }
 
+  // Aviso bajo "## Laboratorio guiado" con los escenarios del módulo que se hacen en el navegador (si los tiene).
+  // Se construye con textContent: nada de lo que muestra pasa por innerHTML.
+  function labEnNavegador(h2: HTMLElement) {
+    const labs = labsWeb(module);
+    if (!labs.length || h2.parentElement?.querySelector('.lab-web')) return;
+    const el = (tag: string, cls: string, text = '') => { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; return e; };
+    const box = el('aside', 'lab-web');
+    box.setAttribute('aria-label', 'Laboratorio en el navegador');
+    box.append(
+      el('p', 'lab-web-t', 'Hazlo en el navegador, sin instalar nada'),
+      el('p', 'lab-web-d', 'El mismo laboratorio en un clúster real de dos nodos, con comprobación en cada paso. Se abre en Killercoda, pide una cuenta gratuita y cada sesión dura una hora como máximo.'),
+    );
+    const ul = el('ul', 'lab-web-l');
+    for (const l of labs) {
+      const li = el('li', '');
+      const a = el('a', '', l.titulo) as HTMLAnchorElement;
+      a.href = l.url; a.target = '_blank'; a.rel = 'noopener';
+      li.append(a, el('span', 'lab-web-m', `${l.minutos} min`));
+      ul.append(li);
+    }
+    box.append(ul, el('p', 'lab-web-d', 'Si prefieres tu propio clúster, sigue los pasos de abajo.'));
+    h2.after(box);
+  }
+
   // Los pasos del laboratorio son los h3 entre "## Laboratorio guiado" y el siguiente h2.
   // Las casillas se insertan UNA vez; su estado lo actualiza el $effect de abajo.
   let steps = $state<{ id: string; box: HTMLInputElement; h: HTMLElement }[]>([]);
   function labSteps(prose: HTMLElement) {
     const h2 = [...prose.querySelectorAll('h2')].find((h) => /laboratorio/i.test(h.textContent ?? ''));
     if (!h2) return;
+    labEnNavegador(h2);
     const found: typeof steps = [];
     let el = h2.nextElementSibling;
     let n = 0;
