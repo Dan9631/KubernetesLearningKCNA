@@ -23,6 +23,10 @@
   let confirmar = $state(false);
   let ahora = $state(Date.now());
   let reloj: ReturnType<typeof setInterval> | undefined;
+  // diferencia entre el reloj del servidor y el de este navegador: el plazo lo lleva el servidor, y un reloj
+  // local atrasado entregaría tarde y perdería el intento
+  let desfase = 0;
+  const hora = () => Date.now() + desfase;
 
   // orientación, no requisito: los exámenes de módulo los califica el navegador
   const pendientes = $derived(CON_EXAMEN.filter((m) => !aprobado(progress, m.n)));
@@ -39,10 +43,11 @@
     examen = e;
     marcadas = e.preguntas.map((_, i) => previas?.[i] ?? []);
     paso = 'examen';
-    ahora = Date.now();
+    desfase = e.ahora ? e.ahora - Date.now() : 0;
+    ahora = hora();
     clearInterval(reloj);
     reloj = setInterval(() => {
-      ahora = Date.now();
+      ahora = hora();
       if (examen && ahora >= examen.expira && !busy) entregar(); // se acabó el tiempo: se entrega lo que haya
     }, 1000);
   }

@@ -27,7 +27,8 @@ export interface Pregunta {
   elige: number;
 }
 /** Un intento en curso: las preguntas que tocaron y hasta cuándo se puede entregar */
-export interface Examen { expira: number; aprobar: number; preguntas: Pregunta[] }
+/** `ahora` es la hora del servidor al responder: el plazo se cuenta con ella, no con el reloj del navegador */
+export interface Examen { expira: number; aprobar: number; preguntas: Pregunta[]; ahora?: number }
 /** Un intento ya entregado */
 export interface Resultado { entregado: number; nota: number; aprobado: boolean; aprobar: number; aciertos?: number; total?: number; diploma: string | null }
 

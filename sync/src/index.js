@@ -126,7 +126,7 @@ async function examen(req, env, h, intento) {
         const inv = await env.DB.prepare('SELECT usos, usos_max FROM invitacion WHERE codigo_hash = ?').bind(ch).first();
         return reply({ error: inv && inv.usos < inv.usos_max ? 'sin_intentos' : 'codigo_invalido' }, 403, h);
       }
-      return reply({ intento: secreto, expira: now + EXAMEN_MINUTOS * 60_000, aprobar: EXAMEN_APROBAR, preguntas: await enunciados(env, ids) }, 201, h);
+      return reply({ intento: secreto, ahora: now, expira: now + EXAMEN_MINUTOS * 60_000, aprobar: EXAMEN_APROBAR, preguntas: await enunciados(env, ids) }, 201, h);
     }
 
     const ih = await sha256hex(intento);
@@ -140,7 +140,7 @@ async function examen(req, env, h, intento) {
     if (req.method === 'GET') {
       if (row.entregado) return reply(resultado(), 200, h);
       if (Date.now() > expira) return reply({ error: 'expirado' }, 410, h);
-      return reply({ expira, aprobar: EXAMEN_APROBAR, preguntas: await enunciados(env, ids) }, 200, h);
+      return reply({ ahora: Date.now(), expira, aprobar: EXAMEN_APROBAR, preguntas: await enunciados(env, ids) }, 200, h);
     }
 
     // Entregar: se califica una sola vez y dentro del plazo (con un minuto de margen por la red)
