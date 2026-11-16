@@ -132,8 +132,8 @@ spec:
       <div class="row">
         <span class="lbl mono">whoami-{v}</span>
         <div class="track {v}">
-          <span class="exp" style={`width:${e}%`} title="esperado"></span>
-          <span class="real" style={`width:${c}%`} title="real"></span>
+          <span class="exp" style={`transform:scaleX(${e / 100})`} title="esperado"></span>
+          <span class="real" style={`transform:scaleX(${c / 100})`} title="real"></span>
         </div>
         <span class="num mono">{c} <small>/ {e} esperado</small></span>
       </div>
@@ -169,8 +169,9 @@ spec:
   .row { display: grid; grid-template-columns: 90px 1fr auto; gap: 10px; align-items: center; font-size: 0.85rem; }
   .track { position: relative; height: 18px; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 5px; overflow: hidden; --c: var(--helm); }
   .track.v2 { --c: #8250df; }
-  .track .exp { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--c) 18%, transparent); transition: width var(--dur); }
-  .track .real { position: absolute; inset: 3px auto 3px 0; background: var(--c); border-radius: 3px; transition: width 40ms linear; }
+  /* las barras crecen con scaleX (sin reflow en cada petición); ocupan toda la pista y se escalan desde la izquierda */
+  .track .exp { position: absolute; inset: 0; transform-origin: left; background: color-mix(in srgb, var(--c) 18%, transparent); transition: transform var(--dur) var(--ease); }
+  .track .real { position: absolute; inset: 3px 0; transform-origin: left; background: var(--c); border-radius: 3px; transition: transform 40ms linear; }
   .num small { color: var(--ink-3); font-size: 0.72rem; }
   .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .col { display: grid; gap: 8px; min-width: 0; align-content: start; }

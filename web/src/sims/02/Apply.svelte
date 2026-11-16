@@ -214,7 +214,7 @@ status: { replicas: 2, readyReplicas: 2, availableReplicas: 2, observedGeneratio
   .box.on text { fill: var(--helm-ink); }
   .msg { transition-property: transform; transition-timing-function: var(--ease); }
   .msg circle { fill: var(--wait); stroke: var(--panel); stroke-width: 2; }
-  .d { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-2); font-family: var(--mono); font-size: 0.68rem; transition: all var(--dur); }
+  .d { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-2); font-family: var(--mono); font-size: 0.68rem; transition: border-color var(--dur), color var(--dur), background var(--dur); }
   .d.on { border-color: var(--helm); background: var(--helm-2); color: var(--helm-ink); font-weight: 600; }
   .objtitle { font-size: 0.76rem; color: var(--ink-3); margin-bottom: 4px; }
   .obj pre { min-height: 150px; font-size: 0.78rem; }

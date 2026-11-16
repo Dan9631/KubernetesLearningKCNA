@@ -78,12 +78,17 @@
   /* opciones con comandos largos (sin espacios) parten línea en vez de salirse en móvil */
   .opt > span:not(.l):not(.you) { min-width: 0; overflow-wrap: anywhere; }
   .q, .explain { overflow-wrap: anywhere; }
-  .opt { display: flex; gap: 12px; align-items: flex-start; text-align: left; font: inherit; font-size: 0.98rem; padding: 10px 12px; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; transition: border-color var(--dur), background var(--dur); }
+  .opt { display: flex; gap: 12px; align-items: flex-start; text-align: left; font: inherit; font-size: 0.98rem; padding: 10px 12px; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; transition: border-color var(--dur-fast), background var(--dur-fast), scale var(--dur-fast) var(--ease); }
   .opt:not(:disabled):hover { border-color: var(--helm); }
   .opt.sel { border-color: var(--helm); background: var(--helm-2); }
   .opt.good { border-color: var(--ready); background: var(--ready-2); }
   .opt.bad { border-color: var(--fail); background: var(--fail-2); }
   .opt:disabled { cursor: default; }
+  /* responde al pulsar; al corregir, la buena late y la equivocada dice que no (animaciones en global.css) */
+  .opt:active:not(:disabled) { scale: 0.985; }
+  .opt.good { animation: mc-acierto var(--spring-pop-dur) var(--ease); }
+  .opt.bad { animation: mc-fallo 320ms var(--ease); }
+  .explain { animation: mc-entra var(--dur) var(--ease) both; }
   .opt.sel .l { border-color: var(--helm); color: var(--helm-ink); }
   .opt.good .l { border-color: var(--ready); color: var(--ready); }
   .opt.bad .l { border-color: var(--fail); color: var(--fail); }
