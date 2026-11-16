@@ -136,7 +136,7 @@ module.exports = [
  ["Set automountServiceAccountToken: false", "Delete the default ServiceAccount", "Set hostPID: true", "Set imagePullPolicy: Never"], [0],
  "automountServiceAccountToken: false (en el Pod o en la ServiceAccount) evita montar el token, aplicando mínimo privilegio. Borrar la ServiceAccount default no es viable porque el control plane la recrea.",
  "https://kubernetes.io/docs/concepts/security/service-accounts/"],
-["Security", 5, "Which CNCF graduated project performs runtime threat detection, for example alerting when a shell is spawned inside a container?",
+["Security", 10, "Which CNCF graduated project performs runtime threat detection, for example alerting when a shell is spawned inside a container?",
  ["Falco", "Trivy", "Harbor", "Notary"], [0],
  "Falco (graduado en 2024) analiza las llamadas al sistema del kernel (por defecto con una sonda eBPF moderna) y genera alertas según reglas. Trivy es un escáner de vulnerabilidades, Harbor un registry y Notary firma de contenido; ninguno detecta comportamiento en tiempo de ejecución.",
  ["https://www.cncf.io/projects/falco/", "https://falco.org/docs/"]],

@@ -94,7 +94,39 @@ Cada **contenedor** tiene además su propio estado: `Waiting`, `Running` o `Term
 | `OnFailure` | Reinicia solo si termina con error | Jobs |
 | `Never` | No reinicia nunca | Jobs, tareas puntuales |
 
-Los reinicios usan una espera exponencial (10 s, 20 s, 40 s... hasta 5 min; se reinicia el contador si el contenedor aguanta 10 min sin fallar): eso es el famoso **CrashLoopBackOff**. Los sidecars nativos ignoran la `restartPolicy` del Pod (siempre se reinician) y, desde v1.35, la funcionalidad `ContainerRestartRules` (beta, activada por defecto) permite además fijar `restartPolicy` en contenedores concretos; para el examen, lo clásico es el campo del Pod. El kubelet reinicia el contenedor **en el mismo nodo**; no mueve el Pod. Las **probes** (liveness, readiness, startup) permiten al kubelet detectar contenedores colgados o no listos; las verás en el módulo de troubleshooting.
+Los reinicios usan una espera exponencial (10 s, 20 s, 40 s... hasta 5 min; se reinicia el contador si el contenedor aguanta 10 min sin fallar): eso es el famoso **CrashLoopBackOff**. Los sidecars nativos ignoran la `restartPolicy` del Pod (siempre se reinician) y, desde v1.35, la funcionalidad `ContainerRestartRules` (beta, activada por defecto) permite además fijar `restartPolicy` en contenedores concretos; para el examen, lo clásico es el campo del Pod. El kubelet reinicia el contenedor **en el mismo nodo**; no mueve el Pod.
+
+#### Probes: cómo sabe el kubelet si tu contenedor está sano
+
+Que un proceso esté corriendo no significa que funcione: puede estar colgado o todavía arrancando. Para eso existen las **sondas** (**probes**): comprobaciones que el kubelet ejecuta periódicamente contra cada contenedor. Hay tres, y cada una responde a una pregunta distinta:
+
+| Sonda | Pregunta | Si falla... |
+|---|---|---|
+| **livenessProbe** | ¿Sigue vivo o se colgó? | El kubelet **mata y reinicia** el contenedor (según la `restartPolicy`) |
+| **readinessProbe** | ¿Puede atender tráfico ahora mismo? | El Pod deja de estar **Ready** (`0/1` en `kubectl get pods`) y no recibe tráfico de los Services (módulo 06); **no se reinicia** |
+| **startupProbe** | ¿Ya terminó de arrancar? | Mientras no tenga éxito, liveness y readiness **no se ejecutan**; si agota sus intentos, el contenedor se reinicia |
+
+La diferencia que más se pregunta: **liveness reinicia, readiness solo aparta**. Una app que tarda 30 s en calentar su caché necesita readiness (que no le llegue tráfico mientras tanto), no liveness. Y una app que tarda minutos en arrancar necesita startup, para que la liveness no la mate antes de que termine. Si un contenedor no define una sonda, Kubernetes la da por superada.
+
+Cada sonda usa uno de cuatro mecanismos: `httpGet` (éxito con un código 200-399), `tcpSocket` (éxito si abre la conexión), `exec` (éxito si el comando sale con 0) o `grpc`. Y se ajusta con unos pocos parámetros: `initialDelaySeconds`, `periodSeconds` (cada cuánto; por defecto 10 s), `timeoutSeconds`, `failureThreshold` (cuántos fallos seguidos cuentan como fallo; por defecto 3) y `successThreshold`.
+
+```yaml
+    containers:
+    - name: web
+      image: nginx:1.27-alpine
+      readinessProbe:            # ¿le mando tráfico?
+        httpGet: { path: /, port: 80 }
+        periodSeconds: 5
+      livenessProbe:             # ¿lo reinicio?
+        tcpSocket: { port: 80 }
+        failureThreshold: 3
+      startupProbe:              # hasta 30 × 10 s = 5 min para arrancar
+        httpGet: { path: /, port: 80 }
+        failureThreshold: 30
+        periodSeconds: 10
+```
+
+Cómo se ven en un clúster con problemas (una liveness mal configurada, una readiness que no pasa) lo practicarás en el módulo de troubleshooting.
 
 ### 3. ReplicaSet: mantener N copias
 
@@ -915,6 +947,7 @@ Alternativa declarativa pura para la actualización: cambia `image:` a `nginx:1.
 
 - **Pod** = unidad mínima; contenedores que comparten IP (`localhost`) y volúmenes; efímero (nueva IP al recrearse). Patrones: sidecar, ambassador, adapter, **init containers** (antes y en orden).
 - Fases: **Pending, Running, Succeeded, Failed, Unknown**. `CrashLoopBackOff`, `ImagePullBackOff`, `Completed` son motivos, no fases. `restartPolicy`: **Always** (defecto), OnFailure, Never.
+- **Probes**: **liveness** falla → reinicia; **readiness** falla → sale del tráfico del Service, sin reiniciar; **startup** retiene a las otras dos hasta que la app arranca. Mecanismos: `httpGet` (200-399), `tcpSocket`, `exec` (exit 0), `grpc`.
 - **ReplicaSet** mantiene N Pods por **labels**; **Deployment** gestiona ReplicaSets y da rolling updates y rollbacks (`rollout status/history/undo/restart`).
 - RollingUpdate: **maxSurge** (extra, redondea arriba) y **maxUnavailable** (faltantes, redondea abajo), ambos 25% por defecto. **Recreate** = corte.
 - Imperativo (`run`, `create`, `expose`, `scale`, `set image`) vs declarativo (`apply`). `--dry-run=client -o yaml` para generar YAML. Apply clásico usa `last-applied-configuration`; **server-side apply** usa `managedFields` y conflictos.
