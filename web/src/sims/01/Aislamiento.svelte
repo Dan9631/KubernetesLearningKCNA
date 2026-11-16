@@ -161,7 +161,7 @@
   .box.kernel { background: var(--ready-2); border-color: var(--ready); }
   .box.kernel.on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ready) 25%, transparent); }
   .nsring { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
-  .nsring span { font-size: 0.62rem; padding: 0 5px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-3); transition: all var(--dur); }
+  .nsring span { font-size: 0.62rem; padding: 0 5px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-3); transition: border-color var(--dur), color var(--dur), background var(--dur); }
   .nsring span.on { border-color: var(--ready); color: var(--ready); background: var(--ready-2); font-weight: 600; }
   .nsbtns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 14px; }
   .nsinfo { margin-top: 8px; }

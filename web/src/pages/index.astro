@@ -67,14 +67,14 @@ const domains = (['fundamentals', 'orchestration', 'delivery', 'architecture'] a
   .w { --c: var(--helm); display: grid; gap: 10px; }
   .w.orchestration { --c: #8250df; } .w.delivery { --c: var(--wait); } .w.architecture { --c: var(--ready); }
   .fill { height: 10px; border-radius: 5px; background: var(--line-2); overflow: hidden; }
-  .fill span { display: block; height: 100%; width: var(--pct); background: var(--c); border-radius: 5px; animation: grow var(--dur-slow) var(--ease) both; }
+  .fill span { display: block; height: 100%; width: var(--pct); background: var(--c); border-radius: 5px; transform-origin: left; animation: grow var(--dur-slow) var(--ease) both; }
   .txt { display: grid; }
   .txt strong { font-size: 1.6rem; line-height: 1.1; }
   .txt span { font-weight: 500; }
   .txt em { font-style: normal; color: var(--ink-3); font-size: 0.85rem; }
   .route { padding: 36px 0; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 40px; }
   .rhead { position: sticky; top: 80px; align-self: start; }
-  @keyframes grow { from { width: 0; } }
+  @keyframes grow { from { transform: scaleX(0); } }
   /* quien vuelve ya tiene "Hoy" arriba: el hero queda como recordatorio de la idea central, sin llamadas de bienvenida */
   :global([data-vuelve]) .hero { padding-top: 36px; }
   :global([data-vuelve]) .hero .lead, :global([data-vuelve]) .hero .cta, :global([data-vuelve]) .hero .copy :global(.seguir) { display: none; }

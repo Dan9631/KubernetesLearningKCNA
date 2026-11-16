@@ -213,7 +213,7 @@
   dd { margin: 0; color: var(--ink); }
   dd pre { font-size: 0.76rem; }
   @media (max-width: 480px) { dl { grid-template-columns: 1fr; gap: 2px; } dt { margin-top: 6px; } }
-  .d { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-2); font-family: var(--mono); font-size: 0.68rem; transition: all var(--dur); }
+  .d { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-2); font-family: var(--mono); font-size: 0.68rem; transition: border-color var(--dur), color var(--dur), background var(--dur); }
   .d.on { border-color: var(--helm); color: var(--helm-ink); background: var(--helm-2); }
   .d.off { border-color: var(--fail); color: var(--fail); text-decoration: line-through; }
   .out { margin-top: 12px; display: grid; gap: 8px; }

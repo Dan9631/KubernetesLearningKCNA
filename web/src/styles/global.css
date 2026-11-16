@@ -42,9 +42,16 @@
   --wide: 1180px;
   --rail: 272px;
 
+  /* Movimiento. --dur-fast para lo que pasa muchas veces (respuestas, pulsaciones); --dur para entradas;
+     --dur-slow para lo que pasa una vez. --ease para entrar, --ease-in (más corto) para salir. */
+  --dur-fast: 160ms;
   --dur: 220ms;
   --dur-slow: 600ms;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  /* resorte (scripts de motion-craft: --duration 0.35 --bounce 0.25): rebote apenas visible, solo en transform */
+  --spring-pop: linear(0, 0.029, 0.103, 0.202, 0.313, 0.426, 0.534, 0.634, 0.721, 0.796, 0.858, 0.908, 0.947, 0.976, 0.997, 1.012, 1.021, 1.026, 1.028, 1.028, 1.026, 1.024, 1.021, 1.018, 1.014, 1.011, 1.009, 1.007, 1.005, 1.003, 1.002, 1);
+  --spring-pop-dur: 450ms;
 
   color-scheme: light;
 }
@@ -72,9 +79,31 @@
   color-scheme: dark;
 }
 
+/* Animaciones compartidas. Usan `translate`/`scale` sueltos para no pisar el `transform` de :active ni de las simulaciones. */
+/* respuesta correcta: un pulso breve que la señala */
+@keyframes mc-acierto { 40% { scale: 1.025; } }
+/* respuesta equivocada: un «no» con la cabeza, corto y de poca amplitud */
+@keyframes mc-fallo { 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 2px 0; } }
+/* lo que aparece como consecuencia (una explicación, un aviso): sube 8 px mientras se funde */
+@keyframes mc-entra { from { opacity: 0; translate: 0 8px; } }
+@keyframes mc-fundido { from { opacity: 0; } }
+
+/* Cambio de página: cabecera y ruta se quedan; el contenido sale rápido y el nuevo entra desde abajo */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: 120ms var(--ease-in) both mc-sale; }
+::view-transition-new(root) { animation: var(--dur) var(--ease) both mc-entra; }
+@keyframes mc-sale { to { opacity: 0; } }
+/* fuera del fundido general: la cabecera no se mueve y la ruta del módulo solo cambia el resaltado */
+header.top { view-transition-name: cabecera; }
+.layout > .rail { view-transition-name: ruta; }
+::view-transition-group(cabecera), ::view-transition-group(ruta) { animation-duration: var(--dur); }
+
 @media (prefers-reduced-motion: reduce) {
-  :root { --dur: 0ms; --dur-slow: 0ms; }
+  :root { --dur: 0ms; --dur-slow: 0ms; --dur-fast: 0ms; }
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  /* Movimiento reducido diseñado, no apagado: lo que aparece sigue notándose con un fundido corto, sin desplazarse */
+  :is(.explain, .why, .check-why) { animation-name: mc-fundido !important; animation-duration: 150ms !important; }
+  @view-transition { navigation: none; }
 }
 
 * { box-sizing: border-box; }
@@ -191,7 +220,14 @@ p { margin: 0; }
 .prose .check-opt:disabled { cursor: default; opacity: 0.7; }
 .prose .check-opt.right { opacity: 1; border-color: var(--ready); background: var(--ready-2); box-shadow: inset 0 0 0 1px var(--ready); }
 .prose .check-opt.picked:not(.right) { opacity: 1; border-color: var(--fail); background: var(--fail-2); box-shadow: inset 0 0 0 1px var(--fail); }
-.prose .check-why { margin-top: 10px; font-size: 0.92rem; color: var(--ink-2); }
+/* casilla de cada paso del laboratorio: se hunde al pulsarla */
+.prose .step-box { transition: scale var(--dur-fast) var(--ease); }
+.prose .step-box:active { scale: 0.85; }
+.prose .check-opt { transition: border-color var(--dur-fast), background var(--dur-fast), scale var(--dur-fast) var(--ease); }
+.prose .check-opt:active:not(:disabled) { scale: 0.97; }
+.prose .check-opt.right { animation: mc-acierto var(--spring-pop-dur) var(--ease); }
+.prose .check-opt.picked:not(.right) { animation: mc-fallo 320ms var(--ease); }
+.prose .check-why { margin-top: 10px; font-size: 0.92rem; color: var(--ink-2); animation: mc-entra var(--dur) var(--ease) both; }
 .prose .check-why strong { color: var(--ink); }
 @media (pointer: coarse) { .prose .check-opt { min-height: 44px; } }
 /* plegados de lib/plegar.ts: ficha de metadatos y secciones de consulta */
@@ -233,8 +269,8 @@ p { margin: 0; }
 @media (pointer: coarse) { .prose .predice-lab input { font-size: 16px; min-height: 44px; } }
 
 /* Diagramas con guía (DiagramaGuia.svelte): lo que no está en foco se atenúa; los huecos y el foco se marcan */
-.prose .mermaid svg.dg-on :is(g.node, path[data-edge], g.edgeLabel) { opacity: 0.2; transition: opacity 0.25s; }
-.prose .mermaid svg.dg-on :is(.messageText, .messageLine0, .messageLine1, .sequenceNumber) { transition: opacity 0.25s; }
+.prose .mermaid svg.dg-on :is(g.node, path[data-edge], g.edgeLabel) { opacity: 0.2; transition: opacity 0.25s var(--ease); }
+.prose .mermaid svg.dg-on :is(.messageText, .messageLine0, .messageLine1, .sequenceNumber) { transition: opacity 0.25s var(--ease); }
 /* .dg-on repetido: tiene que ganar a la regla de atenuado de arriba */
 .prose .mermaid svg.dg-on.dg-on .dg-visto { opacity: 0.5; }
 .prose .mermaid svg.dg-on.dg-on .dg-foco { opacity: 1; }

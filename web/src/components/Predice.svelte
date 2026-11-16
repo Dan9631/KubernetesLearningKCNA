@@ -38,12 +38,17 @@
   .k { font-size: 0.8rem; font-weight: 600; color: var(--helm-ink); text-transform: uppercase; letter-spacing: 0.04em; }
   .q { margin-top: 4px; font-weight: 500; }
   .opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .opt { font: inherit; font-size: 0.92rem; text-align: left; padding: 8px 12px; min-height: 40px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+  .opt { font: inherit; font-size: 0.92rem; text-align: left; padding: 8px 12px; min-height: 40px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; transition: border-color var(--dur-fast), box-shadow var(--dur-fast), scale var(--dur-fast) var(--ease); }
   .opt:hover:not(:disabled) { border-color: var(--helm); }
   .opt.picked { border-color: var(--helm); box-shadow: inset 0 0 0 1px var(--helm); }
   .opt:disabled { cursor: default; opacity: 0.75; }
   .opt.right { opacity: 1; border-color: var(--ready); background: var(--ready-2); box-shadow: inset 0 0 0 1px var(--ready); }
   .opt.wrong { opacity: 1; border-color: var(--fail); background: var(--fail-2); box-shadow: inset 0 0 0 1px var(--fail); }
+  /* responde al pulsar; al comprobar, la buena late y la equivocada dice que no (animaciones en global.css) */
+  .opt:active:not(:disabled) { scale: 0.97; }
+  .opt.right { animation: mc-acierto var(--spring-pop-dur) var(--ease); }
+  .opt.wrong { animation: mc-fallo 320ms var(--ease); }
+  .why { animation: mc-entra var(--dur) var(--ease) both; }
   .next, .why { margin-top: 10px; font-size: 0.92rem; color: var(--ink-2); }
   .why strong { color: var(--ink); }
   .link { background: none; border: 0; padding: 0; color: var(--helm-ink); text-decoration: underline; cursor: pointer; font: inherit; }
