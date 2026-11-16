@@ -54,6 +54,11 @@ for (const t of new Set(q.map(x => x.topic))) {
 }
 const terms = fc.map(c => c.term.toLowerCase());
 if (new Set(terms).size !== terms.length) errs.push('duplicate flashcard terms');
+// Orden del curso: nada se pregunta antes del módulo que lo explica (ver conceptos.js)
+const CONCEPTOS = require(require('path').join(__dirname, 'conceptos.js'));
+const antes = (texto, modulo, quien) => { for (const [re, desde, donde] of CONCEPTOS) if (modulo < desde && re.test(texto)) errs.push(quien + ' (módulo ' + modulo + ') usa ' + re + ', que se explica en ' + donde); };
+for (const x of q) antes(x.q + ' ' + x.answer.map(i => x.options[i]).join(' '), x.module, x.id);
+for (const c of fc) antes(c.term, c.module, 'flashcard ' + c.term);
 console.log('Questions:', q.length, 'unique ids:', ids.size);
 console.log('By domain:', byDom);
 console.log('By topic:'); Object.entries(byTopic).forEach(([k, v]) => console.log('  ' + k + ': ' + v));

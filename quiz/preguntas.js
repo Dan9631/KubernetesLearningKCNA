@@ -383,7 +383,7 @@ window.KCNA_QUESTIONS = [
     id: "F024",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 3,
+    module: 6,
     q: "A container is alive but needs 30 seconds to warm its cache before it can serve requests. Which mechanism prevents Service traffic from reaching it during that time?",
     options: [
       "A preStop hook",
@@ -399,7 +399,7 @@ window.KCNA_QUESTIONS = [
     id: "F025",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 3,
+    module: 9,
     q: "What happens when a container's livenessProbe keeps failing beyond its failureThreshold?",
     options: [
       "The Pod is rescheduled to a different node",
@@ -415,7 +415,7 @@ window.KCNA_QUESTIONS = [
     id: "F026",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 3,
+    module: 9,
     q: "A slow-starting legacy application takes up to 3 minutes to boot. Which probe should be used so that liveness checks do not kill it during startup?",
     options: [
       "readinessProbe",
@@ -431,7 +431,7 @@ window.KCNA_QUESTIONS = [
     id: "F027",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 3,
+    module: 4,
     q: "Every container in a Pod sets CPU and memory requests equal to their limits. Which QoS class is assigned to the Pod?",
     options: [
       "Guaranteed",
@@ -447,7 +447,7 @@ window.KCNA_QUESTIONS = [
     id: "F028",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 3,
+    module: 4,
     q: "Under node memory pressure, Pods of which QoS class are generally evicted first by the kubelet?",
     options: [
       "System",
@@ -479,7 +479,7 @@ window.KCNA_QUESTIONS = [
     id: "F030",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 3,
+    module: 4,
     q: "A container repeatedly reaches its CPU limit. What is the effect?",
     options: [
       "The node is cordoned",
@@ -576,7 +576,7 @@ window.KCNA_QUESTIONS = [
     id: "F036",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 2,
+    module: 3,
     q: "Which two namespaces exist by default in a newly created cluster? (Choose 2)",
     options: [
       "kube-monitoring",
@@ -625,7 +625,7 @@ window.KCNA_QUESTIONS = [
     id: "F039",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 2,
+    module: 8,
     q: "What is the purpose of a finalizer in an object's metadata?",
     options: [
       "To mark an object as read-only",
@@ -852,7 +852,7 @@ window.KCNA_QUESTIONS = [
     id: "F053",
     domain: "fundamentals",
     topic: "Administration",
-    module: 2,
+    module: 3,
     q: "Which two commands list Pods across all namespaces? (Choose 2)",
     options: [
       "kubectl get pods --all-namespaces",
@@ -884,7 +884,7 @@ window.KCNA_QUESTIONS = [
     id: "F055",
     domain: "fundamentals",
     topic: "Administration",
-    module: 2,
+    module: 3,
     q: "How can you generate a Deployment manifest without creating the object in the cluster?",
     options: [
       "kubectl explain deployment -o yaml",
@@ -901,7 +901,7 @@ window.KCNA_QUESTIONS = [
     id: "F056",
     domain: "fundamentals",
     topic: "Administration",
-    module: 2,
+    module: 4,
     q: "Which object limits the total CPU, memory and number of objects that can be consumed in a namespace?",
     options: [
       "ResourceQuota",
@@ -917,7 +917,7 @@ window.KCNA_QUESTIONS = [
     id: "F057",
     domain: "fundamentals",
     topic: "Administration",
-    module: 2,
+    module: 4,
     q: "A namespace has a LimitRange with default requests and limits. What happens when a Pod without resource settings is created there?",
     options: [
       "It becomes Guaranteed regardless of the values",
@@ -1422,7 +1422,7 @@ window.KCNA_QUESTIONS = [
     id: "F088",
     domain: "fundamentals",
     topic: "Containerization",
-    module: 1,
+    module: 3,
     q: "How should a Pod authenticate to a private container registry in order to pull images?",
     options: [
       "Reference a Secret of type kubernetes.io/dockerconfigjson in imagePullSecrets, directly or through the ServiceAccount",
@@ -2425,7 +2425,7 @@ window.KCNA_QUESTIONS = [
     id: "O034",
     domain: "orchestration",
     topic: "Security",
-    module: 5,
+    module: 10,
     q: "Which CNCF graduated project performs runtime threat detection, for example alerting when a shell is spawned inside a container?",
     options: [
       "Notary",
@@ -4813,7 +4813,7 @@ window.KCNA_QUESTIONS = [
     id: "D050",
     domain: "delivery",
     topic: "Debugging",
-    module: 3,
+    module: 9,
     q: "A Pod's RESTARTS count keeps increasing. kubectl logs --previous shows that the application started normally with no errors, and kubectl describe shows the events 'Liveness probe failed: ... connection refused' followed by 'Container app failed liveness probe, will be restarted'. What is the most likely cause?",
     options: [
       "The image cannot be pulled from the registry",
