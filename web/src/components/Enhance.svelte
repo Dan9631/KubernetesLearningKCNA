@@ -27,6 +27,21 @@
     };
   }
 
+  // mermaid parte una etiqueta larga en varias líneas solo si su ancho medido es exactamente el máximo (bbox.width === 120).
+  // Con zoom del navegador o escala de pantalla la medida sale con decimales (120.00001525), la comparación falla y el
+  // texto queda en una línea recortada. Mientras dibuja, las medidas se ajustan a 1/20 de píxel.
+  let midiendo = 0;
+  const medirOriginal = typeof Element === 'undefined' ? undefined! : Element.prototype.getBoundingClientRect;
+  async function medidasEstables<T>(fn: () => Promise<T>): Promise<T> {
+    const snap = (n: number) => Math.round(n * 20) / 20;
+    if (!midiendo++) Element.prototype.getBoundingClientRect = function (this: Element) {
+      const r = medirOriginal.call(this);
+      return new DOMRect(snap(r.x), snap(r.y), snap(r.width), snap(r.height));
+    };
+    try { return await fn(); }
+    finally { if (!--midiendo) Element.prototype.getBoundingClientRect = medirOriginal; }
+  }
+
   let diagrams: { div: HTMLDivElement; src: string }[] = [];
   async function drawDiagrams() {
     const { default: m } = await import('mermaid');
@@ -35,7 +50,7 @@
       flowchart: { useMaxWidth: false }, sequence: { useMaxWidth: false } });
     for (const [k, { div, src }] of diagrams.entries()) {
       try {
-        const { svg } = await m.render(`mmd-${module}-${k}-${Date.now()}`, src);
+        const { svg } = await medidasEstables(() => m.render(`mmd-${module}-${k}-${Date.now()}`, src));
         div.innerHTML = svg;
         // si al encogerlo el texto sigue legible (≥ 12 px de 15), se ajusta a la columna; si no, se desplaza con aviso
         const el = div.querySelector('svg');
