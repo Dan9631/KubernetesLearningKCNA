@@ -19,7 +19,7 @@
  *    la cara. Fuera de pantalla o con la pestaña oculta no se calcula nada.
  */
 
-export type Estado = 'reposo' | 'pensando' | 'dormido' | 'feliz' | 'saludo' | 'triste' | 'timon';
+export type Estado = 'reposo' | 'pensando' | 'dormido' | 'feliz' | 'saludo' | 'asiente' | 'triste' | 'timon';
 
 interface Params {
   sx: number;     // ancho relativo
@@ -76,6 +76,15 @@ const ESTADOS: Record<Estado, Def> = {
       wave: kf(t, [[0, 0], [0.3, 1], [1.3, 1], [1.6, 0]]) * Math.sin(t * 2 * Math.PI * 2.6),
       lean: kf(t, [[0, 0], [0.3, -3], [1.3, -3], [1.6, 0]]),
       boca: 1,
+    }),
+  },
+  asiente: {
+    // acuse de recibo al elegir algo: un cabeceo corto (se encoge y vuelve), sin cambiar de cara
+    dur: 0.38,
+    pose: (t) => ({
+      sy: kf(t, [[0, 1], [0.12, 0.92], [0.38, 1]]),
+      sx: kf(t, [[0, 1], [0.12, 1.05], [0.38, 1]]),
+      lean: kf(t, [[0, 0], [0.12, 2], [0.38, 0]]),
     }),
   },
   triste: {
@@ -148,6 +157,8 @@ export interface Grumete {
   readonly estado: Estado;
   readonly base: Estado;
   setEnergia(v: number): Grumete;
+  /** Mira un elemento de la página (una opción, un mensaje) hasta que se le pase null; null vuelve a seguir al cursor. */
+  mirar(destino: Element | null): Grumete;
   destroy(): void;
 }
 
@@ -281,8 +292,20 @@ export function createGrumete(contenedor: HTMLElement, opts: { energia?: number;
 
   /* ---------- mirada ---------- */
   const mira = { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 };
+  let objetivo: Element | null = null; // si hay uno, mira ese elemento en vez del cursor
+  const tope = (v: number) => Math.max(-1, Math.min(1, v));
+  function mirarObjetivo() {
+    if (!objetivo?.isConnected) { objetivo = null; return; }
+    const r = el.getBoundingClientRect(), o = objetivo.getBoundingClientRect();
+    // alcance amplio: así una opción de arriba y una de abajo dan miradas distintas en vez de saturar las dos
+    const alcance = Math.max(380, r.width * 3);
+    // apunta al principio del elemento (la letra de una opción), no a su centro: en filas anchas el centro queda
+    // siempre a la derecha y todas las opciones darían la misma mirada
+    mira.tx = tope((o.left + Math.min(o.width / 2, 48) - (r.left + r.width / 2)) / alcance);
+    mira.ty = tope((o.top + o.height / 2 - (r.top + r.height * 0.55)) / alcance);
+  }
   function onPointer(e: PointerEvent) {
-    if (opts.seguir === false || ESTADOS[actual].look) return;
+    if (opts.seguir === false || ESTADOS[actual].look || objetivo) return;
     const r = el.getBoundingClientRect();
     const alcance = Math.max(innerWidth, innerHeight) * 0.35;
     mira.tx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / alcance));
@@ -352,6 +375,7 @@ export function createGrumete(contenedor: HTMLElement, opts: { energia?: number;
     }
 
     // mirada con resorte
+    if (objetivo) mirarObjetivo();
     const fija = ESTADOS[actual].look;
     const mtx = fija ? fija[0] : mira.tx, mty = fija ? fija[1] : mira.ty;
     if (reduce) { mira.x = mtx; mira.y = mty; }
@@ -375,9 +399,11 @@ export function createGrumete(contenedor: HTMLElement, opts: { energia?: number;
     for (const p of pts) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); sumX += p.x; }
     const W = maxX - minX, H = maxY - minY, cx = sumX / N;
     // la cara se apoya en el centro de la masa (no en el brazo): media de los puntos, sin la deformación del tiron
-    const fx = cx + mira.x * 4, fy = minY + H * 0.44 + mira.y * 3;
+    // la cara entera gira hacia donde mira (más hacia abajo, que es donde suele estar lo que señala) y al mirar
+    // abajo los párpados bajan un poco: así se lee la dirección aunque los ojos no tengan pupila
+    const fx = cx + mira.x * 7, fy = minY + H * 0.44 + mira.y * (mira.y > 0 ? 10 : 6);
     const sep = Math.max(11, W * 0.16);
-    const abre = Math.max(0.04, P.ojos * parpado);
+    const abre = Math.max(0.04, P.ojos * parpado * (1 - Math.max(0, mira.y) * 0.3));
     for (const [ojo, arco, lado] of [[ojoL, arcoL, -1], [ojoR, arcoR, 1]] as const) {
       const ex = fx + lado * sep, ey = fy;
       ojo.setAttribute('cx', ex.toFixed(1)); ojo.setAttribute('cy', ey.toFixed(1));
@@ -427,6 +453,7 @@ export function createGrumete(contenedor: HTMLElement, opts: { energia?: number;
     get estado() { return actual; },
     get base() { return base; },
     setEnergia(v: number) { energia = Math.max(0, Math.min(1.5, v)); despertar(); return api; },
+    mirar(destino: Element | null) { objetivo = destino; if (!destino) { mira.tx = 0; mira.ty = 0; } despertar(); return api; },
     destroy() {
       cancelAnimationFrame(raf); raf = 0;
       io?.disconnect();

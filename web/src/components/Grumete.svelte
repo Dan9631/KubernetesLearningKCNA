@@ -4,8 +4,11 @@
   // Uso: <Grumete estado="pensando" /> para un bucle, o bind:this y .go('feliz') para una acción.
   import { onMount } from 'svelte';
   import { createGrumete, type Estado, type Grumete } from '../lib/grumete';
+  import { grumetesLocales } from '../lib/grumete-avisos';
 
-  let { estado = 'reposo', energia = 1, size = 160, moldeable = true }: { estado?: Estado; energia?: number; size?: number; moldeable?: boolean } = $props();
+  // local: un Grumete puesto en la página (práctica, examen, banco de pruebas). Mientras se ve en pantalla,
+  // el compañero de la esquina se aparta para que no haya dos a la vez.
+  let { estado = 'reposo', energia = 1, size = 160, moldeable = true, local = true }: { estado?: Estado; energia?: number; size?: number; moldeable?: boolean; local?: boolean } = $props();
   let slot: HTMLDivElement;
   let g: Grumete | undefined = $state();
 
@@ -15,13 +18,19 @@
     g = createGrumete(slot, { energia, moldeable });
     g.go(estado);
     for (const e of pendientes.splice(0)) g.go(e);
-    return () => g?.destroy();
+    let contado = false;
+    const contar = (si: boolean) => { if (si !== contado) { contado = si; grumetesLocales(si ? 1 : -1); } };
+    const io = local && typeof IntersectionObserver === 'function' ? new IntersectionObserver(([e]) => contar(e.isIntersecting)) : null;
+    if (io) io.observe(slot); else if (local) contar(true);
+    return () => { io?.disconnect(); contar(false); g?.destroy(); };
   });
   $effect(() => { g?.go(estado); });
   $effect(() => { g?.setEnergia(energia); });
 
   /** Lanza un estado (bucle o acción) desde fuera. */
   export function go(e: Estado) { if (g) g.go(e); else pendientes.push(e); }
+  /** Hace que mire un elemento (null: vuelve a seguir el cursor). */
+  export function mirar(el: Element | null) { g?.mirar(el); }
 </script>
 
 <div class="slot" class:moldeable bind:this={slot} style="--g-size: {size}px"></div>

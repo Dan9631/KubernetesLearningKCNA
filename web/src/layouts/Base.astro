@@ -3,6 +3,7 @@ import '../styles/global.css';
 import { url } from '../lib/modules';
 import ThemeToggle from '../components/ThemeToggle.svelte';
 import SyncEstado from '../components/SyncEstado.svelte';
+import GrumeteCompanero from '../components/GrumeteCompanero.svelte';
 
 interface Props {
   title: string;
@@ -56,6 +57,7 @@ const rel = path.startsWith(base) ? path.slice(base.length) || '/' : path;
     <footer class="foot">
       <p>Curso personal para la certificación Kubernetes and Cloud Native Associate. Temario oficial de la CNCF vigente desde noviembre de 2025.</p>
     </footer>
+    <GrumeteCompanero client:idle />
   </body>
 </html>
 

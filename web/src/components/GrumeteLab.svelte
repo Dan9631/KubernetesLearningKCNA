@@ -4,7 +4,7 @@
   import type { Estado } from '../lib/grumete';
 
   const BUCLES: [Estado, string][] = [['reposo', 'Reposo'], ['pensando', 'Pensando'], ['dormido', 'Dormido']];
-  const ACCIONES: [Estado, string][] = [['feliz', 'Feliz'], ['saludo', 'Saludo'], ['triste', 'Triste'], ['timon', 'Timón']];
+  const ACCIONES: [Estado, string][] = [['feliz', 'Feliz'], ['saludo', 'Saludo'], ['asiente', 'Asiente'],['triste', 'Triste'], ['timon', 'Timón']];
   let estado = $state<Estado>('reposo');
   let energia = $state(1);
   let g: ReturnType<typeof Grumete> | undefined = $state();

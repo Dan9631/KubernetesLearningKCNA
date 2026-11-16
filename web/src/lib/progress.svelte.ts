@@ -1,5 +1,6 @@
 // Progreso del alumno, guardado en localStorage de este navegador.
 // Estado reactivo (Svelte 5 runes) compartido por todas las islas de una página.
+import { avisarGrumete } from './grumete-avisos';
 
 export interface Progress {
   /** pasos de laboratorio marcados: { "04": ["3","5"] } */
@@ -100,9 +101,11 @@ export function toggleStep(mod: string, step: string) {
 }
 
 export function toggleDone(mod: string) {
-  progress.done = progress.done.includes(mod) ? progress.done.filter((m) => m !== mod) : [...progress.done, mod];
+  const termina = !progress.done.includes(mod);
+  progress.done = termina ? [...progress.done, mod] : progress.done.filter((m) => m !== mod);
   markToday();
   save();
+  if (termina) avisarGrumete('modulo');
 }
 
 export function setExamDate(date: string) {
@@ -116,6 +119,7 @@ export function addReto(id: string) {
   progress.retos = [...progress.retos, id];
   markToday();
   save();
+  avisarGrumete('reto');
 }
 
 export function touchSim(id: string) {
@@ -145,6 +149,7 @@ export function recordAnswer(qid: string, correct: boolean, conf?: Conf, helped 
   progress.quiz[qid] = n;
   markToday();
   save();
+  avisarGrumete(correct ? 'acierto' : 'fallo');
 }
 
 export function toggleKnown(term: string) {
