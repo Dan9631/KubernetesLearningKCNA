@@ -3,12 +3,13 @@
   // la comprueba jugando y luego ve la explicación. Comprometerse primero hace que la sorpresa se recuerde.
   import { inline, type Check } from '../lib/comprueba';
   import { markToday, save } from '../lib/progress.svelte';
+  import { avisarGrumete } from '../lib/grumete-avisos';
 
   let { check }: { check: Check } = $props();
   let pick = $state<number | null>(null);
   let shown = $state(false);
   let skipped = $state(false);
-  function reveal() { shown = true; markToday(); save(); }
+  function reveal() { shown = true; markToday(); save(); if (pick !== null) avisarGrumete(pick === check.answer ? 'acierto' : 'fallo'); }
 </script>
 
 {#if !skipped}

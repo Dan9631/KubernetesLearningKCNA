@@ -6,6 +6,7 @@
   import DiagramaGuia from './DiagramaGuia.svelte';
   import { guiasDe } from '../lib/diagramas';
   import { progress, toggleStep, toggleDone, markToday, save } from '../lib/progress.svelte';
+  import { avisarGrumete } from '../lib/grumete-avisos';
   import { tieneExamen, aprobado } from '../lib/examenModulo';
   import { labsWeb } from '../lib/labsWeb';
 
@@ -123,6 +124,7 @@
       const why = box.querySelector<HTMLElement>('.check-why');
       if (why) { why.insertAdjacentHTML('afterbegin', `<strong>${ok ? 'Bien.' : 'No exactamente.'}</strong> `); why.hidden = false; }
       markToday(); save();
+      avisarGrumete(ok ? 'acierto' : 'fallo');
     });
   }
 

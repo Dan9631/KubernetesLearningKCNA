@@ -52,6 +52,10 @@
   /* resorte (scripts de motion-craft: --duration 0.35 --bounce 0.25): rebote apenas visible, solo en transform */
   --spring-pop: linear(0, 0.029, 0.103, 0.202, 0.313, 0.426, 0.534, 0.634, 0.721, 0.796, 0.858, 0.908, 0.947, 0.976, 0.997, 1.012, 1.021, 1.026, 1.028, 1.028, 1.026, 1.024, 1.021, 1.018, 1.014, 1.011, 1.009, 1.007, 1.005, 1.003, 1.002, 1);
   --spring-pop-dur: 450ms;
+  /* resorte de los globos de Grumete (--duration 0.5 --bounce 0.3): más blando, sobrepasa un 4,6 % y se asienta.
+     Solo en scale/translate; la opacidad entra aparte y en lineal. Súbele el rebote si lo quieres más juguetón. */
+  --spring-chat: linear(0, 0.047, 0.16, 0.304, 0.456, 0.598, 0.723, 0.826, 0.905, 0.964, 1.003, 1.028, 1.041, 1.046, 1.045, 1.04, 1.034, 1.027, 1.02, 1.014, 1.009, 1.005, 1.002, 1, 0.999, 0.998, 0.998, 0.998, 0.998, 0.998, 0.999, 1);
+  --spring-chat-dur: 820ms;
 
   color-scheme: light;
 }
@@ -87,6 +91,10 @@
 /* lo que aparece como consecuencia (una explicación, un aviso): sube 8 px mientras se funde */
 @keyframes mc-entra { from { opacity: 0; translate: 0 8px; } }
 @keyframes mc-fundido { from { opacity: 0; } }
+/* globo de Grumete: nace de su piquito (transform-origin en cada globo) con el resorte del chat; se usa junto a
+   mc-fundido en lineal, porque el rebote nunca va en la opacidad */
+@keyframes mc-globo { from { scale: 0.8; translate: -6px 4px; } }
+.g-globo { animation: mc-globo var(--spring-chat-dur) var(--spring-chat) both, mc-fundido 140ms linear both; }
 
 /* Cambio de página: cabecera y ruta se quedan; el contenido sale rápido y el nuevo entra desde abajo */
 @view-transition { navigation: auto; }
@@ -102,7 +110,7 @@ header.top { view-transition-name: cabecera; }
   :root { --dur: 0ms; --dur-slow: 0ms; --dur-fast: 0ms; }
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
   /* Movimiento reducido diseñado, no apagado: lo que aparece sigue notándose con un fundido corto, sin desplazarse */
-  :is(.explain, .why, .check-why) { animation-name: mc-fundido !important; animation-duration: 150ms !important; }
+  :is(.explain, .why, .check-why, .g-globo) { animation-name: mc-fundido !important; animation-duration: 150ms !important; }
   @view-transition { navigation: none; }
 }
 
