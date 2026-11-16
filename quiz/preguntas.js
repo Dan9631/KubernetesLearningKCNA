@@ -383,7 +383,7 @@ window.KCNA_QUESTIONS = [
     id: "F024",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 6,
+    module: 3,
     q: "A container is alive but needs 30 seconds to warm its cache before it can serve requests. Which mechanism prevents Service traffic from reaching it during that time?",
     options: [
       "A preStop hook",
@@ -399,7 +399,7 @@ window.KCNA_QUESTIONS = [
     id: "F025",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 9,
+    module: 3,
     q: "What happens when a container's livenessProbe keeps failing beyond its failureThreshold?",
     options: [
       "The Pod is rescheduled to a different node",
@@ -415,7 +415,7 @@ window.KCNA_QUESTIONS = [
     id: "F026",
     domain: "fundamentals",
     topic: "Core Concepts",
-    module: 9,
+    module: 3,
     q: "A slow-starting legacy application takes up to 3 minutes to boot. Which probe should be used so that liveness checks do not kill it during startup?",
     options: [
       "readinessProbe",
@@ -738,7 +738,7 @@ window.KCNA_QUESTIONS = [
     id: "F046",
     domain: "fundamentals",
     topic: "Administration",
-    module: 2,
+    module: 4,
     q: "Before performing maintenance on a node, you want to safely evict its Pods and mark it unschedulable. Which command does this?",
     options: [
       "kubectl drain node1 --ignore-daemonsets",
@@ -754,7 +754,7 @@ window.KCNA_QUESTIONS = [
     id: "F047",
     domain: "fundamentals",
     topic: "Administration",
-    module: 2,
+    module: 4,
     q: "After node maintenance is finished, which command allows new Pods to be scheduled on the node again?",
     options: [
       "kubectl resume node1",

@@ -214,7 +214,7 @@ Orden de búsqueda: la opción `--kubeconfig`, si no la variable de entorno **`K
 - **Alta disponibilidad**: varios nodos de control plane detrás de un balanceador; etcd con 3 o 5 miembros (tolera 1 o 2 caídas).
 - **Versiones**: Kubernetes publica unas 3 versiones menores al año y la comunidad mantiene las 3 más recientes (~14 meses de parches cada una). Política de diferencia de versiones (*version skew*): el API server es el más nuevo; el kubelet (y kube-proxy) nunca puede ser más nuevo y puede ir hasta 3 versiones menores por detrás; kube-controller-manager y kube-scheduler, como mucho 1 por detrás; `kubectl` admite ±1 respecto del API server.
 - **Salud**: el API server expone `/livez` (¿está vivo?) y `/readyz` (¿puede atender?), con `?verbose` para ver cada comprobación. `/healthz` y `kubectl get componentstatuses` están obsoletos.
-- **Nodos**: `kubectl cordon`/`drain` para mantenimiento (se ve en el módulo de scheduling).
+- **Nodos**: `kubectl cordon`/`drain` para mantenimiento (se explica en el módulo 04, «Mantenimiento de nodos»).
 
 ## Comandos clave
 

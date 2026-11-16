@@ -4,6 +4,11 @@ Noviembre de 2026. Se revisaron las 367 preguntas y 165 flashcards contra el tex
 
 La protección automática está en `quiz/src/conceptos.js` (la comprueba `quiz/src/validate.js`): un mapa de conceptos con el primer módulo que los explica. Detecta 21 de los 28 casos movidos; los otros 7 usan términos demasiado generales para una regla (namespace, label, `-A`).
 
+## Resuelto con contenido nuevo
+
+- **Probes** (03 §2, «Probes: cómo sabe el kubelet si tu contenedor está sano»): liveness, readiness y startup se explican ya en workloads. F024, F025, F026 y las flashcards de las tres probes vuelven al 03 (la auditoría las había movido al 06 y al 09). D050 (diagnosticar una liveness mal configurada) sigue en el 09.
+- **Mantenimiento de nodos** (04, «Mantenimiento de nodos: cordon, drain y PodDisruptionBudget»): resuelve los huecos F046, F047, F074 y las flashcards PDB y drain, y la debilidad de F073 y la flashcard cordon. F046 y F047 pasan del 02 al 04; el 02 ahora remite a esa sección.
+
 ## Movidas a un módulo posterior (28)
 
 Ya aplicado en `quiz/src/src_*.js` (15 preguntas y 13 flashcards; el resumen de abajo cuenta cada una): el número de módulo de cada una pasa al primer módulo que explica el concepto.

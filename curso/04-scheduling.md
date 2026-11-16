@@ -277,6 +277,40 @@ topologySpreadConstraints:
 
 Es más flexible que la pod anti-affinity: anti-affinity dice "como máximo uno por dominio", spread dice "repártelos con una diferencia máxima de N".
 
+### Mantenimiento de nodos: cordon, drain y PodDisruptionBudget
+
+Tarde o temprano hay que sacar un nodo de servicio: actualizar el kubelet, parchear el sistema operativo, cambiar hardware. Kubernetes lo resuelve en tres pasos, siempre de **un nodo a la vez**:
+
+| Comando | Qué hace | Los pods que ya estaban |
+|---|---|---|
+| `kubectl cordon <nodo>` | Marca el nodo como **no planificable** (`unschedulable`; le pone el taint `node.kubernetes.io/unschedulable:NoSchedule`). En `kubectl get nodes` aparece `Ready,SchedulingDisabled` | **Siguen corriendo**: cordon no desaloja nada |
+| `kubectl drain <nodo> --ignore-daemonsets` | Hace un cordon y además **desaloja** (*evict*) sus pods para que sus controladores los recreen en otros nodos | Se van; los que tienen Deployment/ReplicaSet reaparecen en otro nodo |
+| `kubectl uncordon <nodo>` | Vuelve a hacerlo planificable | Los pods que se fueron **no vuelven solos**: el nodo recibe los pods nuevos que el scheduler le asigne |
+
+Detalles de `drain` que conviene conocer:
+
+- `--ignore-daemonsets`: los pods de un DaemonSet toleran el cordon (su controlador les añade la toleration de `unschedulable`), así que, si drain los borrara, volverían a aparecer en el mismo nodo. Por eso drain se niega a continuar si no le dices que los deje donde están.
+- Un pod suelto, sin controlador, desaparecería para siempre: drain se niega salvo con `--force`. Si un pod usa un volumen `emptyDir`, sus datos se pierden y hace falta `--delete-emptydir-data`.
+- drain no borra los pods a lo bruto: usa la **API de Eviction**, que respeta los PodDisruptionBudget.
+
+Un **PodDisruptionBudget** (**PDB**) protege la disponibilidad de una aplicación durante esas interrupciones *voluntarias*: indica cuántas réplicas deben quedar en pie (`minAvailable`) o cuántas pueden faltar a la vez (`maxUnavailable`). Si desalojar un pod más violaría el PDB, la eviction se rechaza y drain espera y reintenta hasta que las réplicas desalojadas estén listas en otro nodo.
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-pdb
+spec:
+  minAvailable: 2          # o maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: web
+```
+
+Ojo con el límite del PDB: solo cubre interrupciones **voluntarias** (drain, eviction, autoescalado del clúster). Si un nodo se cae de golpe, ningún PDB lo evita; para eso están las réplicas repartidas entre nodos y zonas.
+
+El flujo típico de mantenimiento queda así: `drain` → actualizar o reparar el nodo → `uncordon` → siguiente nodo.
+
 ### Resumen visual: ¿qué herramienta uso?
 
 ```mermaid
@@ -310,6 +344,9 @@ flowchart TD
 | `kubectl get ds -A` | DaemonSets del clúster (DESIRED = nº de nodos elegibles) |
 | `kubectl get priorityclass` | Clases de prioridad disponibles |
 | `kubectl top pod` / `kubectl top node` | Consumo real (vía metrics-server), no requests |
+| `kubectl cordon <nodo>` / `kubectl uncordon <nodo>` | Marca el nodo como no planificable / lo vuelve planificable (no mueve pods) |
+| `kubectl drain <nodo> --ignore-daemonsets` | Cordon + desaloja sus pods respetando los PodDisruptionBudget |
+| `kubectl get pdb` | PodDisruptionBudgets y cuántas interrupciones permiten ahora (`ALLOWED DISRUPTIONS`) |
 
 ## Laboratorio guiado
 
@@ -1095,6 +1132,7 @@ La trampa del DaemonSet: con solo la toleration del control plane te quedarías 
 - **requests** = reserva (las usa el scheduler); **limits** = techo (CPU → throttling, memoria → OOMKilled). QoS: **Guaranteed** (requests = limits en todo), **Burstable** (algo declarado), **BestEffort** (nada; se desaloja primero).
 - **LimitRange** = defaults y máximos por contenedor; **ResourceQuota** = techo total del namespace. Ambos actúan en admisión.
 - **DaemonSet** = un pod por nodo (respeta taints); **static pod** = lo crea el kubelet desde `/etc/kubernetes/manifests` (así arranca el control plane).
+- Mantenimiento: **cordon** = no planificable (los pods se quedan); **drain** = cordon + desalojo (`--ignore-daemonsets`); **uncordon** = vuelve a aceptar pods (los que se fueron no regresan). **PodDisruptionBudget** (`minAvailable`/`maxUnavailable`) limita las interrupciones *voluntarias*, no la caída de un nodo.
 - **PriorityClass** + preemption deciden quién entra cuando no hay sitio; **scheduler profiles** = varios comportamientos en un solo scheduler; **topologySpreadConstraints** = reparto con `maxSkew`.
 
 ## Limpieza
