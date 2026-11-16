@@ -124,6 +124,8 @@ flowchart TB
 
 Coste: más componentes que operar, más latencia por salto (dos proxies por llamada en modo sidecar) y más consumo de CPU/RAM. Por eso surgieron los modelos **sin sidecar**.
 
+**No confundir con un API gateway.** Un **API gateway** es la puerta de entrada para los clientes de fuera: les da **un único punto de acceso** que agrupa las APIs de varios servicios y aplica ahí lo común (autenticación, autorización, límites de peticiones o *rate limiting*, transformaciones). Se ocupa sobre todo del tráfico **norte-sur** (de fuera hacia dentro). El service mesh se ocupa del tráfico **este-oeste**, entre los servicios. Muchos API gateways están construidos sobre Envoy y en un mismo sistema suelen convivir los dos.
+
 ### 5. Istio
 
 **Istio** (proyecto *graduated* de la CNCF) es el service mesh más extendido.
@@ -134,6 +136,8 @@ Coste: más componentes que operar, más latencia por salto (dos proxies por lla
   - **ztunnel**: un proxy por **nodo** (DaemonSet, escrito en Rust) que da mTLS, identidad y telemetría **L4** a todos los pods del nodo.
   - **waypoint proxy**: un Envoy opcional (normalmente por namespace; también por servicio o por workload) que se despliega solo cuando necesitas funciones **L7** (reintentos, pesos por cabecera, autorización HTTP).
   - Se activa con la label `istio.io/dataplane-mode=ambient` en el namespace (o en un pod concreto). Ventajas: menos RAM, no hay que reiniciar pods para entrar o salir del mesh.
+- **Identidad**: Istio identifica cada workload por la **ServiceAccount** de Kubernetes de su Pod y la mete en el certificado mTLS que le emite istiod. Por eso las políticas de autorización se escriben sobre identidades ("el frontend puede llamar al backend") y no sobre IPs, que cambian con cada Pod.
+- **Modos de mTLS** (recurso `PeerAuthentication`): **PERMISSIVE** (el de por defecto) acepta a la vez tráfico con mTLS y en texto plano, para migrar poco a poco; **STRICT** solo acepta mTLS, y se activa cuando todos los clientes ya están en el mesh.
 - Recursos propios (CRDs): `VirtualService` y `DestinationRule` (tráfico), `PeerAuthentication` (mTLS), `AuthorizationPolicy` (autorización), `Gateway` de Istio. Hoy Istio también entiende **Gateway API** (HTTPRoute) como forma recomendada de configurar el tráfico.
 - Herramientas: `istioctl` (instalar, `istioctl analyze` para validar), addons de observabilidad: Kiali, Prometheus, Grafana, Jaeger.
 
@@ -652,6 +656,7 @@ kubectl delete namespace istio-system
 - **Istio**: istiod (control plane); modo sidecar (Envoy por pod, label `istio-injection=enabled`) y modo **ambient** (**ztunnel** L4 por nodo + **waypoint** L7 opcional).
 - **Linkerd**: ligero, proxy en Rust, CNCF graduated.
 - **SMI** (archivado) → **GAMMA**: Gateway API también para el tráfico este-oeste.
+- **API gateway** = una puerta única para clientes de fuera (tráfico norte-sur: auth, rate limiting); **mesh** = tráfico entre servicios (este-oeste). Istio: identidad = **ServiceAccount** del Pod; `PeerAuthentication` **PERMISSIVE** (mTLS + texto plano, para migrar) o **STRICT** (solo mTLS).
 
 ## Limpieza
 
@@ -676,3 +681,4 @@ kubectl delete namespace istio-system
 - [Linkerd HTTPRoute reference — linkerd.io](https://linkerd.io/2-edge/reference/httproute/): HTTPRoutes con `parentRefs` a un Service.
 - [The GAMMA Initiative — gateway-api.sigs.k8s.io](https://gateway-api.sigs.k8s.io/docs/mesh/gamma/) e [Implementations — gateway-api.sigs.k8s.io](https://gateway-api.sigs.k8s.io/docs/implementations/list/): significado de GAMMA, rutas colgadas de Services, implementaciones conformes con el perfil Mesh.
 - [CNCF Archives the Service Mesh Interface (SMI) Project — cncf.io](https://www.cncf.io/blog/2023/10/03/cncf-archives-the-service-mesh-interface-smi-project/): SMI archivado en octubre de 2023 en favor de GAMMA.
+- [Istio Security — istio.io](https://istio.io/latest/docs/concepts/security/): identidad basada en la ServiceAccount, PeerAuthentication en modo PERMISSIVE o STRICT.

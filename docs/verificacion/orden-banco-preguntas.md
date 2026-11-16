@@ -14,6 +14,14 @@ La protección automática está en `quiz/src/conceptos.js` (la comprueba `quiz/
 - **Módulo 05**: Policy as Code tras los admission controllers (flashcard PaC) y una sección nueva de auditoría del API server (O099, que estaba débil).
 - **Módulo 06**: `externalTrafficPolicy` en Services (O111), descubrimiento por variables de entorno junto al DNS (O114) y el Secret `kubernetes.io/tls` en Ingress (O108).
 - Falco (O034 y su flashcard) se queda en el 10, donde se presenta la seguridad en runtime.
+- **Módulo 07**: API gateway frente a service mesh (O126), identidad de Istio por ServiceAccount (O131) y modos PERMISSIVE/STRICT de PeerAuthentication (O132).
+- **Módulo 08**: los volúmenes secret van en tmpfs (O087).
+- **Módulo 09**: los pods siguen corriendo si cae el apiserver (O073), `kubectl events --types=Warning` (D054), `terminationMessagePolicy: FallbackToLogsOnError` (D055) y `kubectl cp` necesita `tar` (D056).
+- **Módulo 10**: requisitos para Graduated (A033) y el Release Team de SIG Release (A031).
+- **Módulo 11**: muestreo de trazas (A055) e instrumentación sin código frente a manual (A057).
+- **Módulo 12**: precedencia de values en Helm (D040) y charts en registries OCI (D042).
+
+Con esto quedan cubiertos todos los huecos y temas débiles de la auditoría.
 
 ## Movidas a un módulo posterior (28)
 
