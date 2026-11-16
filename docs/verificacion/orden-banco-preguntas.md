@@ -8,6 +8,7 @@ La protección automática está en `quiz/src/conceptos.js` (la comprueba `quiz/
 
 - **Probes** (03 §2, «Probes: cómo sabe el kubelet si tu contenedor está sano»): liveness, readiness y startup se explican ya en workloads. F024, F025, F026 y las flashcards de las tres probes vuelven al 03 (la auditoría las había movido al 06 y al 09). D050 (diagnosticar una liveness mal configurada) sigue en el 09.
 - **Mantenimiento de nodos** (04, «Mantenimiento de nodos: cordon, drain y PodDisruptionBudget»): resuelve los huecos F046, F047, F074 y las flashcards PDB y drain, y la debilidad de F073 y la flashcard cordon. F046 y F047 pasan del 02 al 04; el 02 ahora remite a esa sección.
+- **Módulo 02** (§9, §10 y §11): política de deprecación de la API (F099), fusión de varios archivos en `KUBECONFIG` (F100), backup de etcd con `etcdctl snapshot save` (F051), Kubernetes gestionado (F058) y orden de actualización de un clúster kubeadm (F049, que estaba débil). Todas siguen en el 02.
 
 ## Movidas a un módulo posterior (28)
 

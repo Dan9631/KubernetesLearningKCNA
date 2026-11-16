@@ -191,6 +191,14 @@ La API está organizada en **grupos** para poder evolucionar por partes:
 | **Beta** | `v1beta1` | Bien probado; los nuevos beta ya no se activan por defecto. Puede cambiar con aviso |
 | **Stable (GA)** | `v1`, `v2` | Estable y soportado a largo plazo |
 
+Esas promesas las fija la **política de deprecación de la API** (*API deprecation policy*), y el examen la pregunta así:
+
+- **GA**: puede marcarse como obsoleta (*deprecated*), pero **no se elimina dentro de una versión mayor** de Kubernetes (la 1.x).
+- **Beta**: tras anunciar su deprecación se sigue sirviendo al menos **9 meses o 3 versiones menores** (lo que sea más largo) antes de retirarse. Por eso hay que migrar los manifiestos que aún usan `v1beta1`.
+- **Alpha**: puede desaparecer en cualquier versión sin aviso previo.
+
+Cuando usas una versión obsoleta, el API server responde con un aviso (`Warning: ... is deprecated`) que `kubectl` te muestra.
+
 La API se **extiende** con **CustomResourceDefinitions (CRDs)**: en tu clúster Traefik y Gateway API añadieron grupos como `traefik.io/v1alpha1` y `gateway.networking.k8s.io/v1`. Un controlador propio que gestiona esos recursos es lo que se llama un **operador**.
 
 Herramientas para explorar: `kubectl api-resources` (qué tipos existen, sus nombres cortos y si son namespaced), `kubectl api-versions` (grupos/versiones servidos) y `kubectl explain` (documentación de cada campo, sacada del esquema OpenAPI del propio clúster).
@@ -208,11 +216,16 @@ Herramientas para explorar: `kubectl api-resources` (qué tipos existen, sus nom
 
 Orden de búsqueda: la opción `--kubeconfig`, si no la variable de entorno **`KUBECONFIG`**, y si no `~/.kube/config`. Tu lab usa la variable para apuntar a `.kube\kcna-config` y así no tocar los clústeres de la empresa. Comandos: `kubectl config get-contexts`, `current-context`, `use-context`, `set-context`, `view --minify`.
 
+`KUBECONFIG` puede contener **varios archivos** (separados por `;` en Windows y por `:` en Linux y macOS). `kubectl` los **fusiona** en uno solo y, si dos archivos definen el mismo valor (por ejemplo `current-context`, o un contexto con el mismo nombre), **gana el primero de la lista**. Con `--kubeconfig`, en cambio, usa ese único archivo sin fusionar nada. Para ver el resultado de la fusión: `kubectl config view`.
+
 ### 11. Pinceladas de administración
 
 - **kubeadm** inicializa clústeres "a mano" (`kubeadm init` / `join`): genera certificados, escribe los static pods y configura el kubelet. kind lo usa por dentro.
 - **Alta disponibilidad**: varios nodos de control plane detrás de un balanceador; etcd con 3 o 5 miembros (tolera 1 o 2 caídas).
+- **Backup de etcd**: `etcdctl snapshot save backup.db` (indicando `--endpoints` y los certificados `--cacert`, `--cert` y `--key`) guarda una copia de todo el estado del clúster. Se restaura con `etcdutl snapshot restore`; restaurar con `etcdctl` está obsoleto. No hay ningún `kubectl backup`: es una tarea de etcd, no de la API.
+- **Kubernetes gestionado** (EKS en AWS, AKS en Azure, GKE en Google Cloud): el proveedor opera el **control plane** por ti (API server, etcd, scheduler y controladores, con su alta disponibilidad, parches, actualizaciones y backups). Ni siquiera ves esos nodos. Tú gestionas tus cargas de trabajo y, según el modo, también los nodos de trabajo.
 - **Versiones**: Kubernetes publica unas 3 versiones menores al año y la comunidad mantiene las 3 más recientes (~14 meses de parches cada una). Política de diferencia de versiones (*version skew*): el API server es el más nuevo; el kubelet (y kube-proxy) nunca puede ser más nuevo y puede ir hasta 3 versiones menores por detrás; kube-controller-manager y kube-scheduler, como mucho 1 por detrás; `kubectl` admite ±1 respecto del API server.
+- **Actualizar un clúster** (kubeadm): la regla de *version skew* dicta el orden. **Primero el control plane** (`kubeadm upgrade plan` y `kubeadm upgrade apply` en el primer nodo de control), **después los nodos de trabajo**, uno a uno: se vacía el nodo, se actualizan kubeadm y el kubelet, y se vuelve a habilitar (`drain` y `uncordon`, que verás en el módulo 04). Y siempre **de una versión menor en una** (1.36 → 1.37); saltarse versiones no está soportado.
 - **Salud**: el API server expone `/livez` (¿está vivo?) y `/readyz` (¿puede atender?), con `?verbose` para ver cada comprobación. `/healthz` y `kubectl get componentstatuses` están obsoletos.
 - **Nodos**: `kubectl cordon`/`drain` para mantenimiento (se explica en el módulo 04, «Mantenimiento de nodos»).
 
@@ -746,9 +759,10 @@ Para usar el contexto nuevo harías `kubectl config use-context lab02` (y volver
 - **Static pods**: el kubelet ejecuta los manifiestos de `/etc/kubernetes/manifests`; así arranca kubeadm el control plane. Mirror pod con sufijo del nodo.
 - Flujo: kubectl → apiserver (authn → authz → admission → etcd) → controladores → scheduler → kubelet → runtime. Todo por *watch*, asíncrono.
 - Declarativo: `spec` (deseado) vs `status` (real); los controladores reconcilian en bucle → self-healing.
-- API: core en `/api/v1` (`v1`), resto en `/apis/<grupo>/<versión>` (`apps/v1`, `batch/v1`). Alpha → Beta → GA. CRDs extienden la API.
-- kubeconfig = clusters + users + contexts + current-context; prioridad `--kubeconfig` > `KUBECONFIG` > `~/.kube/config`.
-- Salud: `/livez`, `/readyz` (`componentstatuses` y `/healthz` obsoletos). Skew: kubectl ±1, kubelet hasta 3 menores por detrás.
+- API: core en `/api/v1` (`v1`), resto en `/apis/<grupo>/<versión>` (`apps/v1`, `batch/v1`). Alpha → Beta → GA. Deprecación: GA no se elimina dentro de la versión mayor; beta, al menos 9 meses o 3 versiones; alpha, sin aviso. CRDs extienden la API.
+- kubeconfig = clusters + users + contexts + current-context; prioridad `--kubeconfig` > `KUBECONFIG` > `~/.kube/config`. Varios archivos en `KUBECONFIG` se **fusionan** y gana el primero que define cada valor.
+- Salud: `/livez`, `/readyz` (`componentstatuses` y `/healthz` obsoletos). Skew: kubectl ±1, kubelet hasta 3 menores por detrás. Upgrade: **control plane primero**, luego nodos, de una versión menor en una.
+- Backup de etcd: `etcdctl snapshot save` (restaurar: `etcdutl snapshot restore`). Kubernetes gestionado (EKS, AKS, GKE): el proveedor opera el control plane.
 
 ## Limpieza
 
@@ -775,3 +789,6 @@ Borra el namespace `lab-02` y el contexto `lab02` del kubeconfig del lab.
 - [Kubernetes API health endpoints — kubernetes.io](https://kubernetes.io/docs/reference/using-api/health-checks/): `/livez` y `/readyz`; `/healthz` obsoleto desde v1.16.
 - [Ports and Protocols — kubernetes.io](https://kubernetes.io/docs/reference/networking/ports-and-protocols/): puertos 6443 (API server) y 2379-2380 (etcd).
 - [etcd FAQ — etcd.io](https://etcd.io/docs/v3.6/faq/): consenso Raft, número impar de miembros, tolerancia a fallos (3 → 1, 5 → 2).
+- [Kubernetes Deprecation Policy — kubernetes.io](https://kubernetes.io/docs/reference/using-api/deprecation-policy/): GA no se elimina dentro de una versión mayor; beta, al menos 9 meses o 3 versiones tras la deprecación; alpha, sin aviso.
+- [Operating etcd clusters for Kubernetes — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/): `etcdctl snapshot save` con endpoints y certificados; restauración con `etcdutl snapshot restore`.
+- [Upgrading kubeadm clusters — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/): primero el control plane y luego los workers (drain, kubelet, uncordon); saltarse versiones menores no está soportado.
