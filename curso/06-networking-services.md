@@ -105,6 +105,13 @@ Campos importantes de los puertos: `port` (el del Service, el que usa el cliente
 
 Los tipos se "apilan": un LoadBalancer también tiene NodePort y ClusterIP; un NodePort también tiene ClusterIP.
 
+Con tráfico que llega desde fuera (NodePort o LoadBalancer) hay un ajuste que se pregunta: **`externalTrafficPolicy`**.
+
+| Valor | A qué pods va el tráfico | Consecuencia |
+|---|---|---|
+| `Cluster` (defecto) | A cualquier pod del Service, aunque esté en otro nodo | Reparto parejo, pero puede dar un salto extra entre nodos y el pod ve la IP del nodo, **no la del cliente** |
+| `Local` | Solo a pods **del mismo nodo** que recibió el tráfico | Sin salto extra y **se conserva la IP de origen del cliente**; un nodo sin pods del Service no atiende ese tráfico (los balanceadores lo detectan con un health check) |
+
 ### 5. Endpoints y EndpointSlices
 
 ¿Cómo sabe un Service a qué pods enviar el tráfico? El controlador de EndpointSlices observa los pods que cumplen el selector **y están Ready** (readiness probe superada) y guarda sus IPs en objetos **EndpointSlice** (`discovery.k8s.io/v1`), etiquetados con `kubernetes.io/service-name=<svc>`.
@@ -156,6 +163,8 @@ options ndots:5
 - `search`: por eso desde un pod de `lab-06` basta con escribir `whoami`; desde otro namespace hay que escribir al menos `whoami.lab-06`.
 - `ndots:5`: si el nombre tiene menos de 5 puntos, se prueban primero los dominios de `search`.
 
+Hay un segundo mecanismo de descubrimiento, más antiguo: las **variables de entorno**. Al arrancar un contenedor, el kubelet le inyecta dos variables por cada Service del namespace que ya existía: `{NOMBRE}_SERVICE_HOST` y `{NOMBRE}_SERVICE_PORT`. El nombre va en mayúsculas y con los guiones cambiados por guiones bajos; para el Service `redis-primary` serían `REDIS_PRIMARY_SERVICE_HOST` y `REDIS_PRIMARY_SERVICE_PORT`. Su límite explica por qué se recomienda DNS: un Service creado **después** que el pod no aparece en sus variables, y DNS siempre está al día.
+
 ### 8. Ingress e Ingress Controller
 
 Un Service LoadBalancer por cada aplicación sale caro (una IP/balanceador por app) y no entiende HTTP. **Ingress** es un objeto de la API que describe **reglas HTTP/HTTPS**: "las peticiones a `tienda.ejemplo.com/api` van al Service `api`, puerto 80", con terminación TLS opcional.
@@ -163,6 +172,7 @@ Un Service LoadBalancer por cada aplicación sale caro (una IP/balanceador por a
 - El objeto Ingress por sí solo **no hace nada**. Necesita un **Ingress Controller**: un proxy inverso (Traefik, HAProxy, Contour, NGINX de F5, Kong...) que observa los Ingress y se configura solo. Kubernetes **no trae ninguno** instalado.
 - **IngressClass** indica qué controlador atiende cada Ingress (`spec.ingressClassName`); una puede marcarse como predeterminada. En este clúster: `traefik`.
 - `pathType`: `Prefix`, `Exact` o `ImplementationSpecific`.
+- **TLS**: el certificado se guarda en un Secret de tipo **`kubernetes.io/tls`**, con las claves `tls.crt` (certificado) y `tls.key` (clave privada). La sección `tls` del Ingress lo referencia (`hosts` + `secretName`), y el controlador usa ese certificado para terminar HTTPS. Se crea con `kubectl create secret tls <nombre> --cert=cert.pem --key=key.pem`.
 - Limitaciones: solo HTTP/HTTPS, y las funciones avanzadas (reescrituras, cabeceras, pesos) dependen de **anotaciones** propias de cada controlador, nada portables.
 
 > Noticia relevante: el controlador comunitario **ingress-nginx** (el más usado durante años) fue **retirado en marzo de 2026**; ya no recibe versiones ni parches de seguridad. La recomendación oficial es migrar a otro controlador o, mejor, a Gateway API. La API Ingress sigue existiendo y es estable, pero está "congelada": no recibe nuevas funciones.
@@ -736,10 +746,12 @@ kubectl rollout status deploy/tienda -n lab-06
 - Modelo de red: **una IP por pod**, pod a pod **sin NAT**, contenedores del mismo pod comparten IP (`localhost`).
 - **CNI** = especificación; plugins: Flannel (simple, sin NetworkPolicy), Calico (BGP, políticas), Cilium (eBPF), kindnet (kind). Sin CNI → nodos `NotReady`.
 - Service = IP virtual + DNS + balanceo por **selector de labels**. Tipos: ClusterIP (defecto, interno), NodePort (30000-32767 en todos los nodos), LoadBalancer (balanceador externo del cloud), ExternalName (CNAME), headless (`clusterIP: None`, DNS devuelve IPs de pods).
+- `externalTrafficPolicy: Local` = solo pods del nodo que recibe, **conserva la IP del cliente**; `Cluster` (defecto) reparte entre todos. Descubrimiento también por variables `{SVC}_SERVICE_HOST`/`_PORT` (solo Services que ya existían; por eso se prefiere DNS).
 - **EndpointSlices** guardan las IPs de los pods Ready; sustituyen a Endpoints (obsoleto desde v1.33).
 - **kube-proxy** programa iptables (defecto) / IPVS (obsoleto desde v1.35) / nftables (GA v1.33) en cada nodo; **eBPF** (Cilium) puede reemplazarlo. Balancea por conexión.
 - **CoreDNS** (Service `kube-dns`): `<svc>.<ns>.svc.cluster.local`; `resolv.conf` con `search` y `ndots:5`.
 - **Ingress** necesita un **Ingress Controller**; solo HTTP/HTTPS; extras por anotaciones. ingress-nginx retirado en marzo de 2026.
+- TLS en Ingress: Secret tipo `kubernetes.io/tls` (`tls.crt`, `tls.key`) referenciado en `spec.tls.secretName`.
 - **Gateway API** (GatewayClass → Gateway → HTTPRoute): por roles, portable, pesos/cabeceras en la spec, multiprotocolo; sucesor de Ingress.
 - `kubectl port-forward` = túnel de depuración, no exposición.
 
@@ -766,3 +778,4 @@ kubectl rollout status deploy/tienda -n lab-06
 - [Gateway API — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/gateway/): GatewayClass, Gateway, HTTPRoute, GRPCRoute; roles proveedor / operador / desarrollador; add-on de CRDs.
 - [Gateway API v1.0: GA Release — kubernetes.io/blog](https://kubernetes.io/blog/2023/10/31/gateway-api-ga/): GA en octubre de 2023.
 - [ReferenceGrant — gateway-api.sigs.k8s.io](https://gateway-api.sigs.k8s.io/reference/api-types/referencegrant/): referencias entre namespaces; el enganche ruta → Gateway se controla en el propio Gateway.
+- [Preserving the client source IP — kubernetes.io](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip): `externalTrafficPolicy: Local` frente a `Cluster`.

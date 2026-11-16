@@ -277,6 +277,13 @@ topologySpreadConstraints:
 
 Es más flexible que la pod anti-affinity: anti-affinity dice "como máximo uno por dominio", spread dice "repártelos con una diferencia máxima de N".
 
+### Scheduling gates y Dynamic Resource Allocation (breve)
+
+Dos piezas más recientes que el examen puede nombrar:
+
+- **Scheduling gates** (`spec.schedulingGates`, estable desde v1.30): una lista de "barreras" que retienen al Pod antes de planificarlo. Mientras tenga alguna, el Pod aparece como `SchedulingGated` y el scheduler **ni lo mira**. Un controlador externo (por ejemplo, un gestor de colas o de cuotas como Kueue) quita las barreras cuando decide que le toca; cuando no queda ninguna, el Pod entra en la cola normal. Las barreras solo pueden **quitarse**, no añadirse después de crear el Pod.
+- **Dynamic Resource Allocation** (**DRA**, API `resource.k8s.io/v1`, estable desde v1.34): la forma moderna de pedir hardware especial como **GPUs**. El Pod reclama un dispositivo con un **ResourceClaim**, y el administrador o el driver describen los tipos de dispositivo con una **DeviceClass**. Es la misma idea que un volumen persistente y su clase de almacenamiento (módulo 08). DRA permite filtrar por atributos y compartir dispositivos. El modelo clásico, que sigue existiendo, son los **device plugins**, que anuncian recursos extendidos que se piden en `limits` (por ejemplo `nvidia.com/gpu: 1`).
+
 ### Mantenimiento de nodos: cordon, drain y PodDisruptionBudget
 
 Tarde o temprano hay que sacar un nodo de servicio: actualizar el kubelet, parchear el sistema operativo, cambiar hardware. Kubernetes lo resuelve en tres pasos, siempre de **un nodo a la vez**:
@@ -1134,6 +1141,7 @@ La trampa del DaemonSet: con solo la toleration del control plane te quedarías 
 - **DaemonSet** = un pod por nodo (respeta taints); **static pod** = lo crea el kubelet desde `/etc/kubernetes/manifests` (así arranca el control plane).
 - Mantenimiento: **cordon** = no planificable (los pods se quedan); **drain** = cordon + desalojo (`--ignore-daemonsets`); **uncordon** = vuelve a aceptar pods (los que se fueron no regresan). **PodDisruptionBudget** (`minAvailable`/`maxUnavailable`) limita las interrupciones *voluntarias*, no la caída de un nodo.
 - **PriorityClass** + preemption deciden quién entra cuando no hay sitio; **scheduler profiles** = varios comportamientos en un solo scheduler; **topologySpreadConstraints** = reparto con `maxSkew`.
+- **schedulingGates**: el Pod queda `SchedulingGated` hasta que un controlador quita todas las barreras. **DRA** (`resource.k8s.io/v1`, GA en v1.34): GPUs y otro hardware con **ResourceClaim** + **DeviceClass**; el modelo clásico son los device plugins (`nvidia.com/gpu`).
 
 ## Limpieza
 
@@ -1169,3 +1177,6 @@ kcna-worker2         <none>
 - [Static Pods — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/pods/static-pods/) y [Create static Pods — kubernetes.io](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/): `staticPodPath`, mirror pods con sufijo del nodo, borrado del archivo.
 - [Pod Priority and Preemption — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/): PriorityClass no namespaced, clases `system-cluster-critical` (2000000000) y `system-node-critical` (2000001000), `preemptionPolicy: Never`.
 - [Pod Topology Spread Constraints — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/): `maxSkew`, `topologyKey`, `whenUnsatisfiable` (`DoNotSchedule` por defecto / `ScheduleAnyway`).
+- [Pod Scheduling Readiness — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-scheduling-readiness/): `schedulingGates`, estado `SchedulingGated`, las barreras solo se quitan.
+- [Dynamic Resource Allocation — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/): ResourceClaim, DeviceClass y ResourceSlice; API `resource.k8s.io/v1`.
+- [Safely Drain a Node — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/) y [Specifying a Disruption Budget — kubernetes.io](https://kubernetes.io/docs/tasks/run-application/configure-pdb/): cordon, drain, uncordon y PodDisruptionBudget.
