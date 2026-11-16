@@ -7,6 +7,7 @@
   import { progress } from '../lib/progress.svelte';
   import { CON_EXAMEN, aprobado } from '../lib/examenModulo';
   import { moduleUrl, pad } from '../lib/modules';
+  import Grumete from './Grumete.svelte';
 
   // El intento en curso se recuerda en este navegador para poder seguir tras recargar la página
   const KEY = 'kcna-examen';
@@ -22,6 +23,14 @@
   let error = $state('');
   let confirmar = $state(false);
   let ahora = $state(Date.now());
+  // La mascota reacciona al resultado (el texto de la tarjeta ya lo dice; ella es decorativa):
+  // aprobado → salta y se transforma en el timón; no aprobado → se derrite y se recompone.
+  let mascota: ReturnType<typeof Grumete> | undefined = $state();
+  $effect(() => {
+    if (!mascota || !resultado) return;
+    if (resultado.aprobado) { mascota.go('feliz'); mascota.go('timon'); }
+    else mascota.go('triste');
+  });
   let reloj: ReturnType<typeof setInterval> | undefined;
   // diferencia entre el reloj del servidor y el de este navegador: el plazo lo lleva el servidor, y un reloj
   // local atrasado entregaría tarde y perdería el intento
@@ -176,6 +185,7 @@
   {#if error}<p class="err" role="alert">{error}</p>{/if}
 {:else if paso === 'resultado' && resultado}
   <div class="card" class:good={resultado.aprobado} class:bad={!resultado.aprobado} role="status">
+    <div class="mascota"><Grumete bind:this={mascota} size={112} /></div>
     <h2>{resultado.aprobado ? 'Aprobaste' : 'No alcanzó esta vez'}</h2>
     <p>Tu nota: <strong>{resultado.nota} %</strong>{#if resultado.total} ({resultado.aciertos} de {resultado.total}){/if}. Se aprueba con el {resultado.aprobar} %.</p>
     {#if !resultado.aprobado}
@@ -213,6 +223,9 @@
   .card { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--panel); padding: 16px 18px; margin-top: 18px; max-width: 620px; }
   .card.good { border-color: var(--ready); }
   .card.bad { border-color: var(--fail); }
+  .card::after { content: ''; display: block; clear: both; }
+  .mascota { float: right; margin: -8px -4px 4px 12px; }
+  @media (max-width: 480px) { .mascota { float: none; display: grid; place-items: center; margin: 0 0 4px; } }
   h2 { font-size: 1.12rem; }
   .good h2 { color: var(--ready); }
   .bad h2 { color: var(--fail); }

@@ -1,0 +1,14 @@
+---
+// Banco de pruebas de la mascota: no está en la navegación. Sirve para afinar estados y energía mirándola.
+import Base from '../layouts/Base.astro';
+import GrumeteLab from '../components/GrumeteLab.svelte';
+---
+<Base title="Grumete" description="Banco de pruebas de la mascota del curso." width="read">
+  <h1>Grumete</h1>
+  <p class="lead">La mascota del curso: una masa de plastilina con gorro de marinero. Arrástrala para moldearla: guarda un rato la forma que le das y luego vuelve a la suya.</p>
+  <GrumeteLab client:load />
+</Base>
+
+<style>
+  .lead { color: var(--ink-2); margin-top: 10px; max-width: 60ch; }
+</style>
