@@ -6,14 +6,21 @@
   //  - Pulsarlo: cuenta un dato de marinero sobre el examen. Arrastrarlo: se moldea como plastilina.
   //  - Si no pasa nada en un buen rato se duerme, y saluda al volver (salvo leyendo o en un examen).
   //  - Modo examen (lib/grumete-avisos.ts): quieto, sin seguir el cursor, sin globos ni datos.
-  //  - Leyendo un módulo: respira más despacio y no sigue el cursor, para no tirar de la vista.
+  //  - Leyendo un módulo: respira más despacio y no sigue el cursor, para no tirar de la vista; si el marcador
+  //    ofrece «Continuar», lo mira y asiente (sin repetir lo que dice).
+  //  - En /practica: avisa del formato de las preguntas que te cuestan y, al cerrar la ronda, busca un patrón en los fallos.
+  //  - En la portada, además del parte del día: hitos de constancia (3, 7, 14, 30 días; 5 de 7), una vez cada uno.
+  //  - Su menú (⋯) elige cuánto participa: habla, solo gestos o escondido.
   // Se aparta cuando hay otro Grumete en la página, cuando suena el lector o se abre un diagrama a pantalla completa,
   // y el alumno puede esconderlo (se recuerda en este navegador).
   import { onMount } from 'svelte';
+  import { scale } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
+  import { ms } from '../lib/motion';
   import Grumete from './Grumete.svelte';
   import type { Estado } from '../lib/grumete';
-  import { EV_AVISO, EV_HOY, EV_LOCAL, EV_MODO, EV_PREF, enExamen, grumetesLocales, grumeteOculto, guardarMemoria, leerHoy, leerMemoria, setGrumeteOculto, type Aviso, type ClaseReto } from '../lib/grumete-avisos';
-  import { alCargar, anotar, diasSinEstudiar, puedeDecir, reaccionRespuesta, type Conf, type Decision } from '../lib/grumete-director';
+  import { EV_AVISO, EV_HOY, EV_LOCAL, EV_MODO, EV_PREF, avisoPendiente, enExamen, grumetesLocales, guardarMemoria, leerHoy, leerMemoria, nivelGrumete, setNivelGrumete, type Aviso, type ClaseReto } from '../lib/grumete-avisos';
+  import { alCargar, anotar, avisoTrampa, cierreRonda, diasSinEstudiar, puedeDecir, reaccionRespuesta, type Conf, type Decision, type Nivel } from '../lib/grumete-director';
   import { progress, isoDay } from '../lib/progress.svelte';
 
   const KEY = 'kcna.grumete'; // sessionStorage: ya saludó en esta visita
@@ -49,18 +56,24 @@
 
   let g: ReturnType<typeof Grumete> | undefined = $state();
   let listo = $state(false);
-  let oculto = $state(false);
+  // habla / solo gestos / oculto (lib/grumete-avisos.ts); con «solo gestos» calla salvo si se le pulsa
+  let nivel = $state<Nivel>('habla');
+  const oculto = $derived(nivel === 'oculto');
+  let menu = $state(false);
+  let raiz: HTMLElement | undefined = $state();
   let locales = $state(0);
   let estado = $state<Estado>('reposo');
   let globo = $state<{ texto: string; dato: boolean; n: number } | null>(null);
 
   let racha = 0, dominadas = 0, dato =Math.floor(Math.random() * DATOS.length), ultimo = Date.now();
-  let lote: Aviso[] = [], tLote = 0, tGlobo = 0;
+  let lote: Aviso[] = [], tLote = 0, tGlobo = 0, esperas = 0;
   let toques: number[] = [], desde = { x: 0, y: 0 }, arrastrado = false;
   const azar = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
+  /** Lo que dice por su cuenta (reacciones y proactivas): con «solo gestos», nada */
+  function hablar(texto: string, esDato = false) { if (nivel === 'habla') decir(texto, esDato); }
   function decir(texto: string, esDato = false) {
-    globo = { texto, dato: esDato, n: (globo?.n ?? 0) + 1 };
+    globo ={ texto, dato: esDato, n: (globo?.n ?? 0) + 1 };
     clearTimeout(tGlobo);
     tGlobo = window.setTimeout(() => (globo = null), Math.min(9000, 2200 + texto.length * 55));
   }
@@ -83,30 +96,44 @@
     actividad();
   }
   function reaccionar() {
+    // recién hidratado, su figura puede no estar aún: el lote espera un poco (sin perderse)
+    // (escondido o apartado no hay figura: se descarta)
+    if (!g) {
+      if (lote.length && !oculto && !locales && esperas++ < 10) tLote = window.setTimeout(reaccionar, 150); else lote = [];
+      return;
+    }
+    esperas = 0;
     const l = lote.splice(0);
-    if (!g) return;
     if (examen && !l.some(esLote)) return; // respondiendo un examen: nada (las comprobaciones sueltas no cuentan)
-    if (l.includes('modulo')) { racha = 0; g.go('timon'); decir(azar(MODULO)); return; }
+    if (l.includes('modulo')) { racha = 0; g.go('timon'); hablar(azar(MODULO)); return; }
     // examen entregado: el umbral es el real de ese examen (80 % el de módulo, 75 % el simulacro)
     const ex = l.find(esLote);
     if (ex) {
       racha = 0;
-      if (ex.ok >= ex.minimo) { g.go('feliz'); g.go('timon'); decir(`${ex.ok} de ${ex.total}. ¡Aprobado!`); }
+      if (ex.ok >= ex.minimo) { g.go('feliz'); g.go('timon'); hablar(`${ex.ok} de ${ex.total}. ¡Aprobado!`); }
       else {
         const faltan = ex.minimo - ex.ok;
         g.go('triste');
-        decir(`${ex.ok} de ${ex.total}. ${faltan === 1 ? 'Faltó una' : `Faltaron ${faltan}`}: se aprueba con ${ex.minimo}.`);
+        hablar(`${ex.ok} de ${ex.total}. ${faltan === 1 ? 'Faltó una' : `Faltaron ${faltan}`}: se aprueba con ${ex.minimo}.`);
       }
       return;
     }
     const reto = l.find(esReto);
-    if (reto) { g.go('feliz'); const f = RETO[reto.clase]; if (f) decir(f); return; }
+    if (reto) { g.go('feliz'); const f = RETO[reto.clase]; if (f) hablar(f); return; }
+    // fin de una ronda de práctica: un patrón en los fallos (o la ronda limpia, su momento de timón)
+    const ronda = l.find((a): a is Extract<Aviso, { tipo: 'ronda' }> => typeof a === 'object' && a.tipo === 'ronda');
+    if (ronda) { racha = 0; const d = cierreRonda(ronda.ok, ronda.total, ronda.fallos); if (d) ejecutar(d, true); return; }
+    // pregunta de un tipo que le cuesta: aviso de formato (informa: se anuncia)
+    const trampa = l.find((a): a is Extract<Aviso, { tipo: 'trampa' }> => typeof a === 'object' && a.tipo === 'trampa');
+    if (trampa) { const d = avisoTrampa(trampa.tipos, trampa.dichas); if (d) ejecutar({ ...d, apunta: '.round .card .q' }, true); return; }
     // acuses pequeños: un paso del laboratorio o una tarjeta dominada; asiente sin hablar (cada 5 tarjetas, se alegra)
     if (l.includes('paso')) { g.go('asiente'); return; }
     if (l.includes('dominada')) { dominadas += 1; g.go(dominadas % 5 ? 'asiente' : 'feliz'); return; }
     // respuestas sueltas: el director decide según la confianza; en la esquina casi siempre es solo un gesto
     const resp = l.flatMap((a): { ok: boolean; conf?: Conf }[] =>
       a === 'acierto' ? [{ ok: true }] : a === 'fallo' ? [{ ok: false }] : typeof a === 'object' && a.tipo === 'respuesta' ? [{ ok: a.ok, conf: a.conf }] : []);
+    // ya respondió: lo que dijera antes (un aviso de formato) ya no viene a cuento
+    if (resp.length && globo) { globo = null; clearTimeout(tGlobo); }
     const fallo = resp.find((x) => !x.ok);
     if (fallo) { racha = 0; ejecutar(reaccionRespuesta(false, fallo.conf, 0, 'esquina')); return; }
     if (resp.length) { racha += 1; ejecutar(reaccionRespuesta(true, resp[resp.length - 1].conf, racha, 'esquina')); }
@@ -120,7 +147,7 @@
     for (const x of d.gestos) g.go(x);
     const el = d.apunta ? document.querySelector(d.apunta) : null;
     if (el) { g.mirar(el); clearTimeout(tMirar); tMirar = window.setTimeout(() => g?.mirar(null), 5000); }
-    if (d.frase) decir(d.frase, informa);
+    if (d.frase) hablar(d.frase, informa);
   }
 
   // Por iniciativa propia, como mucho una frase por página (y tres al día, sin repetir: memoria del director).
@@ -132,11 +159,16 @@
     if (!leerHoy() && document.querySelector('astro-island[component-url*="Hoy"]')) return;
     const hoy = isoDay();
     const m = leerMemoria(hoy);
-    const d = alCargar(diasSinEstudiar(progress.days, hoy), hoy, leerHoy(), m);
-    if (!d || !puedeDecir(m, d)) return;
-    hablo = true;
-    guardarMemoria(anotar(m, d));
-    ejecutar(d, true); // trae información nueva: el globo se anuncia (role=status)
+    const d = nivel === 'habla' ? alCargar(diasSinEstudiar(progress.days, hoy), hoy, leerHoy(), m, progress.days) : null;
+    if (d && puedeDecir(m, d)) {
+      hablo = true;
+      guardarMemoria(anotar(m, d));
+      ejecutar(d, true); // trae información nueva: el globo se anuncia (role=status)
+      return;
+    }
+    // leyendo, con la posición guardada: el marcador ya dice «Te quedaste en…»; él solo lo mira y asiente
+    const continuar = lectura ? document.querySelector('.marcador .btn.primary') : null;
+    if (continuar) { hablo = true; ejecutar({ gestos: ['asiente'], apunta: '.marcador .btn.primary' }); }
   }
 
   // Pulsar (sin arrastrar) cuenta un dato; muchos toques seguidos lo marean.
@@ -155,15 +187,27 @@
     decir(DATOS[dato], true);
   }
 
-  function esconder() { globo = null; setGrumeteOculto(true); }
-  function mostrar() { setGrumeteOculto(false); queueMicrotask(() => g?.go('saludo')); }
+  function elegir(n: Nivel) {
+    menu = false;
+    if (n !== 'habla') { globo = null; clearTimeout(tGlobo); }
+    setNivelGrumete(n);
+    if (n === 'gestos') queueMicrotask(() => g?.go('asiente'));
+  }
+  function mostrar() { setNivelGrumete('habla'); queueMicrotask(() => g?.go('saludo')); }
 
   onMount(() => {
-    oculto = grumeteOculto();
+    nivel = nivelGrumete();
     locales = grumetesLocales();
     listo = true;
     const onLocal = () => (locales = grumetesLocales());
-    const onPref = () => (oculto = grumeteOculto());
+    const onPref = () => (nivel = nivelGrumete());
+    // el menú se cierra al pulsar fuera o con Escape
+    const cerrarMenu = (e: Event) => {
+      if (!menu) return;
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !raiz?.contains(e.target as Node)) menu = false;
+    };
+    addEventListener('pointerdown', cerrarMenu);
+    addEventListener('keydown', cerrarMenu);
     // al entrar en un examen se calla al instante: fuera el globo que hubiera y a reposo
     const onModo = () => {
       examen = enExamen();
@@ -172,6 +216,9 @@
     onModo();
     lectura = !!document.querySelector('article .prose');
     addEventListener(EV_AVISO, onAviso);
+    // lo que se avisó justo antes de hidratarse (p. ej. la primera pregunta de una ronda que arranca al cargar)
+    const pendiente = avisoPendiente();
+    if (pendiente) { lote.push(pendiente); tLote = window.setTimeout(reaccionar, 700); }
     addEventListener(EV_LOCAL, onLocal);
     addEventListener(EV_PREF, onPref);
     addEventListener(EV_MODO, onModo);
@@ -194,6 +241,8 @@
       removeEventListener(EV_PREF, onPref);
       removeEventListener(EV_MODO, onModo);
       removeEventListener(EV_HOY, onHoy);
+      removeEventListener('pointerdown', cerrarMenu);
+      removeEventListener('keydown', cerrarMenu);
       clearTimeout(tProactiva); clearTimeout(tPensar); clearTimeout(tMirar);
       for (const ev of eventos) removeEventListener(ev, actividad);
       clearInterval(reloj); clearTimeout(tHola); clearTimeout(tLote); clearTimeout(tGlobo);
@@ -207,8 +256,8 @@
       <svg viewBox="-24 -22 48 30" width="26" height="17" aria-hidden="true"><path d="M-19 0C-19 -13 -12 -19 0 -19C12 -19 19 -13 19 0Z" fill="#fff" stroke="currentColor" stroke-width="2" /><rect x="-22" y="-4" width="44" height="7" rx="3.5" fill="#1d4f91" /></svg>
     </button>
   {:else}
-    <div class="companero">
-      {#if globo}
+    <div class="companero" bind:this={raiz}>
+      {#if globo && !menu}
         {#key globo.n}
           <p class="globo g-globo" class:dato={globo.dato} role={globo.dato ? 'status' : undefined} aria-hidden={globo.dato ? undefined : 'true'}>{globo.texto}</p>
         {/key}
@@ -218,9 +267,17 @@
         onpointerdown={onDown} onpointermove={onMove} onclick={onClick}>
         <Grumete bind:this={g} {estado} {energia} seguir={!examen && !lectura} size={96} local={false} />
       </button>
-      <button type="button" class="cerrar" aria-label="Esconder a Grumete" title="Esconder a Grumete" onclick={esconder}>
-        <svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
+      <button type="button" class="cerrar" class:abierto={menu} aria-label="Opciones de Grumete" title="Opciones de Grumete" aria-expanded={menu} aria-controls="grumete-opciones" onclick={() => (menu = !menu)}>
+        <svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true"><circle cx="4" cy="10" r="1.9" fill="currentColor" /><circle cx="10" cy="10" r="1.9" fill="currentColor" /><circle cx="16" cy="10" r="1.9" fill="currentColor" /></svg>
       </button>
+      {#if menu}
+        <div class="opciones" id="grumete-opciones" role="group" aria-label="Cuánto participa Grumete"
+          in:scale={{ start: 0.94, duration: ms(180), easing: cubicOut }} out:scale={{ start: 0.96, duration: ms(110) }}>
+          <button type="button" aria-pressed={nivel === 'habla'} onclick={() => elegir('habla')}><strong>Habla</strong><span>Gestos y frases cortas</span></button>
+          <button type="button" aria-pressed={nivel === 'gestos'} onclick={() => elegir('gestos')}><strong>Solo gestos</strong><span>Calla, salvo si lo pulsas</span></button>
+          <button type="button" onclick={() => elegir('oculto')}><strong>Esconder</strong><span>Vuelve con el botón de la esquina</span></button>
+        </div>
+      {/if}
     </div>
   {/if}
 {/if}
@@ -247,8 +304,21 @@
   .cerrar { position: absolute; top: 14px; right: 2px; width: 24px; height: 24px; display: grid; place-items: center; padding: 0;
     border: 1px solid var(--line); border-radius: 50%; background: var(--panel); color: var(--ink-2); cursor: pointer;
     opacity: 0; transition: opacity var(--dur-fast) var(--ease); }
-  .companero:hover .cerrar, .cerrar:focus-visible { opacity: 1; }
-  .cerrar:hover { color: var(--ink); border-color: var(--ink-3); }
+  .companero:hover .cerrar, .cerrar:focus-visible, .cerrar.abierto { opacity: 1; }
+  .cerrar:hover, .cerrar.abierto { color: var(--ink); border-color: var(--ink-3); }
+
+  /* menú de participación: nace del botón de opciones (arriba a la derecha de Grumete) */
+  .opciones { position: absolute; left: 44px; bottom: calc(100% - 8px); width: max-content; max-width: min(240px, calc(100vw - 90px));
+    display: grid; gap: 2px; padding: 5px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel);
+    box-shadow: var(--shadow); transform-origin: 0 100%; }
+  .opciones button { display: grid; gap: 1px; padding: 7px 10px 7px 26px; border: 0; border-radius: calc(var(--r-m) - 3px); background: none;
+    color: var(--ink); text-align: left; font: inherit; font-size: 0.86rem; cursor: pointer; position: relative;
+    transition: background var(--dur-fast) var(--ease); }
+  .opciones button span { color: var(--ink-3); font-size: 0.78rem; }
+  .opciones button:hover, .opciones button:focus-visible { background: var(--line-2); }
+  .opciones button:active { scale: var(--press, 0.97); }
+  /* el nivel elegido lleva su punto */
+  .opciones button[aria-pressed='true']::before { content: ''; position: absolute; left: 10px; top: 13px; width: 7px; height: 7px; border-radius: 50%; background: var(--helm); }
   @media (hover: none) { .cerrar { opacity: 0.75; } }
 
   .volver { position: fixed; z-index: 23; left: 12px; bottom: 12px; width: 40px; height: 40px; display: grid; place-items: center; padding: 0;

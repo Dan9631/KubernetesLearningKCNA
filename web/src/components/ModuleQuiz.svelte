@@ -2,7 +2,7 @@
   // Preguntas del banco (quiz/preguntas.js) asociadas a un módulo, con explicación al responder.
   import preguntas from '../data/preguntas.json';
   import { progress, recordAnswer, type Conf } from '../lib/progress.svelte';
-  import { priority, endOfToday } from '../lib/preparacion';
+  import { priority, endOfToday, trampas, TRAMPAS } from '../lib/preparacion';
   import Confianza from './Confianza.svelte';
   import Repaso from './Repaso.svelte';
   import SourceLinks from './SourceLinks.svelte';
@@ -12,10 +12,10 @@
   import { questionParts, answerParts } from '../lib/voz.svelte';
   import { onMount, tick } from 'svelte';
   import { wait } from '../lib/motion';
-  import { reaccionRespuesta } from '../lib/grumete-director';
+  import { avisoTrampa, reaccionRespuesta, type Trampa } from '../lib/grumete-director';
   import Grumete from './Grumete.svelte';
   import type { Estado } from '../lib/grumete';
-  import { EV_PREF, grumeteOculto, setGrumeteOculto } from '../lib/grumete-avisos';
+  import { EV_PREF, nivelGrumete, setGrumeteOculto } from '../lib/grumete-avisos';
 
   interface Q { id: string; domain: string; topic: string; module: number; q: string; options: string[]; answer: number[]; explanation: string; source?: string[]; holdout?: boolean }
   let { module }: { module: number } = $props();
@@ -41,6 +41,7 @@
     i = 0; picked = []; revealed = false; ok = 0; answered = 0; conf = 'd';
     res = []; saliendo = false;
     racha = 0; clearTimeout(tResumen);
+    debiles = trampas(progress).map((t) => t.key as Trampa); trampasDichas = 0;
     preguntar();
   }
 
@@ -49,9 +50,12 @@
      así que su escena va con aria-hidden y no frena nada (las acciones se encolan, no hay esperas). */
   let mascota: ReturnType<typeof Grumete> | undefined = $state();
   let conGrumete = $state(false);
+  let habla = $state(true);
   let estadoG = $state<Estado>('reposo');
   let frase = $state({ texto: '', n: 0 });
   let racha = 0, tResumen = 0;
+  // tipos de pregunta que te cuestan (lib/preparacion.ts trampas): avisa del formato, como mucho dos por ronda
+  let debiles: Trampa[] = [], trampasDichas = 0;
   const optEls = $state<HTMLButtonElement[]>([]);
   let qEl: HTMLElement | undefined = $state();
   let explainEl: HTMLElement | undefined = $state();
@@ -61,8 +65,11 @@
   function decir(texto: string) { frase = { texto, n: frase.n + 1 }; }
   function preguntar() {
     estadoG = 'reposo';
-    const n = pool[order[i]]?.answer.length ?? 1;
-    decir(n > 1 ? `Aquí van ${n} respuestas. ¿Cuáles?` : i === 0 ? '¿Empezamos? ¿Cuál crees?' : azar(PREGUNTA));
+    const actual = pool[order[i]];
+    const n = actual?.answer.length ?? 1;
+    const trampa = actual ? avisoTrampa(debiles.filter((k) => TRAMPAS.find((t) => t.key === k)?.test(actual)), trampasDichas) : null;
+    if (trampa?.frase) { trampasDichas += 1; decir(trampa.frase); }
+    else decir(n > 1 ? `Aquí van ${n} respuestas. ¿Cuáles?` : i === 0 ? '¿Empezamos? ¿Cuál crees?' : azar(PREGUNTA));
     mascota?.mirar(qEl ?? null);
   }
   function confianza(c: Conf) {
@@ -138,8 +145,10 @@
   const correctas = $derived(q ? q.answer.map((k) => letters[k]).join(' y ') : '');
 
   onMount(() => {
-    conGrumete = !grumeteOculto();
-    const onPref = () => (conGrumete = !grumeteOculto());
+    // «solo gestos»: se queda en la escena pero sin globo
+    const leer = () => { const n = nivelGrumete(); conGrumete = n !== 'oculto'; habla = n === 'habla'; };
+    leer();
+    const onPref = leer;
     addEventListener(EV_PREF, onPref);
     return () => { removeEventListener(EV_PREF, onPref); clearTimeout(tResumen); };
   });
@@ -165,7 +174,7 @@
     {#if conGrumete}
       <div class="escena">
         <div class="avatar" aria-hidden="true"><Grumete bind:this={mascota} estado={estadoG} energia={0.9} size={84} /></div>
-        {#key frase.n}<p class="dice g-globo" aria-hidden="true">{frase.texto}</p>{/key}
+        {#if habla}{#key frase.n}<p class="dice g-globo" aria-hidden="true">{frase.texto}</p>{/key}{/if}
         <button type="button" class="callar" aria-label="Esconder a Grumete" title="Esconder a Grumete" onclick={() => setGrumeteOculto(true)}>
           <svg viewBox="0 0 20 20" width="11" height="11" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
         </button>

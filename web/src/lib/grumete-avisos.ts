@@ -7,7 +7,7 @@
  *  lote: un examen entregado, con su mínimo real para aprobar (el compañero no adivina el umbral).
  *  reto: un reto superado, con su clase (cada uno tiene su frase). */
 import { untrack } from 'svelte';
-import { alDia, type DatosHoy, type Memoria } from './grumete-director';
+import { alDia, type DatosHoy, type Fallo, type Memoria, type Nivel, type Trampa } from './grumete-director';
 
 export type ClaseReto = 'diagrama' | 'terminal' | 'diagnostico' | 'examen' | 'otro';
 export type Aviso =
@@ -15,7 +15,11 @@ export type Aviso =
   /** una respuesta del banco con la confianza declarada (Seguro / Dudo / Adivino), si la hubo */
   | { tipo: 'respuesta'; ok: boolean; conf?: 's' | 'd' | 'a' }
   | { tipo: 'lote'; ok: number; total: number; minimo: number }
-  | { tipo: 'reto'; clase: ClaseReto };
+  | { tipo: 'reto'; clase: ClaseReto }
+  /** fin de una ronda de práctica (no de examen), con los fallos y su tema */
+  | { tipo: 'ronda'; ok: number; total: number; fallos: Fallo[] }
+  /** la pregunta en pantalla es de un tipo que al alumno le cuesta (ya filtrado: como mucho dos por ronda) */
+  | { tipo: 'trampa'; tipos: Trampa[]; dichas: number };
 export const EV_AVISO = 'grumete:aviso';
 
 /** La portada «Hoy» deja aquí lo que ya calcula (repasos, fallos con seguridad, siguiente paso) para el parte del
@@ -68,19 +72,32 @@ export const EV_LOCAL = 'grumete:local';
 
 export function avisarGrumete(aviso: Aviso) {
   if (typeof window === 'undefined') return;
+  // el último aviso queda un momento en window: si el compañero aún no se había hidratado (una ronda que arranca
+  // al cargar con ?modo=practica), lo recoge al montarse (avisoPendiente)
+  (window as unknown as { __grumeteUltimo?: { aviso: Aviso; t: number } }).__grumeteUltimo = { aviso, t: Date.now() };
   dispatchEvent(new CustomEvent<Aviso>(EV_AVISO, { detail: aviso }));
 }
-
-/** El alumno puede esconder a Grumete; vale para el compañero y para la práctica. Se recuerda en este navegador. */
-const KEY_OCULTO = 'kcna.grumete';
-export const EV_PREF = 'grumete:pref';
-export function grumeteOculto(): boolean {
-  try { return localStorage.getItem(KEY_OCULTO) === 'oculto'; } catch { return false; }
+/** El último aviso si es de hace menos de `ms` (y lo consume) */
+export function avisoPendiente(ms = 3000): Aviso | undefined {
+  const w = window as unknown as { __grumeteUltimo?: { aviso: Aviso; t: number } };
+  const u = w.__grumeteUltimo;
+  w.__grumeteUltimo = undefined;
+  return u && Date.now() - u.t < ms ? u.aviso : undefined;
 }
-export function setGrumeteOculto(oculto: boolean) {
-  try { if (oculto) localStorage.setItem(KEY_OCULTO, 'oculto'); else localStorage.removeItem(KEY_OCULTO); } catch { /* sin almacenamiento */ }
+
+/** Cuánto participa Grumete (habla / solo gestos / oculto); vale para el compañero y para la práctica del módulo.
+ *  Se recuerda en este navegador ('oculto' ya existía; 'gestos' es nuevo; sin valor = habla). */
+const KEY_NIVEL = 'kcna.grumete';
+export const EV_PREF = 'grumete:pref';
+export function nivelGrumete(): Nivel {
+  try { const v = localStorage.getItem(KEY_NIVEL); return v === 'oculto' || v === 'gestos' ? v : 'habla'; } catch { return 'habla'; }
+}
+export function setNivelGrumete(n: Nivel) {
+  try { if (n === 'habla') localStorage.removeItem(KEY_NIVEL); else localStorage.setItem(KEY_NIVEL, n); } catch { /* sin almacenamiento */ }
   dispatchEvent(new CustomEvent(EV_PREF));
 }
+export const grumeteOculto = () => nivelGrumete() === 'oculto';
+export const setGrumeteOculto = (oculto: boolean) => setNivelGrumete(oculto ? 'oculto' : 'habla');
 
 /** Cuántos Grumetes locales hay ahora en la página (contador global: las islas pueden hidratarse en cualquier orden). */
 export function grumetesLocales(delta = 0): number {
