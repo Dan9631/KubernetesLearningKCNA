@@ -56,6 +56,23 @@
      Solo en scale/translate; la opacidad entra aparte y en lineal. Súbele el rebote si lo quieres más juguetón. */
   --spring-chat: linear(0, 0.047, 0.16, 0.304, 0.456, 0.598, 0.723, 0.826, 0.905, 0.964, 1.003, 1.028, 1.041, 1.046, 1.045, 1.04, 1.034, 1.027, 1.02, 1.014, 1.009, 1.005, 1.002, 1, 0.999, 0.998, 0.998, 0.998, 0.998, 0.998, 0.999, 1);
   --spring-chat-dur: 820ms;
+  /* resorte de los indicadores de pestaña (--duration 0.3 --bounce 0.15): llega rápido y rebasa un 0,6 %.
+     Es una transición, así que un segundo clic a mitad la redirige desde donde esté */
+  --spring-tab: linear(0, 0.034, 0.116, 0.223, 0.338, 0.451, 0.555, 0.648, 0.727, 0.794, 0.848, 0.891, 0.924, 0.95, 0.969, 0.982, 0.992, 0.998, 1.002, 1.005, 1.006, 1.006, 1.006, 1.006, 1.005, 1.004, 1.004, 1.003, 1.002, 1.002, 1.001, 1);
+  --spring-tab-dur: 420ms;
+  --dur-press: 80ms;   /* acuse de pulsación: mismo frame, casi inmediato */
+  --dur-out: 120ms;    /* salidas: más cortas que las entradas */
+  --dur-fade: 140ms;   /* fundidos de opacidad */
+  --dur-reveal: 320ms; /* destapar algo que estaba oculto */
+  --stagger: 40ms;     /* escalonado entre elementos hermanos (máximo 5-8) */
+  --dist: 8px;         /* distancia de una entrada */
+  --dist-nav: 14px;    /* cambio de pregunta: sugiere «la siguiente viene de la derecha» */
+  --press: 0.97;       /* escala al pulsar */
+  /* botón principal teñido por el resultado (franja de respuesta): contraste AA con su texto */
+  --ready-btn: #167443;
+  --ready-btn-ink: #fff;
+  --fail-btn: #b83232;
+  --fail-btn-ink: #fff;
 
   color-scheme: light;
 }
@@ -80,6 +97,10 @@
   --fail-2: #3f1a1a;
   --node: #2c3d5c;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px -12px rgba(0, 0, 0, 0.6);
+  --ready-btn: #3fc26f;
+  --ready-btn-ink: #0d1627;
+  --fail-btn: #f06a6a;
+  --fail-btn-ink: #0d1627;
   color-scheme: dark;
 }
 
@@ -95,6 +116,50 @@
    mc-fundido en lineal, porque el rebote nunca va en la opacidad */
 @keyframes mc-globo { from { scale: 0.8; translate: -6px 4px; } }
 .g-globo { animation: mc-globo var(--spring-chat-dur) var(--spring-chat) both, mc-fundido 140ms linear both; }
+/* Cambio de pregunta: la que se va sale hacia la izquierda (rápida, ease-in) y la nueva entra desde la derecha */
+@keyframes mc-pregunta-entra { from { opacity: 0; translate: var(--dist-nav) 0; } }
+@keyframes mc-pregunta-sale { to { opacity: 0; translate: calc(var(--dist-nav) * -1) 0; } }
+.mc-pregunta { animation: mc-pregunta-entra var(--dur) var(--ease) both; }
+.mc-pregunta-sale { animation: mc-pregunta-sale var(--dur-out) var(--ease-in) both; pointer-events: none; }
+/* hermanos que llegan uno tras otro (opciones de una pregunta): cada hijo lleva style="--i: n" */
+.mc-escalon > * { animation: mc-entra var(--dur) var(--ease) both; animation-delay: calc(60ms + var(--i, 0) * var(--stagger)); }
+/* panel de pestaña: entra desde el lado hacia el que se movió la pestaña (--dir: 1 derecha, -1 izquierda).
+   Se relanza solo cada vez que el panel pasa de hidden a visible */
+@keyframes mc-lado { from { opacity: 0; translate: calc(var(--dist) * var(--dir, 1)) 0; } }
+.mc-panel:not([hidden]) { animation: mc-lado var(--dur) var(--ease) both; }
+/* algo que aparece con un pequeño salto (una marca, un icono de resultado) */
+@keyframes mc-pop { from { scale: 0.6; } }
+/* Ronda de preguntas (ModuleQuiz y la práctica de /practica), al estilo de una lección de Duolingo:
+   barra de progreso por segmentos que se llenan en verde o rojo (scaleX con resorte) y franja de respuesta que se
+   tiñe con el resultado; el mismo botón principal pasa de Responder a Continuar, así el foco no se pierde. */
+.progreso { display: flex; gap: 3px; margin: -4px 0 14px; }
+.progreso .seg { position: relative; flex: 1; height: 6px; border-radius: 3px; background: var(--line-2); overflow: hidden; }
+.progreso .seg::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--helm); transform-origin: left; scale: 0 1;
+  transition: scale var(--spring-pop-dur) var(--spring-pop), background-color var(--dur-fast) linear, opacity var(--dur-fast) linear; }
+.progreso .seg.actual::after { scale: 0.35 1; opacity: 0.45; }
+.progreso .seg.ok::after { scale: 1 1; background: var(--ready); }
+.progreso .seg.mal::after { scale: 1 1; background: var(--fail); }
+.franja { display: flex; gap: 10px 12px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line-2);
+  border-radius: 0 0 var(--r-l) var(--r-l); background: var(--panel); transition: background-color var(--dur) linear, border-color var(--dur) linear; }
+.franja.ok { background: var(--ready-2); border-top-color: var(--ready); }
+.franja.fail { background: var(--fail-2); border-top-color: var(--fail); }
+.franja .veredicto { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; min-height: 40px; }
+.franja .ico { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 1.05rem; color: #fff;
+  background: var(--ready); animation: mc-pop var(--spring-pop-dur) var(--spring-pop) both; }
+.franja.fail .ico { background: var(--fail); }
+.franja .vt { display: flex; flex-direction: column; font-size: 0.92rem; line-height: 1.35; animation: mc-entra var(--dur) var(--ease) both; }
+.franja .vt strong { font-size: 1.05rem; }
+.franja.ok .vt strong { color: var(--ready); }
+.franja.fail .vt strong { color: var(--fail); }
+.franja .principal { margin-left: auto; min-width: 128px; justify-content: center; }
+/* .btn repetido: gana a .btn.primary:hover, que se declara más abajo */
+.franja.ok .btn.principal { background: var(--ready-btn); border-color: var(--ready-btn); color: var(--ready-btn-ink); }
+.franja.fail .btn.principal { background: var(--fail-btn); border-color: var(--fail-btn); color: var(--fail-btn-ink); }
+@media (max-width: 420px) { .franja .principal { flex: 1; } }
+/* Indicador que se desliza bajo la opción activa (lib/pastilla.ts). Cada grupo le da color y radio */
+.con-pastilla { position: relative; isolation: isolate; }
+.pastilla { position: absolute; z-index: -1; left: 0; top: 0; width: var(--pw, 0); height: var(--ph, 0); translate: var(--px, 0) var(--py, 0); pointer-events: none; }
+.pastilla-lista .pastilla { transition: translate var(--spring-tab-dur) var(--spring-tab), width var(--dur) var(--ease), height var(--dur) var(--ease), background-color var(--dur-fast) linear, border-color var(--dur-fast) linear; }
 
 /* Cambio de página: cabecera y ruta se quedan; el contenido sale rápido y el nuevo entra desde abajo */
 @view-transition { navigation: auto; }
@@ -105,12 +170,18 @@
 header.top { view-transition-name: cabecera; }
 .layout > .rail { view-transition-name: ruta; }
 ::view-transition-group(cabecera), ::view-transition-group(ruta) { animation-duration: var(--dur); }
+/* cambio de tema (ThemeToggle, misma página): un fundido cruzado de toda la página, sin desplazamiento */
+:root.vt-tema::view-transition-old(*), :root.vt-tema::view-transition-new(*) { animation: none; mix-blend-mode: normal; }
+:root.vt-tema::view-transition-old(root) { animation: 220ms linear both mc-sale; }
+:root.vt-tema::view-transition-new(root) { animation: 220ms linear both mc-fundido; }
+:root.vt-tema::view-transition-group(*) { animation-duration: 220ms; }
 
 @media (prefers-reduced-motion: reduce) {
   :root { --dur: 0ms; --dur-slow: 0ms; --dur-fast: 0ms; }
-  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
-  /* Movimiento reducido diseñado, no apagado: lo que aparece sigue notándose con un fundido corto, sin desplazarse */
-  :is(.explain, .why, .check-why, .g-globo) { animation-name: mc-fundido !important; animation-duration: 150ms !important; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; }
+  /* Movimiento reducido diseñado, no apagado: lo que aparece sigue notándose con un fundido corto, sin desplazarse.
+     .mc-aparece es la adhesión para lo nuevo: cualquier elemento con esa clase hereda este fundido */
+  :is(.explain, .why, .check-why, .g-globo, .mc-aparece, .mc-pregunta, .mc-panel:not([hidden])) { animation-name: mc-fundido !important; animation-duration: 150ms !important; }
   @view-transition { navigation: none; }
 }
 
@@ -132,9 +203,11 @@ p { margin: 0; }
 
 /* Botones */
 .btn { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 500; cursor: pointer; border-radius: var(--r-m);
-  border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 9px 16px; transition: border-color var(--dur), background var(--dur), transform var(--dur); }
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 9px 16px;
+  transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast), scale var(--spring-pop-dur) var(--spring-pop); }
 .btn:hover { border-color: var(--helm); }
-.btn:active { transform: translateY(1px); }
+/* se hunde al instante (80 ms) y vuelve con el resorte al soltar. `scale` suelto: no pisa el transform de las simulaciones */
+.btn:active:not(:disabled) { scale: var(--press); transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-fast), var(--dur-press); transition-timing-function: ease, ease, ease, var(--ease); }
 .btn.primary { background: var(--helm); border-color: var(--helm); color: #fff; }
 .btn.primary:hover { background: var(--helm-ink); border-color: var(--helm-ink); }
 .btn.small { padding: 5px 10px; font-size: 0.9rem; border-radius: var(--r-s); }
@@ -215,9 +288,22 @@ p { margin: 0; }
 .prose details[open] { padding-bottom: 14px; }
 .prose summary { cursor: pointer; font-weight: 500; color: var(--helm-ink); }
 .prose details > :not(summary) { margin-top: 0.8em; }
+/* abrir y cerrar un plegado: la altura viaja en vez de saltar. Mejora progresiva (Chromium reciente);
+   sin soporte se abre en seco, como siempre */
+@supports (interpolate-size: allow-keywords) {
+  .prose details { interpolate-size: allow-keywords; }
+  .prose details::details-content { block-size: 0; overflow: clip; overflow-clip-margin: 4px;
+    transition: block-size var(--dur) var(--ease), content-visibility var(--dur) allow-discrete; }
+  .prose details[open]::details-content { block-size: auto; }
+}
+.prose summary { transition: color var(--dur-fast) linear; }
+.prose summary:hover { color: var(--helm); }
 .prose hr { border: 0; border-top: 1px solid var(--line); }
 /* comprobación de 10 segundos al final de una subsección (lib/plegar.ts + Enhance.svelte) */
-.prose .check { margin-top: 1.4em; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--wait); border-radius: var(--r-m); background: var(--panel); }
+.prose .check { margin-top: 1.4em; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--wait); border-radius: var(--r-m); background: var(--panel);
+  transition: border-left-color var(--dur) linear; }
+/* al responder, las opciones que no intervienen se apartan (con transición, no de golpe) */
+.prose .check.done .check-opt:not(.right, .picked) { opacity: 0.55; }
 .prose .check.is-ok { border-left-color: var(--ready); }
 .prose .check.is-bad { border-left-color: var(--fail); }
 .prose .check-k { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
@@ -231,7 +317,7 @@ p { margin: 0; }
 /* casilla de cada paso del laboratorio: se hunde al pulsarla */
 .prose .step-box { transition: scale var(--dur-fast) var(--ease); }
 .prose .step-box:active { scale: 0.85; }
-.prose .check-opt { transition: border-color var(--dur-fast), background var(--dur-fast), scale var(--dur-fast) var(--ease); }
+.prose .check-opt { transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast), opacity var(--dur-fast) linear, scale var(--dur-fast) var(--ease); }
 .prose .check-opt:active:not(:disabled) { scale: 0.97; }
 .prose .check-opt.right { animation: mc-acierto var(--spring-pop-dur) var(--ease); }
 .prose .check-opt.picked:not(.right) { animation: mc-fallo 320ms var(--ease); }
@@ -243,6 +329,7 @@ p { margin: 0; }
 .prose details.ficha p { color: var(--ink-2); }
 .prose details.seccion { margin-top: 2.4em; }
 .prose details.seccion > summary h2 { display: inline; margin: 0; padding: 0; border: 0; font-size: 1.25rem; color: var(--ink); }
+.prose .mermaid.llega > svg { animation: mc-fundido var(--dur) linear both; }
 .prose .mermaid { padding: 16px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--panel); overflow-x: auto; }
 /* tamaño natural y centrado sin recortar el inicio cuando el diagrama es más ancho que la columna */
 .prose .mermaid svg { display: block; margin-inline: auto; max-width: none; height: auto; }
@@ -258,7 +345,11 @@ p { margin: 0; }
 .prose .copy.copy-prompt.done { background: var(--ready); border-color: var(--ready); color: #fff; }/* pasos del laboratorio con casilla (Enhance.svelte) */
 .prose h3.step { display: flex; align-items: center; gap: 10px; }
 .prose h3.step input { width: 20px; height: 20px; accent-color: var(--ready); margin: 0; cursor: pointer; }
-.prose h3.step.done { color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1px; }
+/* el tachado está siempre, transparente: al hacer el paso se tiñe (transición) en vez de aparecer de golpe */
+.prose h3.step { text-decoration: line-through 1px transparent; transition: color var(--dur) linear, text-decoration-color var(--dur) linear; }
+.prose h3.step.done { color: var(--ink-3); text-decoration-color: currentColor; }
+/* recién marcado: la casilla da un pequeño salto con resorte */
+.prose h3.step.recien .step-box { animation: mc-pop var(--spring-pop-dur) var(--spring-pop); }
 
 /* Shiki: usar el tema según data-theme */
 :root[data-theme='dark'] .astro-code, :root[data-theme='dark'] .astro-code span { color: var(--shiki-dark) !important; }
@@ -268,17 +359,19 @@ p { margin: 0; }
 /* Laboratorio: predice antes de mirar la salida y comandos de memoria del paso (Enhance.svelte) */
 .prose .velado, .prose .tapado { filter: blur(7px); user-select: none; pointer-events: none; }
 .prose .tapado { opacity: 0.6; }
+/* destapar la salida esperada: el desenfoque se disuelve (es el momento de comparar con tu predicción) */
+.prose .destapa { transition: filter var(--dur-reveal) var(--ease), opacity var(--dur-reveal) linear; }
 .prose .predice-todas { font-size: 0.92rem; color: var(--ink-2); padding: 10px 12px; border: 1px dashed var(--line); border-radius: var(--r-m); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .prose .predice-lab { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 14px 0 8px; padding: 10px 12px; border-radius: var(--r-m); background: var(--panel-2); border-left: 3px solid var(--wait); font-size: 0.92rem; }
 .prose .predice-lab label { font-weight: 500; }
 .prose .predice-lab input { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 0.92rem; padding: 6px 10px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
-.prose .predice-dicho { font-size: 0.9rem; color: var(--ink-2); border-left: 3px solid var(--wait); padding-left: 12px; }
+.prose .predice-dicho { font-size: 0.9rem; color: var(--ink-2); border-left: 3px solid var(--wait); padding-left: 12px; animation: mc-entra var(--dur) var(--ease) both; }
 .prose .paso-cmd { margin: 18px 0 8px; padding-top: 14px; border-top: 1px dashed var(--line); }
 @media (pointer: coarse) { .prose .predice-lab input { font-size: 16px; min-height: 44px; } }
 
 /* Diagramas con guía (DiagramaGuia.svelte): lo que no está en foco se atenúa; los huecos y el foco se marcan */
-.prose .mermaid svg.dg-on :is(g.node, path[data-edge], g.edgeLabel) { opacity: 0.2; transition: opacity 0.25s var(--ease); }
-.prose .mermaid svg.dg-on :is(.messageText, .messageLine0, .messageLine1, .sequenceNumber) { transition: opacity 0.25s var(--ease); }
+.prose .mermaid svg.dg-on :is(g.node, path[data-edge], g.edgeLabel) { opacity: 0.2; transition: opacity var(--dur) var(--ease); }
+.prose .mermaid svg.dg-on :is(.messageText, .messageLine0, .messageLine1, .sequenceNumber) { transition: opacity var(--dur) var(--ease); }
 /* .dg-on repetido: tiene que ganar a la regla de atenuado de arriba */
 .prose .mermaid svg.dg-on.dg-on .dg-visto { opacity: 0.5; }
 .prose .mermaid svg.dg-on.dg-on .dg-foco { opacity: 1; }

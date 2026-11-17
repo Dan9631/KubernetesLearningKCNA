@@ -146,6 +146,8 @@
 
 <style>
   .hoy { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px; align-items: start; padding-top: 28px; }
+  /* aparece al hidratar (necesita el progreso del navegador): entra en vez de saltar */
+  .hoy { animation: mc-entra var(--dur) var(--ease) both; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow); padding: 20px 22px; }
   .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px 20px; }
   h2 { font-size: 1.5rem; line-height: 1.1; }

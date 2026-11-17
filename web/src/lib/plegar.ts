@@ -18,7 +18,9 @@ function checkHtml(c: SectionCheck) {
   const opts = c.options.map((o, i) => `<button type="button" class="check-opt" data-i="${i}">${inline(o)}</button>`).join('');
   return `<aside class="check" data-answer="${c.answer}" aria-label="Comprueba lo que acabas de leer">`
     + `<p class="check-k">Comprueba en 10 segundos</p><p class="check-q">${inline(c.q)}</p>`
-    + `<div class="check-opts" role="group">${opts}</div><p class="check-why" aria-live="polite" hidden>${inline(c.why)}</p></aside>`;
+    // el veredicto se anuncia en una región viva que ya existe y es visible para el lector (una región hidden que
+    // aparece no se anuncia en todos los lectores); el porqué se destapa aparte
+    + `<div class="check-opts" role="group">${opts}</div><p class="check-res visually-hidden" role="status"></p><p class="check-why" hidden>${inline(c.why)}</p></aside>`;
 }
 
 /** Inserta cada comprobación al final de la subsección ### cuyo título coincide con `after` */

@@ -53,6 +53,8 @@
       try {
         const { svg } = await medidasEstables(() => m.render(`mmd-${module}-${k}-${Date.now()}`, src));
         div.innerHTML = svg;
+        // la primera vez el diagrama llega con un fundido; al redibujarlo por cambio de tema, no
+        if (!div.dataset.dibujado) { div.dataset.dibujado = '1'; div.classList.add('llega'); }
         // si al encogerlo el texto sigue legible (≥ 12 px de 15), se ajusta a la columna; si no, se desplaza con aviso
         const el = div.querySelector('svg');
         const natural = el?.viewBox.baseVal?.width ?? 0;
@@ -123,6 +125,8 @@
       for (const o of box.querySelectorAll<HTMLButtonElement>('.check-opt')) { o.disabled = true; if (o.dataset.i === box.dataset.answer) o.classList.add('right'); }
       const why = box.querySelector<HTMLElement>('.check-why');
       if (why) { why.insertAdjacentHTML('afterbegin', `<strong>${ok ? 'Bien.' : 'No exactamente.'}</strong> `); why.hidden = false; }
+      const res = box.querySelector<HTMLElement>('.check-res');
+      if (res) res.textContent = ok ? 'Bien.' : `No exactamente. La respuesta era: ${box.querySelector(`.check-opt[data-i="${box.dataset.answer}"]`)?.textContent ?? ''}`;
       markToday(); save();
       avisarGrumete(ok ? 'acierto' : 'fallo');
     });
@@ -171,7 +175,11 @@
         if (!box) {
           box = document.createElement('input');
           box.type = 'checkbox'; box.className = 'step-box'; box.setAttribute('aria-label', `Paso ${n} hecho`);
-          box.addEventListener('change', () => toggleStep(module, id));
+          box.addEventListener('change', () => {
+            toggleStep(module, id);
+            // al marcarlo (no al cargar la página con pasos ya hechos): la casilla da un pequeño salto y Grumete asiente
+            if (box!.checked) { h.classList.remove('recien'); void h.offsetWidth; h.classList.add('recien'); avisarGrumete('paso'); }
+          });
           h.classList.add('step'); h.prepend(box);
         }
         found.push({ id, box, h });
@@ -207,7 +215,8 @@
       if (el.tagName !== 'PRE' || el.dataset.language !== 'text' || body[k - 1]?.dataset.language !== 'powershell') return;
       const after = body[k + 1];
       const hidden = [el, ...(after?.tagName === 'P' && /^Qué observar/i.test(after.textContent ?? '') ? [after] : [])];
-      for (const h of hidden) { h.classList.add('velado'); h.setAttribute('aria-hidden', 'true'); }
+      // .destapa lleva la transición: al quitar .velado el desenfoque se disuelve en vez de desaparecer de golpe
+      for (const h of hidden) { h.classList.add('velado', 'destapa'); h.setAttribute('aria-hidden', 'true'); }
       const bar = document.createElement('div');
       bar.className = 'predice-lab';
       const n = `pred-${module}-${k}-${Math.round(el.offsetTop)}`;
@@ -231,6 +240,7 @@
   function stepDrills(id: string, body: HTMLElement[]) {
     const ids = drillsAt(Number(module), Number(id)).map((d) => d.id);
     if (!ids.length) return;
+    for (const el of body) el.classList.add('destapa');
     const target = document.createElement('div');
     target.className = 'paso-cmd';
     body[body.length - 1].after(target);

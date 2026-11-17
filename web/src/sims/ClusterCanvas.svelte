@@ -142,6 +142,9 @@
   .pod.Terminating .dot { background: var(--ink-3); }
   .pod.Failed .dot, .pod.CrashLoopBackOff .dot, .pod.OOMKilled .dot, .pod.Evicted .dot, .pod.ImagePullBackOff .dot { background: var(--fail); }
   .pod.CrashLoopBackOff .dot { animation: blink 0.9s steps(2, start) infinite; }
+  /* con movimiento reducido los bucles se detienen (la regla global de 0.001ms en un infinite puede parpadear);
+     el color del punto ya dice el estado */
+  @media (prefers-reduced-motion: reduce) { .pod .dot { animation: none !important; } }
   .pod.Succeeded .dot { background: var(--ink-3); }
   .pod.Failed, .pod.CrashLoopBackOff, .pod.OOMKilled, .pod.ImagePullBackOff { border-color: var(--fail); }
   .pname { font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }

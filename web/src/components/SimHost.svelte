@@ -27,7 +27,8 @@
     </header>
     {#if prediccion}<Predice check={prediccion} />{/if}
     {#if Comp}
-      <Comp />
+      <!-- llega con un fundido en vez de sustituir de golpe al «Cargando…» -->
+      <div class="llega"><Comp /></div>
     {:else if error}
       <p class="hint">No se pudo cargar la simulación: {error}</p>
     {:else}
@@ -35,3 +36,7 @@
     {/if}
   </section>
 {/if}
+
+<style>
+  .llega { animation: mc-fundido var(--dur) linear both; }
+</style>

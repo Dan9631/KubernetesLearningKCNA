@@ -40,7 +40,7 @@
   let estado = $state<Estado>('reposo');
   let globo = $state<{ texto: string; dato: boolean; n: number } | null>(null);
 
-  let racha = 0, dato = Math.floor(Math.random() * DATOS.length), ultimo = Date.now();
+  let racha = 0, dominadas = 0, dato =Math.floor(Math.random() * DATOS.length), ultimo = Date.now();
   let lote: Aviso[] = [], tLote = 0, tGlobo = 0;
   let toques: number[] = [], desde = { x: 0, y: 0 }, arrastrado = false;
   const azar = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
@@ -68,6 +68,9 @@
     if (!g) return;
     if (l.includes('modulo')) { racha = 0; g.go('timon'); decir(azar(MODULO)); return; }
     if (l.includes('reto')) { g.go('feliz'); decir('¡Diagrama de memoria sin fallos!'); return; }
+    // acuses pequeños: un paso del laboratorio o una tarjeta dominada; asiente sin hablar (cada 5 tarjetas, se alegra)
+    if (l.includes('paso')) { g.go('asiente'); return; }
+    if (l.includes('dominada')) { dominadas += 1; g.go(dominadas % 5 ? 'asiente' : 'feliz'); return; }
     const ok = l.filter((a) => a === 'acierto').length, total = ok + l.filter((a) => a === 'fallo').length;
     if (total > 1) {
       racha = 0;

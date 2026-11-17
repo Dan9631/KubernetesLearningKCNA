@@ -289,5 +289,6 @@
   .dg.full .panel { border-radius: 0; background: none; border-left: 0; padding: 14px clamp(14px, 3vw, 32px); max-width: 1100px; margin: 0 auto; }
   .dg.full .barra { padding: 12px clamp(14px, 3vw, 32px); }
   .ops :global(.btn) { text-align: left; }
-  .mala { text-decoration: line-through; }
+  /* opción equivocada: dice que no con la cabeza (como en las preguntas) y queda tachada */
+  .mala { text-decoration: line-through; animation: mc-fallo 320ms var(--ease); }
 </style>
