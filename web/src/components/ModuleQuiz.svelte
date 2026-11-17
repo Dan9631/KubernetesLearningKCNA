@@ -55,7 +55,8 @@
   let qEl: HTMLElement | undefined = $state();
   let explainEl: HTMLElement | undefined = $state();
   const azar = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
-  const PREGUNTA = ['¿Cuál crees?', '¿Qué dirías?', 'A ver esta…', 'Esta sale mucho en el examen.'];
+  // nada que suene a dato si no lo es (antes: «Esta sale mucho en el examen», elegido al azar)
+  const PREGUNTA = ['¿Cuál crees?', '¿Qué dirías?', 'A ver esta…', 'Lee bien el enunciado.'];
   const BIEN = ['¡Eso es!', '¡A toda vela!', '¡Bien leído!', '¡Exacto!'];
   function decir(texto: string) { frase = { texto, n: frase.n + 1 }; }
   function preguntar() {
