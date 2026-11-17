@@ -1,5 +1,5 @@
 // Prueba del director de Grumete: node src/lib/grumete-director.test.mjs
-import { reaccionRespuesta, alDia, puedeDecir, anotar, memoriaVacia, MAX_DIA, diasSinEstudiar, regreso, parteDelDia, alCargar } from './grumete-director.ts';
+import { reaccionRespuesta, alDia, puedeDecir, anotar, memoriaVacia, MAX_DIA, diasSinEstudiar, regreso, parteDelDia, alCargar, rachaActual, hitoConstancia, cierreRonda, avisoTrampa, MAX_TRAMPAS } from './grumete-director.ts';
 
 let n = 0; let failures = 0;
 const check = (name, cond, extra = '') => { n++; if (cond) console.log(`ok ${n}: ${name}`); else { failures++; console.log(`\nFALLO ${n}: ${name}\n  ${extra}`); } };
@@ -79,6 +79,49 @@ const yaDijo = anotar(memoriaVacia(HOY), regreso(5, HOY, datos));
 check('vuelta ya dicha: pasa al parte del día', /Hoy tocan/.test(alCargar(5, HOY, datos, yaDijo).frase));
 const todoDicho = anotar(yaDijo, parteDelDia(datos, HOY));
 check('todo dicho hoy: nada', alCargar(5, HOY, datos, todoDicho) === null);
+
+// ---- constancia ----
+const seguidos = (n, hasta = HOY) => { const out = []; const t = new Date(hasta + 'T12:00:00'); for (let k = n - 1; k >= 0; k--) { const d = new Date(t.getTime() - k * 86_400_000); out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`); } return out; };
+check('racha hasta hoy', rachaActual(seguidos(4), HOY).n === 4);
+check('racha hasta ayer (hoy aún no estudió)', rachaActual(seguidos(3, '2026-11-16'), HOY).n === 3);
+check('racha rota: 0', rachaActual(seguidos(3, '2026-11-15'), HOY).n === 0);
+check('racha que cruza de mes', rachaActual(seguidos(5, '2026-11-02'), '2026-11-02').desde === '2026-10-29');
+check('2 días: sin hito', hitoConstancia(seguidos(2), HOY) === null);
+let h = hitoConstancia(seguidos(7), HOY);
+check('7 seguidos: timón y su frase', h.gestos[0] === 'timon' && /Siete días seguidos/.test(h.frase) && h.perdura, JSON.stringify(h));
+check('9 seguidos: el hito alcanzado es el de 7', /Siete/.test(hitoConstancia(seguidos(9), HOY).frase));
+check('la clave lleva el inicio de la racha', hitoConstancia(seguidos(3), HOY).clave === 'hito:racha3:2026-11-15');
+const cinco = ['2026-11-11', '2026-11-12', '2026-11-14', '2026-11-15', HOY]; // racha de 2 hasta hoy (16 no)
+h = hitoConstancia(cinco, HOY);
+check('5 de 7 sin racha larga', /Cinco de los últimos siete/.test(h.frase) && h.clave === 'hito:cinco:2026-11-16', JSON.stringify(h));
+check('sin culpa ni contador', !/(perdiste|rompiste|racha de)/i.test(hitoConstancia(seguidos(14), HOY).frase));
+let mh = anotar(memoriaVacia(HOY), hitoConstancia(seguidos(7), HOY));
+check('hito celebrado: no se repite', !puedeDecir(mh, hitoConstancia(seguidos(7), HOY)));
+mh = alDia(mh, '2026-11-18');
+check('otro día: el hito sigue celebrado', !puedeDecir(mh, hitoConstancia(seguidos(8, '2026-11-18'), '2026-11-18')) && mh.proactivas === 0);
+check('memoria antigua sin hitos: no rompe', alDia({ dia: HOY, proactivas: 1, dichas: [] }, HOY).hitos.length === 0);
+check('portada: el hito va después del parte del día', /Hoy tocan/.test(alCargar(1, HOY, datos, memoriaVacia(HOY), seguidos(7)).frase));
+check('parte ya dicho: llega el hito', /Siete/.test(alCargar(1, HOY, datos, anotar(memoriaVacia(HOY), parteDelDia(datos, HOY)), seguidos(7)).frase));
+check('fuera de la portada: sin hito', alCargar(1, HOY, undefined, undefined, seguidos(7)) === null);
+
+// ---- cierre de ronda ----
+check('ronda vacía: nada', cierreRonda(0, 0, []) === null);
+let c = cierreRonda(20, 20, []);
+check('ronda limpia: timón', c.gestos[0] === 'timon' && /Ronda limpia/.test(c.frase));
+check('ronda corta limpia: solo gesto', !cierreRonda(3, 3, []).frase);
+c = cierreRonda(16, 20, [{ topic: 'Scheduling', module: 4 }, { topic: 'Networking', module: 6 }, { topic: 'Scheduling', module: 4 }, { topic: 'Security', module: 8 }]);
+check('dos del mismo tema: el tema y su módulo', c.frase === 'Dos fallos son del mismo tema: Scheduling. El Módulo 04 lo explica.' && c.apunta.includes('/modulos/04'), c.frase);
+c = cierreRonda(17, 20, [{ topic: 'Networking', module: 6 }, { topic: 'Networking', module: 7 }, { topic: 'Networking', module: 6 }]);
+check('todos del mismo tema: el módulo más repetido', /^Todos los fallos son del mismo tema: Networking\. El Módulo 06/.test(c.frase), c.frase);
+c = cierreRonda(18, 20, [{ topic: 'Scheduling', module: 4 }, { topic: 'Security', module: 8 }]);
+check('sin patrón: repasarlos ya', /^Dos fallos: repásalos ahora/.test(c.frase) && c.apunta.includes('btn.primary'), c.frase);
+check('un fallo: singular', /^Un fallo: repásalo/.test(cierreRonda(19, 20, [{ topic: 'Storage', module: 9 }]).frase));
+
+// ---- trampas de formato ----
+check('negación primero', /opción falsa/.test(avisoTrampa(['multi', 'neg'], 0).frase));
+check('ningún tipo débil: nada', avisoTrampa([], 0) === null);
+check(`como mucho ${MAX_TRAMPAS} por ronda`, avisoTrampa(['neg'], MAX_TRAMPAS) === null);
+check('no da la respuesta (habla del formato)', !/(correcta es|la respuesta)/i.test(avisoTrampa(['superl'], 0).frase));
 
 console.log(failures ? `\n${failures} de ${n} pruebas fallaron` : `\n${n} pruebas correctas`);
 if (failures) process.exit(1);

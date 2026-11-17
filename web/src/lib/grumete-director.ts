@@ -23,6 +23,8 @@ export interface Decision {
   clave?: string;
   /** Selector del elemento al que mira mientras lo dice */
   apunta?: string;
+  /** La clave se recuerda más allá de hoy (hitos de constancia: cada uno se celebra una vez) */
+  perdura?: boolean;
 }
 
 /* ---------------- respuestas ---------------- */
@@ -55,24 +57,29 @@ export interface Memoria {
   proactivas: number;
   /** Claves de frases dichas hoy */
   dichas: string[];
+  /** Hitos ya celebrados (no caducan con el día; se guardan los últimos MAX_HITOS) */
+  hitos: string[];
 }
 export const MAX_DIA = 3;
-export const memoriaVacia = (dia: string): Memoria => ({ dia, proactivas: 0, dichas: [] });
+const MAX_HITOS = 30;
+export const memoriaVacia = (dia: string, hitos: string[] = []): Memoria => ({ dia, proactivas: 0, dichas: [], hitos });
 
-/** La memoria de otro día no cuenta: se empieza de cero */
+/** La memoria de otro día no cuenta (salvo los hitos ya celebrados): se empieza de cero */
 export function alDia(m: Memoria | null | undefined, hoy: string): Memoria {
-  return m && m.dia === hoy && Array.isArray(m.dichas) ? m : memoriaVacia(hoy);
+  const hitos = Array.isArray(m?.hitos) ? m.hitos : [];
+  return m && m.dia === hoy && Array.isArray(m.dichas) ? { ...m, hitos } : memoriaVacia(hoy, hitos);
 }
 
 /** ¿Puede decir esta frase proactiva? (presupuesto del día y sin repetir) */
 export function puedeDecir(m: Memoria, d: Decision | null): boolean {
   if (!d?.frase) return false;
   if (m.proactivas >= MAX_DIA) return false;
-  return !d.clave || !m.dichas.includes(d.clave);
+  return !d.clave || !(d.perdura ? m.hitos : m.dichas).includes(d.clave);
 }
 
 /** Apunta que la dijo */
 export function anotar(m: Memoria, d: Decision): Memoria {
+  if (d.clave && d.perdura) return { ...m, proactivas: m.proactivas + 1, hitos: [...m.hitos, d.clave].slice(-MAX_HITOS) };
   return { ...m, proactivas: m.proactivas + 1, dichas: d.clave ? [...m.dichas, d.clave] : m.dichas };
 }
 
@@ -143,9 +150,106 @@ export function parteDelDia(d: DatosHoy, hoy: string): Decision | null {
   return null;
 }
 
-/** Qué decir al cargar una página: primero la vuelta tras ausencia; en la portada, el parte del día. Con memoria,
- *  devuelve la primera que aún se puede decir hoy (si la vuelta ya se dijo, pasa al parte del día). */
-export function alCargar(dias: number | null, hoy: string, datos?: DatosHoy, m?: Memoria): Decision | null {
-  const candidatas = [regreso(dias, hoy, datos), datos ? parteDelDia(datos, hoy) : null];
+/* ---------------- constancia: hitos, sin racha punitiva ---------------- */
+
+const iso = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const masDias = (dia: string, n: number) => iso(aFecha(dia) + n * DIA_MS + DIA_MS / 2); // +12 h: inmune al cambio de hora
+
+/** Días seguidos con estudio hasta hoy (o hasta ayer, si hoy aún no estudió) y el día en que empezó */
+export function rachaActual(days: string[], hoy: string): { n: number; desde: string } {
+  const set = new Set(days);
+  let dia = set.has(hoy) ? hoy : masDias(hoy, -1);
+  let n = 0, desde = dia;
+  while (set.has(dia)) { n++; desde = dia; dia = masDias(dia, -1); }
+  return { n, desde };
+}
+
+const HITOS: [number, string][] = [
+  [30, 'Un mes seguido al timón.'],
+  [14, 'Dos semanas seguidas al timón.'],
+  [7, 'Siete días seguidos al timón.'],
+  [3, 'Tres días seguidos: así se fija lo aprendido.'],
+];
+
+/**
+ * Hitos de constancia para la portada: 3, 7, 14 y 30 días seguidos, o 5 de los últimos 7. Cada hito se celebra una
+ * vez (la clave lleva el día en que empezó la racha, así una racha nueva vuelve a contar). Si la racha se rompe,
+ * no dice nada: ni contador permanente ni aviso de pérdida.
+ */
+export function hitoConstancia(days: string[], hoy: string): Decision | null {
+  const r = rachaActual(days, hoy);
+  const h = HITOS.find(([m]) => r.n >= m);
+  if (h) return { gestos: ['timon'], frase: h[1], clave: `hito:racha${h[0]}:${r.desde}`, perdura: true };
+  // sin racha larga: 5 de los últimos 7 días (hoy incluido), una vez por semana
+  const set = new Set(days);
+  let n = 0;
+  for (let k = 0; k < 7; k++) if (set.has(masDias(hoy, -k))) n++;
+  if (n < 5) return null;
+  const lunes = masDias(hoy, -((new Date(aFecha(hoy)).getDay() + 6) % 7));
+  return { gestos: ['feliz'], frase: 'Cinco de los últimos siete días estudiando. Buen ritmo.', clave: `hito:cinco:${lunes}`, perdura: true };
+}
+
+/** Qué decir al cargar una página: primero la vuelta tras ausencia; en la portada, el parte del día y después los
+ *  hitos de constancia. Con memoria, devuelve la primera que aún se puede decir hoy. */
+export function alCargar(dias: number | null, hoy: string, datos?: DatosHoy, m?: Memoria, days: string[] = []): Decision | null {
+  const candidatas = [regreso(dias, hoy, datos), datos ? parteDelDia(datos, hoy) : null, datos ? hitoConstancia(days, hoy) : null];
   return candidatas.find((d) => d && (!m || puedeDecir(m, d))) ?? null;
 }
+
+/* ---------------- práctica: cierre de ronda y trampas de formato ---------------- */
+
+export interface Fallo { topic: string; module?: number }
+const dos = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Cierre de una ronda de práctica. Ronda limpia (5 o más): su momento protagonista, el timón. Con fallos, busca un
+ * patrón que la lista no dice: dos o más del mismo tema, y el módulo que lo explica. Si no hay patrón, empuja a
+ * repasarlos ya (mira el botón).
+ */
+export function cierreRonda(ok: number, total: number, fallos: Fallo[]): Decision | null {
+  if (!total) return null;
+  if (!fallos.length) return total >= 5 ? { gestos: ['timon'], frase: 'Ronda limpia. ¡A toda vela!' } : { gestos: ['feliz'] };
+  const temas = new Map<string, Fallo[]>();
+  for (const f of fallos) temas.set(f.topic, [...(temas.get(f.topic) ?? []), f]);
+  const [tema, suyos] = [...temas].sort((a, b) => b[1].length - a[1].length)[0];
+  if (suyos.length >= 2) {
+    // el módulo que más se repite entre esos fallos
+    const mods = new Map<number, number>();
+    for (const f of suyos) if (f.module) mods.set(f.module, (mods.get(f.module) ?? 0) + 1);
+    const mod = [...mods].sort((a, b) => b[1] - a[1])[0]?.[0];
+    const todos = suyos.length === fallos.length && fallos.length > 2;
+    return {
+      gestos: ['asiente'],
+      frase: `${todos ? 'Todos los' : cap(enLetra(suyos.length))} fallos son del mismo tema: ${tema}.${mod ? ` El Módulo ${dos(mod)} lo explica.` : ''}`,
+      apunta: mod ? `.missed a[href*="/modulos/${dos(mod)}"]` : undefined,
+    };
+  }
+  return {
+    gestos: ['asiente'],
+    frase: fallos.length === 1 ? 'Un fallo: repásalo ahora, que está fresco.' : `${cap(enLetra(fallos.length))} fallos: repásalos ahora, que están frescos.`,
+    apunta: '.end .row .btn.primary',
+  };
+}
+
+/** Tipos de pregunta que suelen costar puntos (lib/preparacion.ts TRAMPAS) */
+export type Trampa = 'multi' | 'superl' | 'neg';
+export const MAX_TRAMPAS = 2; // por ronda: más sería convertirlo en muleta
+const TRAMPA_FRASE: Record<Trampa, string> = {
+  neg: 'Ojo, de las que te cuestan: aquí buscas la opción falsa.',
+  superl: 'Ojo, de las que te cuestan: varias pueden ser ciertas; busca la que mejor responde.',
+  multi: 'Ojo, de las que te cuestan: valida cada opción por separado.',
+};
+/**
+ * Aviso antes de una pregunta de un tipo en el que el alumno rinde peor (solo si los datos lo dicen: trampas()).
+ * Habla del formato, nunca del contenido; nunca en exámenes y como mucho MAX_TRAMPAS por ronda.
+ */
+export function avisoTrampa(tipos: Trampa[], dichasEnRonda: number): Decision | null {
+  if (dichasEnRonda >= MAX_TRAMPAS) return null;
+  const t = (['neg', 'superl', 'multi'] as const).find((x) => tipos.includes(x));
+  return t ? { gestos: [], frase: TRAMPA_FRASE[t] } : null;
+}
+
+/* ---------------- preferencia ---------------- */
+
+/** habla: frases y gestos; gestos: solo gestos (habla si se le pulsa); oculto: no está */
+export type Nivel = 'habla' | 'gestos' | 'oculto';

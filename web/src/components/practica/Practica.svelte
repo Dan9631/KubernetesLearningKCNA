@@ -1,7 +1,8 @@
 <script lang="ts">
   // Página de práctica: inicio con los modos, práctica por dominio/módulo, repaso de falladas,
   // simulacro cronometrado con revisión final, y progreso del alumno.
-  import { onMount, tick as despuesDelDom } from 'svelte';
+  import { onMount, tick as despuesDelDom, untrack } from 'svelte';
+  import { MAX_TRAMPAS, type Trampa } from '../../lib/grumete-director';
   import { wait } from '../../lib/motion';
   import { avisarGrumete, modoExamen } from '../../lib/grumete-avisos';
   import { DOMAINS, MODULES, pad, url, type DomainKey } from '../../lib/modules';
@@ -11,7 +12,7 @@
   import VozAjustes from '../VozAjustes.svelte';
   import { sync, syncNow } from '../../lib/sync.svelte';
   import Preparacion from './Preparacion.svelte';
-  import { PRACTICE, HOLDOUT, priority, dueToday, dueCommands, endOfToday } from '../../lib/preparacion';
+  import { PRACTICE, HOLDOUT, TRAMPAS, priority, dueToday, dueCommands, endOfToday, trampas } from '../../lib/preparacion';
   import Comandos from './Comandos.svelte';
   import type { Drill, Cierre } from '../../lib/kube/drills';
 
@@ -99,6 +100,7 @@
     const chosen = shuffle(pool).sort((a, b) => priority(progress.quiz[b.id], eod) - priority(progress.quiz[a.id], eod)).slice(0, Math.min(n, pool.length));
     items = chosen.map(prep); idx = 0; practiceTitle = title;
     cmdPlan = []; gate = null; cmdTally = { n: 0, primera: 0 };
+    debiles = trampas(progress).map((t) => t.key as Trampa); trampasDichas = 0; avisada = '';
     view = items.length ? 'practice' : 'practice-end';
   }
   function startScoped() { startPractice(poolFor(scope), PRACTICE_N, titleFor(scope)); }
@@ -134,6 +136,32 @@
   const missed = $derived(items.filter((it) => it.done && !isCorrect(it)));
   function retryMissed() { startPractice(missed.map((it) => it.q), missed.length, 'Repaso de fallos'); }
   function again() { if (practiceTitle === 'Repaso del día') startDue(); else startScoped(); }
+
+  // Grumete en la práctica (nunca en el simulacro). Los avisos salen con untrack: lo que hagan los oyentes no
+  // debe quedar como dependencia de estos efectos.
+  // · Antes de una pregunta de un tipo que te cuesta (trampas(): 10 puntos peor que el resto), un aviso de formato;
+  //   como mucho MAX_TRAMPAS por ronda.
+  let debiles: Trampa[] = [], trampasDichas = 0, avisada = '';
+  $effect(() => {
+    if (view !== 'practice' || gate || !cur || cur.done) return;
+    const q = cur.q;
+    untrack(() => {
+      if (avisada === q.id || trampasDichas >= MAX_TRAMPAS || !debiles.length) return;
+      const tipos = debiles.filter((k) => TRAMPAS.find((t) => t.key === k)?.test(q));
+      if (!tipos.length) return;
+      avisada = q.id;
+      avisarGrumete({ tipo: 'trampa', tipos, dichas: trampasDichas });
+      trampasDichas += 1;
+    });
+  });
+  // · Al cerrar la ronda, los fallos con su tema: Grumete busca un patrón que la lista no dice
+  $effect(() => {
+    if (view !== 'practice-end') return;
+    untrack(() => {
+      if (!doneCount) return;
+      avisarGrumete({ tipo: 'ronda', ok: okCount, total: doneCount, fallos: missed.map((it) => ({ topic: it.q.topic, module: it.q.module })) });
+    });
+  });
 
   // ---------- simulacro ----------
   function startExam() {
