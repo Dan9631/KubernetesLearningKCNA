@@ -287,6 +287,7 @@
   .st.ok { border-color: var(--ready); color: var(--ready); } .st.ok i { background: var(--ready); }
   .st.bad { border-color: var(--wait); color: var(--wait); } .st.bad i { background: var(--wait); }
   .st.prog { border-color: var(--helm); color: var(--helm-ink); } .st.prog i { background: var(--helm); animation: pulse 1.1s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .st.prog i { animation: none !important; } }
   .loop { font-size: 0.82rem; color: var(--ink-2); }
   .diffs { margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--wait); display: grid; gap: 2px; }
   .resources { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -2,6 +2,8 @@
   // Marcador de lectura del módulo (como Kindle): guarda solo dónde vas leyendo y, al volver,
   // ofrece continuar desde la última posición o desde la más lejana. Ver lib/lectura.ts.
   import { onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
+  import { ms } from '../lib/motion';
   import { progress } from '../lib/progress.svelte';
   import { bloques, saveReading, findBlock, sectionOf, pctOf, importReading, currentBlock, LINE, EV_IR } from '../lib/lectura';
   import Compartir from './Compartir.svelte';
@@ -74,7 +76,8 @@
 
 <div bind:this={root}>
   {#if show && saved && lastI >= 0}
-    <div class="marcador" role="region" aria-label="Continuar leyendo">
+    <!-- al cerrarlo (o al continuar) se pliega en vez de desaparecer: el texto de abajo sube sin saltar -->
+    <div class="marcador" role="region" aria-label="Continuar leyendo" out:slide={{ duration: ms(180) }}>
       <p>
         <strong>Te quedaste en</strong>{where ? ` «${where}»` : ` el párrafo ${lastI + 1}`}
         <span class="pct">· {pctOf({ ...saved.last, i: lastI, n: blocks.length })} % del módulo</span>
@@ -92,6 +95,7 @@
 </div>
 
 <style>
+  .marcador { animation: mc-entra var(--dur) var(--ease) both; }
   .marcador { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; margin: 16px 0 4px; padding: 12px 14px; border: 1px solid var(--helm); border-radius: var(--r-m); background: var(--helm-2); }
   p { margin: 0; color: var(--ink); font-size: 0.95rem; overflow-wrap: anywhere; }
   .pct { color: var(--ink-2); font-size: 0.88rem; }

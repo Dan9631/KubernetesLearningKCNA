@@ -170,6 +170,11 @@
 header.top { view-transition-name: cabecera; }
 .layout > .rail { view-transition-name: ruta; }
 ::view-transition-group(cabecera), ::view-transition-group(ruta) { animation-duration: var(--dur); }
+/* cambio de tema (ThemeToggle, misma página): un fundido cruzado de toda la página, sin desplazamiento */
+:root.vt-tema::view-transition-old(*), :root.vt-tema::view-transition-new(*) { animation: none; mix-blend-mode: normal; }
+:root.vt-tema::view-transition-old(root) { animation: 220ms linear both mc-sale; }
+:root.vt-tema::view-transition-new(root) { animation: 220ms linear both mc-fundido; }
+:root.vt-tema::view-transition-group(*) { animation-duration: 220ms; }
 
 @media (prefers-reduced-motion: reduce) {
   :root { --dur: 0ms; --dur-slow: 0ms; --dur-fast: 0ms; }
@@ -283,6 +288,16 @@ p { margin: 0; }
 .prose details[open] { padding-bottom: 14px; }
 .prose summary { cursor: pointer; font-weight: 500; color: var(--helm-ink); }
 .prose details > :not(summary) { margin-top: 0.8em; }
+/* abrir y cerrar un plegado: la altura viaja en vez de saltar. Mejora progresiva (Chromium reciente);
+   sin soporte se abre en seco, como siempre */
+@supports (interpolate-size: allow-keywords) {
+  .prose details { interpolate-size: allow-keywords; }
+  .prose details::details-content { block-size: 0; overflow: clip; overflow-clip-margin: 4px;
+    transition: block-size var(--dur) var(--ease), content-visibility var(--dur) allow-discrete; }
+  .prose details[open]::details-content { block-size: auto; }
+}
+.prose summary { transition: color var(--dur-fast) linear; }
+.prose summary:hover { color: var(--helm); }
 .prose hr { border: 0; border-top: 1px solid var(--line); }
 /* comprobación de 10 segundos al final de una subsección (lib/plegar.ts + Enhance.svelte) */
 .prose .check { margin-top: 1.4em; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--wait); border-radius: var(--r-m); background: var(--panel);
@@ -314,6 +329,7 @@ p { margin: 0; }
 .prose details.ficha p { color: var(--ink-2); }
 .prose details.seccion { margin-top: 2.4em; }
 .prose details.seccion > summary h2 { display: inline; margin: 0; padding: 0; border: 0; font-size: 1.25rem; color: var(--ink); }
+.prose .mermaid.llega > svg { animation: mc-fundido var(--dur) linear both; }
 .prose .mermaid { padding: 16px; border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--panel); overflow-x: auto; }
 /* tamaño natural y centrado sin recortar el inicio cuando el diagrama es más ancho que la columna */
 .prose .mermaid svg { display: block; margin-inline: auto; max-width: none; height: auto; }
@@ -354,8 +370,8 @@ p { margin: 0; }
 @media (pointer: coarse) { .prose .predice-lab input { font-size: 16px; min-height: 44px; } }
 
 /* Diagramas con guía (DiagramaGuia.svelte): lo que no está en foco se atenúa; los huecos y el foco se marcan */
-.prose .mermaid svg.dg-on :is(g.node, path[data-edge], g.edgeLabel) { opacity: 0.2; transition: opacity 0.25s var(--ease); }
-.prose .mermaid svg.dg-on :is(.messageText, .messageLine0, .messageLine1, .sequenceNumber) { transition: opacity 0.25s var(--ease); }
+.prose .mermaid svg.dg-on :is(g.node, path[data-edge], g.edgeLabel) { opacity: 0.2; transition: opacity var(--dur) var(--ease); }
+.prose .mermaid svg.dg-on :is(.messageText, .messageLine0, .messageLine1, .sequenceNumber) { transition: opacity var(--dur) var(--ease); }
 /* .dg-on repetido: tiene que ganar a la regla de atenuado de arriba */
 .prose .mermaid svg.dg-on.dg-on .dg-visto { opacity: 0.5; }
 .prose .mermaid svg.dg-on.dg-on .dg-foco { opacity: 1; }

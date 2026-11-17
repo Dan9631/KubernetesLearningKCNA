@@ -53,6 +53,8 @@
       try {
         const { svg } = await medidasEstables(() => m.render(`mmd-${module}-${k}-${Date.now()}`, src));
         div.innerHTML = svg;
+        // la primera vez el diagrama llega con un fundido; al redibujarlo por cambio de tema, no
+        if (!div.dataset.dibujado) { div.dataset.dibujado = '1'; div.classList.add('llega'); }
         // si al encogerlo el texto sigue legible (≥ 12 px de 15), se ajusta a la columna; si no, se desplaza con aviso
         const el = div.querySelector('svg');
         const natural = el?.viewBox.baseVal?.width ?? 0;
