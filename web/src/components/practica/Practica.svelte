@@ -1,7 +1,8 @@
 <script lang="ts">
   // Página de práctica: inicio con los modos, práctica por dominio/módulo, repaso de falladas,
   // simulacro cronometrado con revisión final, y progreso del alumno.
-  import { onMount } from 'svelte';
+  import { onMount, tick as despuesDelDom } from 'svelte';
+  import { wait } from '../../lib/motion';
   import { DOMAINS, MODULES, pad, url, type DomainKey } from '../../lib/modules';
   import { progress, recordAnswer, resetProgress, save } from '../../lib/progress.svelte';
   import { EXAM_DOMAINS, EXAM_SECONDS, PASS, fmt, fmtDate, isCorrect, pct, prep, shuffle, togglePick, type Item, type Q } from './quiz';
@@ -112,10 +113,20 @@
     const it = cur; if (!it || it.done || !it.picked.length) return;
     it.done = true; recordAnswer(it.q.id, isCorrect(it), it.conf);
   }
-  function nextPractice() {
+  // la pregunta sale hacia la izquierda (120 ms) antes de cambiar; mientras, se ignoran más clics y Enter.
+  // Después el foco va al enunciado nuevo: el botón principal se queda deshabilitado y el foco no cae al body.
+  let saliendo = $state(false);
+  async function nextPractice() {
+    if (saliendo) return;
+    saliendo = true;
+    await wait(120);
+    saliendo = false;
     if (openGate(idx + 1)) { if (idx + 1 < items.length) idx += 1; return; }
-    if (idx + 1 < items.length) idx += 1; else view = 'practice-end';
+    if (idx + 1 < items.length) idx += 1; else { view = 'practice-end'; return; }
+    await despuesDelDom();
+    document.querySelector<HTMLElement>('.round .card .q')?.focus({ preventScroll: true });
   }
+  function principalPractica() { if (cur?.done) nextPractice(); else confirmPractice(); }
   // cierre de la práctica: las falladas de la ronda, con su módulo, y repasarlas en el momento
   const missed = $derived(items.filter((it) => it.done && !isCorrect(it)));
   function retryMissed() { startPractice(missed.map((it) => it.q), missed.length, 'Repaso de fallos'); }
@@ -191,7 +202,7 @@
     if (view === 'practice' && cur) {
       if (/^[1-5]$/.test(e.key) && !cur.done && +e.key <= cur.options.length) { pick(+e.key - 1); e.preventDefault(); }
       else if (/^[sda]$/i.test(e.key) && !cur.done) { cur.conf = e.key.toLowerCase() as Item['conf']; e.preventDefault(); }
-      else if (e.key === 'Enter') { e.preventDefault(); cur.done ? nextPractice() : confirmPractice(); }
+      else if (e.key === 'Enter') { e.preventDefault(); principalPractica(); }
     } else if (view === 'exam' && cur) {
       if (/^[1-5]$/.test(e.key) && +e.key <= cur.options.length) { pick(+e.key - 1); e.preventDefault(); }
       else if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); go(idx + 1); }
@@ -337,14 +348,30 @@
       <VozAjustes />
     </div>
     <div class="card">
-      <Pregunta item={cur} index={idx} total={items.length} reveal={cur.done} onpick={cur.done ? undefined : pick} onconf={(c) => (cur.conf = c)} />
-      <div class="row">
-        {#if cur.done}
-          <button type="button" class="btn primary" onclick={nextPractice}>{idx + 1 < items.length ? 'Siguiente' : 'Ver resultado'}</button>
-        {:else}
-          <button type="button" class="btn primary" onclick={confirmPractice} disabled={!cur.picked.length}>Responder</button>
-        {/if}
-        <button type="button" class="btn right" onclick={() => (view = 'practice-end')}>Terminar</button>
+      <!-- barra de la ronda: un segmento por pregunta, verde o rojo al responder -->
+      <div class="progreso" role="progressbar" aria-label="Progreso de la práctica" aria-valuemin={0} aria-valuemax={items.length} aria-valuenow={doneCount}>
+        {#each items as it, n}<span class="seg" class:ok={it.done && isCorrect(it)} class:mal={it.done && !isCorrect(it)} class:actual={n === idx && !it.done}></span>{/each}
+      </div>
+      {#key idx}
+        <div class="mc-pregunta" class:mc-pregunta-sale={saliendo}>
+          <Pregunta item={cur} index={idx} total={items.length} reveal={cur.done} escalon onpick={cur.done ? undefined : pick} onconf={(c) => (cur.conf = c)} />
+        </div>
+      {/key}
+      <!-- franja de respuesta: se tiñe con el resultado y el mismo botón pasa a Continuar (el foco no se pierde) -->
+      <div class="franja" class:ok={cur.done && isCorrect(cur)} class:fail={cur.done && !isCorrect(cur)}>
+        <div class="veredicto" role="status">
+          {#if cur.done}
+            <span class="ico" aria-hidden="true">{isCorrect(cur) ? '✓' : '✗'}</span>
+            <span class="vt">
+              <strong>{isCorrect(cur) ? 'Correcto' : 'No es así'}</strong>
+              {#if !isCorrect(cur)}<span>La respuesta era {cur.answer.map((k) => k + 1).join(' y ')}.</span>{/if}
+            </span>
+          {/if}
+        </div>
+        <button type="button" class="btn" onclick={() => (view = 'practice-end')}>Terminar</button>
+        <button type="button" class="btn primary principal" onclick={principalPractica} disabled={!cur.done && !cur.picked.length}>
+          {!cur.done ? 'Responder' : idx + 1 < items.length ? 'Continuar' : 'Ver resultado'}
+        </button>
       </div>
     </div>
   </div>
@@ -400,7 +427,7 @@
       <VozAjustes />
     </div>
     <div class="card">
-      <Pregunta item={cur} index={idx} total={items.length} onpick={pick} />
+      {#key idx}<div class="cambio"><Pregunta item={cur} index={idx} total={items.length} onpick={pick} /></div>{/key}
       <div class="row">
         <button type="button" class="btn" onclick={() => go(idx - 1)} disabled={idx === 0}>Anterior</button>
         <button type="button" class="btn" onclick={() => go(idx + 1)} disabled={idx + 1 >= items.length}>Siguiente</button>
@@ -480,7 +507,7 @@
       <VozAjustes />
     </div>
     <div class="card">
-      <Pregunta item={cur} index={idx} total={items.length} reveal link />
+      {#key idx}<div class="cambio"><Pregunta item={cur} index={idx} total={items.length} reveal link /></div>{/key}
       <div class="row">
         <button type="button" class="btn" onclick={() => go(idx - 1)} disabled={idx === 0}>Anterior</button>
         <button type="button" class="btn" onclick={() => go(idx + 1)} disabled={idx + 1 >= items.length}>Siguiente</button>
@@ -548,6 +575,11 @@
   .btn.flagged { border-color: var(--wait); color: var(--wait); }
   .confirm { margin-top: 14px; padding: 12px 14px; border-radius: var(--r-m); background: var(--wait-2); border-left: 3px solid var(--wait); font-size: 0.95rem; }
   .confirm .row { margin-top: 10px; }
+
+  .card .franja { margin: 16px -20px -20px; padding: 14px 20px; }
+  @media (max-width: 420px) { .card .franja { margin: 14px -14px -14px; padding: 12px 14px; } }
+  /* simulacro y revisión: se recorren deprisa con el teclado, así que solo un fundido corto */
+  .cambio { animation: mc-fundido 100ms linear both; }
 
   .navgrid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-2); }
   .navgrid button { width: 34px; height: 30px; padding: 0; font: 500 0.78rem var(--mono); border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); cursor: pointer; }

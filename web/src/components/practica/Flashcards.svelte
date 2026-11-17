@@ -5,6 +5,7 @@
   import { DOMAINS, pad, url, type DomainKey } from '../../lib/modules';
   import { progress, toggleKnown } from '../../lib/progress.svelte';
   import { ms } from '../../lib/motion';
+  import { pastilla } from '../../lib/pastilla';
   import SourceLinks from '../SourceLinks.svelte';
   import Escuchar from '../Escuchar.svelte';
   import VozAjustes from '../VozAjustes.svelte';
@@ -32,12 +33,16 @@
     idx = 0; flipped = false;
   }
   function flip() { if (cur) flipped = !flipped; }
-  function next() { if (!deck.length) return; idx = (idx + 1) % deck.length; flipped = false; }
-  function prev() { if (!deck.length) return; idx = (idx - 1 + deck.length) % deck.length; flipped = false; }
+  // la tarjeta nueva es otro elemento ({#key} abajo): nace ya boca arriba, sin girar, y entra desde el lado
+  // hacia el que avanzas. Así no se ve la definición de la siguiente mientras la anterior se da la vuelta.
+  let dir = $state(1);
+  function next() { if (!deck.length) return; dir = 1; idx = (idx + 1) % deck.length; flipped = false; }
+  function prev() { if (!deck.length) return; dir = -1; idx = (idx - 1 + deck.length) % deck.length; flipped = false; }
   function know() {
     if (!cur) return;
     const term = cur.term;
     toggleKnown(term);
+    dir = 1;
     if (onlyPending && isKnown(term)) {
       deck = deck.filter((c) => c.term !== term);
       if (idx >= deck.length) idx = 0;
@@ -72,7 +77,7 @@
 
 <div class="fc">
   <div class="controls">
-    <div class="seg" role="group" aria-label="Modo">
+    <div class="seg" role="group" aria-label="Modo" use:pastilla>
       <button type="button" class="btn small" class:on={mode === 'tarjetas'} aria-pressed={mode === 'tarjetas'} onclick={() => (mode = 'tarjetas')}>Tarjetas</button>
       <button type="button" class="btn small" class:on={mode === 'lista'} aria-pressed={mode === 'lista'} onclick={() => (mode = 'lista')}>Lista</button>
     </div>
@@ -89,7 +94,7 @@
   {#if mode === 'tarjetas'}
     {#if cur}
       <p class="pos">{idx + 1} / {deck.length} · <span class="chip {cur.domain}">{DOMAINS[cur.domain as DomainKey]?.short ?? cur.domain}</span>{#if cur.module}{' '}<span class="mod">Módulo {pad(cur.module)}</span>{/if}</p>
-      <div class="scene">
+      {#key cur.term}<div class="scene mc-aparece" style="--dir: {dir}">
         <button type="button" class="card" class:flipped aria-label={flipped ? `Definición de ${cur.term}. Pulsa para volver al término` : `${cur.term}. Pulsa para ver la definición`} onclick={flip}>
           <div class="inner" style="transition-duration: {dur}ms">
             <div class="face front" aria-hidden={flipped}>
@@ -102,7 +107,7 @@
             </div>
           </div>
         </button>
-      </div>
+      </div>{/key}
       {#if flipped}<SourceLinks source={cur.source} />{/if}
       <div class="row">
         <button type="button" class="btn" onclick={prev} aria-label="Tarjeta anterior">Anterior</button>
@@ -144,8 +149,15 @@
   .fc { max-width: 820px; }
   .muted { color: var(--ink-2); font-size: 0.92rem; }
   .controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 14px; }
-  .seg { display: inline-flex; gap: 4px; }
-  .seg .btn.on { background: var(--helm-2); border-color: var(--helm); color: var(--helm-ink); }
+  /* segmentado: la pastilla azul viaja de Tarjetas a Lista */
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel); }
+  .seg .btn { background: none; border-color: transparent; color: var(--ink-2); }
+  .seg .btn.on { color: var(--helm-ink); }
+  .seg .btn:hover { border-color: transparent; color: var(--ink); }
+  .seg :global(.pastilla) { background: var(--helm-2); border: 1px solid var(--helm); border-radius: var(--r-s); }
+  .seg:not(:global(.con-pastilla)) .btn.on { background: var(--helm-2); border-color: var(--helm); }
+  /* tarjeta nueva: entra desde el lado hacia el que avanzas */
+  .scene { animation: mc-lado var(--dur) var(--ease) both; --dist: 16px; }
   select, input[type='search'] { font: inherit; font-size: 0.95rem; padding: 7px 10px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
   .chk { display: inline-flex; gap: 6px; align-items: center; font-size: 0.92rem; cursor: pointer; }
   .chk input { accent-color: var(--helm); width: 16px; height: 16px; margin: 0; }
