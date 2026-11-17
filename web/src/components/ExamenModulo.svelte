@@ -1,7 +1,11 @@
 <script lang="ts">
   // Examen de un módulo: se responde entero y solo al entregar se ve la nota y la explicación de los fallos.
   // Aprobarlo deja el módulo «aprobado» en la Ruta. Ver lib/examenModulo.ts.
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import { Tween } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
+  import { ms, reduced } from '../lib/motion';
+  import { celebrar } from '../lib/particulas';
   import preguntas from '../data/preguntas.json';
   import { progress, recordAnswer, addReto, toggleDone } from '../lib/progress.svelte';
   import { pad } from '../lib/modules';
@@ -35,7 +39,10 @@
   const letras = 'ABCDEFGHIJKL';
 
   function barajar<T>(a: T[]) { a = a.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
-  const arriba = () => cabecera?.scrollIntoView({ block: 'start' });
+  const arriba = () => cabecera?.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' });
+  // la nota sube contando desde 0 (tabular-nums: los dígitos no bailan) y, si aprueba, celebra desde ella
+  const notaVista = new Tween(0, { easing: cubicOut });
+  let notaEl = $state<HTMLElement>();
 
   function empezar() {
     const antes = new Set(vistas);
@@ -59,6 +66,12 @@
     }
     confirmar = false; paso = 'resultado';
     arriba();
+    notaVista.set(0, { duration: 0 });
+    tick().then(() => {
+      notaVista.set(nota, { duration: ms(700) });
+      // la celebración llega cuando la nota termina de subir (y la tarjeta ya está a la vista)
+      if (aciertos >= necesita) setTimeout(() => celebrar(notaEl), ms(650));
+    });
   }
 </script>
 
@@ -66,7 +79,7 @@
 {#if total < 3}
   <p class="hint">Este módulo todavía no tiene suficientes preguntas en el banco para un examen.</p>
 {:else if paso === 'inicio'}
-  <div class="card" class:good={yaAprobado}>
+  <div class="card fase" class:good={yaAprobado}>
     {#if yaAprobado}<p class="estado">Examen aprobado ✓</p>{/if}
     <ul class="reglas">
       <li>{total} preguntas de este módulo, en inglés como en el examen KCNA.</li>
@@ -78,8 +91,11 @@
     </div>
   </div>
 {:else if paso === 'examen'}
-  <p class="barra" role="status">{items.length - sinResponder} de {items.length} respondidas</p>
-  <ol class="preguntas">
+  <p class="barra" role="status">
+    {items.length - sinResponder} de {items.length} respondidas
+    <span class="relleno" aria-hidden="true" style="--p: {(items.length - sinResponder) / items.length}"></span>
+  </p>
+  <ol class="preguntas fase">
     {#each items as q, i (q.id)}
       {@const multiple = q.answer.length > 1}
       <li>
@@ -107,8 +123,10 @@
     </div>
   {/if}
 {:else}
-  <div class="card" class:good={paso_ok} class:bad={!paso_ok} role="status">
+  <div class="card fase" class:good={paso_ok} class:bad={!paso_ok} role="status">
     <h3>{paso_ok ? 'Módulo aprobado' : 'No alcanzó esta vez'}</h3>
+    <!-- el lector oye la nota final (la cifra animada va aparte, oculta para él) -->
+    <p class="nota"><span bind:this={notaEl} class="cifra" aria-hidden="true">{Math.round(notaVista.current)} %</span><span class="visually-hidden">{nota} %</span></p>
     <p>Tu nota: <strong>{nota} %</strong> ({aciertos} de {items.length}). Se aprueba con el {APROBAR} % ({necesita} de {items.length}).</p>
     {#if paso_ok}
       <p>Con esto el módulo queda completado en tu Ruta.</p>
@@ -124,10 +142,11 @@
 
   {#if aciertos < items.length}
     <h3 class="sub">Lo que fallaste</h3>
-    <ol class="fallos">
+    <!-- los fallos llegan uno tras otro (máximo 8 escalones; el resto, a la vez) -->
+    <ol class="fallos mc-escalon">
       {#each items as q, i (q.id)}
         {#if !acierta(q, marcadas[i])}
-          <li>
+          <li style="--i: {Math.min(items.slice(0, i).filter((x, k) => !acierta(x, marcadas[k])).length, 8) + 3}">
             <p class="q">{q.q}</p>
             <ul class="ops">
               {#each q.options as o, j}
@@ -164,7 +183,19 @@
   .reglas { margin: 0; padding-left: 20px; color: var(--ink-2); }
   .reglas li { margin-top: 4px; }
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
-  .barra { position: sticky; top: 64px; z-index: 2; max-width: 760px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel); color: var(--ink-2); font-size: 0.92rem; }
+  .barra { position: sticky; top: 64px; z-index: 2; max-width: 760px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel); color: var(--ink-2); font-size: 0.92rem;
+    overflow: hidden; }
+  /* relleno de la barra: crece (scaleX con resorte) con cada pregunta respondida */
+  .relleno { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; background: var(--helm); transform-origin: left; scale: var(--p, 0) 1;
+    transition: scale var(--spring-pop-dur) var(--spring-pop); }
+  /* cada fase (reglas, preguntas, resultado) entra en vez de aparecer de golpe */
+  .fase { animation: mc-entra var(--dur) var(--ease) both; }
+  .nota { margin: 4px 0 0; }
+  .cifra { display: inline-block; font-size: 2.4rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .good .cifra { color: var(--ready); }
+  .bad .cifra { color: var(--fail); }
+  .opt { transition: border-color var(--dur-fast), background var(--dur-fast), scale var(--spring-pop-dur) var(--spring-pop); }
+  .opt:active { scale: 0.985; transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-press); }
   .preguntas { margin: 8px 0 0; padding-left: 26px; max-width: 760px; }
   .preguntas > li { margin-top: 22px; }
   fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

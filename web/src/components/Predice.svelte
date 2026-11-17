@@ -4,16 +4,20 @@
   import { inline, type Check } from '../lib/comprueba';
   import { markToday, save } from '../lib/progress.svelte';
   import { avisarGrumete } from '../lib/grumete-avisos';
+  import { wait } from '../lib/motion';
 
   let { check }: { check: Check } = $props();
   let pick = $state<number | null>(null);
   let shown = $state(false);
   let skipped = $state(false);
+  // «Saltar» pliega el bloque (altura a 0 y fundido) antes de quitarlo: la simulación sube sin un salto brusco
+  let plegando = $state(false);
+  async function saltar() { plegando = true; await wait(220); skipped = true; }
   function reveal() { shown = true; markToday(); save(); if (pick !== null) avisarGrumete(pick === check.answer ? 'acierto' : 'fallo'); }
 </script>
 
 {#if !skipped}
-  <div class="predice">
+  <div class="pliegue" class:plegando><div class="recorte"><div class="predice">
     <p class="k">Antes de tocar: ¿qué crees que pasará?</p>
     <p class="q">{@html inline(check.q)}</p>
     <div class="opts" role="group" aria-label="Tu predicción">
@@ -28,10 +32,10 @@
       {:else if pick !== null}
         <p class="next">Anotado. Ahora pruébalo en la simulación y, cuando lo veas, <button type="button" class="link" onclick={reveal}>comprueba tu predicción</button>.</p>
       {:else}
-        <button type="button" class="link skip" onclick={() => (skipped = true)}>Saltar y ir directo a la simulación</button>
+        <button type="button" class="link skip" onclick={saltar} disabled={plegando}>Saltar y ir directo a la simulación</button>
       {/if}
     </div>
-  </div>
+  </div></div></div>
 {/if}
 
 <style>
@@ -49,7 +53,11 @@
   .opt:active:not(:disabled) { scale: 0.97; }
   .opt.right { animation: mc-acierto var(--spring-pop-dur) var(--ease); }
   .opt.wrong { animation: mc-fallo 320ms var(--ease); }
-  .why { animation: mc-entra var(--dur) var(--ease) both; }
+  .why, .next { animation: mc-entra var(--dur) var(--ease) both; }
+  /* plegado de «Saltar»: la fila de la rejilla pasa de 1fr a 0fr (altura real, sin medir) mientras se funde */
+  .pliegue { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 220ms var(--ease-in), opacity 160ms linear; }
+  .recorte { min-height: 0; overflow: hidden; }
+  .pliegue.plegando { grid-template-rows: 0fr; opacity: 0; }
   .next, .why { margin-top: 10px; font-size: 0.92rem; color: var(--ink-2); }
   .why strong { color: var(--ink); }
   .link { background: none; border: 0; padding: 0; color: var(--helm-ink); text-decoration: underline; cursor: pointer; font: inherit; }

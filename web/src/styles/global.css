@@ -285,7 +285,10 @@ p { margin: 0; }
 .prose details > :not(summary) { margin-top: 0.8em; }
 .prose hr { border: 0; border-top: 1px solid var(--line); }
 /* comprobación de 10 segundos al final de una subsección (lib/plegar.ts + Enhance.svelte) */
-.prose .check { margin-top: 1.4em; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--wait); border-radius: var(--r-m); background: var(--panel); }
+.prose .check { margin-top: 1.4em; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--wait); border-radius: var(--r-m); background: var(--panel);
+  transition: border-left-color var(--dur) linear; }
+/* al responder, las opciones que no intervienen se apartan (con transición, no de golpe) */
+.prose .check.done .check-opt:not(.right, .picked) { opacity: 0.55; }
 .prose .check.is-ok { border-left-color: var(--ready); }
 .prose .check.is-bad { border-left-color: var(--fail); }
 .prose .check-k { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
@@ -299,7 +302,7 @@ p { margin: 0; }
 /* casilla de cada paso del laboratorio: se hunde al pulsarla */
 .prose .step-box { transition: scale var(--dur-fast) var(--ease); }
 .prose .step-box:active { scale: 0.85; }
-.prose .check-opt { transition: border-color var(--dur-fast), background var(--dur-fast), scale var(--dur-fast) var(--ease); }
+.prose .check-opt { transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast), opacity var(--dur-fast) linear, scale var(--dur-fast) var(--ease); }
 .prose .check-opt:active:not(:disabled) { scale: 0.97; }
 .prose .check-opt.right { animation: mc-acierto var(--spring-pop-dur) var(--ease); }
 .prose .check-opt.picked:not(.right) { animation: mc-fallo 320ms var(--ease); }
@@ -326,7 +329,11 @@ p { margin: 0; }
 .prose .copy.copy-prompt.done { background: var(--ready); border-color: var(--ready); color: #fff; }/* pasos del laboratorio con casilla (Enhance.svelte) */
 .prose h3.step { display: flex; align-items: center; gap: 10px; }
 .prose h3.step input { width: 20px; height: 20px; accent-color: var(--ready); margin: 0; cursor: pointer; }
-.prose h3.step.done { color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1px; }
+/* el tachado está siempre, transparente: al hacer el paso se tiñe (transición) en vez de aparecer de golpe */
+.prose h3.step { text-decoration: line-through 1px transparent; transition: color var(--dur) linear, text-decoration-color var(--dur) linear; }
+.prose h3.step.done { color: var(--ink-3); text-decoration-color: currentColor; }
+/* recién marcado: la casilla da un pequeño salto con resorte */
+.prose h3.step.recien .step-box { animation: mc-pop var(--spring-pop-dur) var(--spring-pop); }
 
 /* Shiki: usar el tema según data-theme */
 :root[data-theme='dark'] .astro-code, :root[data-theme='dark'] .astro-code span { color: var(--shiki-dark) !important; }
@@ -336,11 +343,13 @@ p { margin: 0; }
 /* Laboratorio: predice antes de mirar la salida y comandos de memoria del paso (Enhance.svelte) */
 .prose .velado, .prose .tapado { filter: blur(7px); user-select: none; pointer-events: none; }
 .prose .tapado { opacity: 0.6; }
+/* destapar la salida esperada: el desenfoque se disuelve (es el momento de comparar con tu predicción) */
+.prose .destapa { transition: filter var(--dur-reveal) var(--ease), opacity var(--dur-reveal) linear; }
 .prose .predice-todas { font-size: 0.92rem; color: var(--ink-2); padding: 10px 12px; border: 1px dashed var(--line); border-radius: var(--r-m); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .prose .predice-lab { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 14px 0 8px; padding: 10px 12px; border-radius: var(--r-m); background: var(--panel-2); border-left: 3px solid var(--wait); font-size: 0.92rem; }
 .prose .predice-lab label { font-weight: 500; }
 .prose .predice-lab input { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 0.92rem; padding: 6px 10px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
-.prose .predice-dicho { font-size: 0.9rem; color: var(--ink-2); border-left: 3px solid var(--wait); padding-left: 12px; }
+.prose .predice-dicho { font-size: 0.9rem; color: var(--ink-2); border-left: 3px solid var(--wait); padding-left: 12px; animation: mc-entra var(--dur) var(--ease) both; }
 .prose .paso-cmd { margin: 18px 0 8px; padding-top: 14px; border-top: 1px dashed var(--line); }
 @media (pointer: coarse) { .prose .predice-lab input { font-size: 16px; min-height: 44px; } }
 

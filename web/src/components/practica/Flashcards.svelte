@@ -6,6 +6,7 @@
   import { progress, toggleKnown } from '../../lib/progress.svelte';
   import { ms } from '../../lib/motion';
   import { pastilla } from '../../lib/pastilla';
+  import { avisarGrumete } from '../../lib/grumete-avisos';
   import SourceLinks from '../SourceLinks.svelte';
   import Escuchar from '../Escuchar.svelte';
   import VozAjustes from '../VozAjustes.svelte';
@@ -42,6 +43,7 @@
     if (!cur) return;
     const term = cur.term;
     toggleKnown(term);
+    if (isKnown(term)) avisarGrumete('dominada');
     dir = 1;
     if (onlyPending && isKnown(term)) {
       deck = deck.filter((c) => c.term !== term);

@@ -3,7 +3,8 @@
  * Quien detecta algo (una respuesta, un reto, un módulo) llama a avisarGrumete y no necesita saber si Grumete
  * está en la página: es un evento de ventana. Así el curso no depende de la mascota y se puede quitar sin tocarlo.
  */
-export type Aviso = 'acierto' | 'fallo' | 'reto' | 'modulo';
+/** paso: casilla del laboratorio marcada; dominada: flashcard marcada como dominada. Son acuses pequeños (asiente). */
+export type Aviso = 'acierto' | 'fallo' | 'reto' | 'modulo' | 'paso' | 'dominada';
 export const EV_AVISO = 'grumete:aviso';
 /** Lo emite cada Grumete «local» (examen final, banco de pruebas) al montarse y desmontarse: el compañero se aparta. */
 export const EV_LOCAL = 'grumete:local';

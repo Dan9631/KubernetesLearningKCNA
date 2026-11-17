@@ -107,7 +107,7 @@
       const bien = ok / answered >= 0.7;
       if (bien) mascota?.go('saludo');
       decir(bien ? `¡${ok} de ${answered}! Buena ronda.` : `${ok} de ${answered}. Las que fallaste vuelven mañana.`);
-    }, 2200);
+    }, 1200);
   }
   // Siguiente: la pregunta actual sale hacia la izquierda (120 ms) y la nueva entra desde la derecha ({#key} abajo).
   // Mientras sale se ignoran más clics y Enter; el foco pasa al enunciado nuevo para no caer al principio de la página.

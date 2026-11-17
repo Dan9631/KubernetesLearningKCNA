@@ -1,7 +1,11 @@
 <script lang="ts">
   // Página /diploma: examen final con un código de invitación y, si se aprueba, el formulario del diploma.
   // El servidor sortea las preguntas, lleva el plazo y califica; aquí solo se muestran y se marcan opciones.
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
+  import { Tween } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
+  import { ms } from '../lib/motion';
+  import { celebrar } from '../lib/particulas';
   import { diplomasDisponibles, empezarExamen, verIntento, entregarExamen, urlVerificar, type Examen, type Resultado } from '../lib/diploma';
   import PedirDiploma from './PedirDiploma.svelte';
   import { progress } from '../lib/progress.svelte';
@@ -26,10 +30,18 @@
   // La mascota reacciona al resultado (el texto de la tarjeta ya lo dice; ella es decorativa):
   // aprobado → salta y se transforma en el timón; no aprobado → se derrite y se recompone.
   let mascota: ReturnType<typeof Grumete> | undefined = $state();
+  // la nota sube contando y, si aprueba, es el gran momento del curso: partículas desde la nota
+  const notaVista = new Tween(0, { easing: cubicOut });
+  let notaEl = $state<HTMLElement>();
   $effect(() => {
     if (!mascota || !resultado) return;
-    if (resultado.aprobado) { mascota.go('feliz'); mascota.go('timon'); }
-    else mascota.go('triste');
+    const r = resultado;
+    untrack(() => {
+      notaVista.set(0, { duration: 0 });
+      notaVista.set(r.nota, { duration: ms(800) });
+      if (r.aprobado) { mascota!.go('feliz'); mascota!.go('timon'); setTimeout(() => celebrar(notaEl, 40), ms(750)); }
+      else mascota!.go('triste');
+    });
   });
   let reloj: ReturnType<typeof setInterval> | undefined;
   // diferencia entre el reloj del servidor y el de este navegador: el plazo lo lleva el servidor, y un reloj
@@ -154,8 +166,9 @@
   <div class="barra" class:poco={restante < 5 * 60000}>
     <span>Tiempo: <strong class="mono">{mmss}</strong></span>
     <span>{examen.preguntas.length - sinResponder} de {examen.preguntas.length} respondidas</span>
+    <span class="relleno" aria-hidden="true" style="--p: {(examen.preguntas.length - sinResponder) / examen.preguntas.length}"></span>
   </div>
-  <ol class="preguntas">
+  <ol class="preguntas fase">
     {#each examen.preguntas as p, i}
       {@const multiple = p.elige > 1}
       <li>
@@ -184,9 +197,10 @@
   {/if}
   {#if error}<p class="err" role="alert">{error}</p>{/if}
 {:else if paso === 'resultado' && resultado}
-  <div class="card" class:good={resultado.aprobado} class:bad={!resultado.aprobado} role="status">
+  <div class="card fase" class:good={resultado.aprobado} class:bad={!resultado.aprobado} role="status">
     <div class="mascota"><Grumete bind:this={mascota} size={112} /></div>
     <h2>{resultado.aprobado ? 'Aprobaste' : 'No alcanzó esta vez'}</h2>
+    <p class="nota"><span bind:this={notaEl} class="cifra" aria-hidden="true">{Math.round(notaVista.current)} %</span></p>
     <p>Tu nota: <strong>{resultado.nota} %</strong>{#if resultado.total} ({resultado.aciertos} de {resultado.total}){/if}. Se aprueba con el {resultado.aprobar} %.</p>
     {#if !resultado.aprobado}
       <p>Repasa los temas en los que dudaste y vuelve a intentarlo con el mismo código, si le quedan intentos.</p>
@@ -211,6 +225,17 @@
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
   .barra { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 20px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel); color: var(--ink-2); font-size: 0.92rem; }
   .barra.poco strong { color: var(--fail); }
+  /* relleno de la barra: crece con cada pregunta respondida (el temporizador no se anima) */
+  .barra { overflow: hidden; }
+  .relleno { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; background: var(--helm); transform-origin: left; scale: var(--p, 0) 1;
+    transition: scale var(--spring-pop-dur) var(--spring-pop); }
+  .fase { animation: mc-entra var(--dur) var(--ease) both; }
+  p.nota { margin: 4px 0 0; }
+  .cifra { display: inline-block; font-size: 2.4rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .good .cifra { color: var(--ready); }
+  .bad .cifra { color: var(--fail); }
+  .opt { transition: border-color var(--dur-fast), background var(--dur-fast), scale var(--spring-pop-dur) var(--spring-pop); }
+  .opt:active { scale: 0.985; transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-press); }
   .preguntas { margin: 8px 0 0; padding-left: 26px; }
   .preguntas > li { margin-top: 22px; }
   fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
