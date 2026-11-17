@@ -7,13 +7,37 @@
  *  lote: un examen entregado, con su mínimo real para aprobar (el compañero no adivina el umbral).
  *  reto: un reto superado, con su clase (cada uno tiene su frase). */
 import { untrack } from 'svelte';
+import { alDia, type DatosHoy, type Memoria } from './grumete-director';
 
 export type ClaseReto = 'diagrama' | 'terminal' | 'diagnostico' | 'examen' | 'otro';
 export type Aviso =
   | 'acierto' | 'fallo' | 'modulo' | 'paso' | 'dominada'
+  /** una respuesta del banco con la confianza declarada (Seguro / Dudo / Adivino), si la hubo */
+  | { tipo: 'respuesta'; ok: boolean; conf?: 's' | 'd' | 'a' }
   | { tipo: 'lote'; ok: number; total: number; minimo: number }
   | { tipo: 'reto'; clase: ClaseReto };
 export const EV_AVISO = 'grumete:aviso';
+
+/** La portada «Hoy» deja aquí lo que ya calcula (repasos, fallos con seguridad, siguiente paso) para el parte del
+ *  día: así el compañero no carga el banco de preguntas en cada página. Se guarda en window porque las islas se
+ *  hidratan en cualquier orden. */
+export const EV_HOY = 'grumete:hoy';
+export function contextoHoy(datos: DatosHoy) {
+  if (typeof window === 'undefined') return;
+  (window as unknown as { __grumeteHoy?: DatosHoy }).__grumeteHoy = datos;
+  untrack(() => dispatchEvent(new CustomEvent(EV_HOY)));
+}
+export const leerHoy = (): DatosHoy | undefined => (typeof window === 'undefined' ? undefined : (window as unknown as { __grumeteHoy?: DatosHoy }).__grumeteHoy);
+
+/** Memoria del director (qué dijo hoy y cuántas frases por iniciativa propia): por dispositivo, fuera de Progress
+ *  para no viajar con la sincronización. */
+const KEY_MEMORIA = 'kcna.grumete.memoria';
+export function leerMemoria(hoy: string): Memoria {
+  try { return alDia(JSON.parse(localStorage.getItem(KEY_MEMORIA) ?? 'null'), hoy); } catch { return alDia(null, hoy); }
+}
+export function guardarMemoria(m: Memoria) {
+  try { localStorage.setItem(KEY_MEMORIA, JSON.stringify(m)); } catch { /* sin almacenamiento */ }
+}
 
 /** La clase de un reto sale del prefijo de su id (ver addReto en progress.svelte.ts) */
 export const claseReto = (id: string): ClaseReto =>
