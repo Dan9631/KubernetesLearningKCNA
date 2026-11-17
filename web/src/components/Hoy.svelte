@@ -10,6 +10,7 @@
   import AvisoRespaldo from './AvisoRespaldo.svelte';
   import { MISSIONS } from '../lib/kube/missions';
   import { DRILLS, drillKey } from '../lib/kube/drills';
+  import { contextoHoy } from '../lib/grumete-avisos';
 
   const ROUND = 30; // preguntas por ronda del Repaso del día (Practica.svelte)
   const DIAG_CASES = 6; // casos de sims/09/Diagnostico.svelte
@@ -48,6 +49,17 @@
     return { iso: isoDay(d.getTime()), l: fNarrow.format(d), name: fDay.format(d), on: progress.days.includes(isoDay(d.getTime())) };
   }));
   const active = $derived(week.filter((d) => d.on).length);
+
+  // el parte del día de Grumete sale de estos mismos datos (lib/grumete-director.ts)
+  $effect(() => {
+    if (!started) return;
+    contextoHoy({
+      due: due.length, sure, cmdDue, tomorrow,
+      // solo los pasos con verbo («practica…», «haz…»); «Listo para reservar fecha» ya se lee en la tarjeta
+      siguiente: next.text.startsWith('Siguiente paso: ') ? next.text.slice('Siguiente paso: '.length).replace(/ \(.*\)/, '') : undefined,
+      leyendo: top && meta ? { mod: top.mod, titulo: meta.title } : undefined,
+    });
+  });
 
   const signals = $derived([
     { ok: r.coverOk, label: `Cobertura ${r.rows.filter((x) => x.seen >= x.need).length}/${r.rows.length}` },

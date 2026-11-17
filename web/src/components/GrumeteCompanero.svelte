@@ -12,7 +12,9 @@
   import { onMount } from 'svelte';
   import Grumete from './Grumete.svelte';
   import type { Estado } from '../lib/grumete';
-  import { EV_AVISO, EV_LOCAL, EV_MODO, EV_PREF, enExamen, grumetesLocales, grumeteOculto, setGrumeteOculto, type Aviso, type ClaseReto } from '../lib/grumete-avisos';
+  import { EV_AVISO, EV_HOY, EV_LOCAL, EV_MODO, EV_PREF, enExamen, grumetesLocales, grumeteOculto, guardarMemoria, leerHoy, leerMemoria, setGrumeteOculto, type Aviso, type ClaseReto } from '../lib/grumete-avisos';
+  import { alCargar, anotar, diasSinEstudiar, puedeDecir, reaccionRespuesta, type Conf, type Decision } from '../lib/grumete-director';
+  import { progress, isoDay } from '../lib/progress.svelte';
 
   const KEY = 'kcna.grumete'; // sessionStorage: ya saludó en esta visita
   const SUENO = 120_000; // ms sin actividad para dormirse
@@ -32,7 +34,6 @@
     'El examen KCNA dura 90 minutos y todas sus preguntas son de opción múltiple.',
     'Un Pod sin controlador que lo vigile no vuelve si se borra: por eso casi nunca se crean Pods sueltos.',
   ];
-  const BIEN = ['¡Eso es!', '¡A toda vela!', '¡Buen rumbo!', '¡Bien leído!'];
   const MODULO = ['¡Módulo terminado! Rumbo al siguiente.', '¡Un puerto más en el mapa!'];
   // cada clase de reto tiene su frase; el examen aprobado ya lo cuenta el lote (y el módulo terminado)
   const RETO: Record<ClaseReto, string | null> = {
@@ -103,12 +104,39 @@
     // acuses pequeños: un paso del laboratorio o una tarjeta dominada; asiente sin hablar (cada 5 tarjetas, se alegra)
     if (l.includes('paso')) { g.go('asiente'); return; }
     if (l.includes('dominada')) { dominadas += 1; g.go(dominadas % 5 ? 'asiente' : 'feliz'); return; }
-    if (l.includes('fallo')) { racha = 0; g.go('triste'); return; }
-    if (l.includes('acierto')) {
-      racha += 1;
-      if (racha % 3 === 0) { g.go('timon'); decir(`¡${racha} seguidas!`); }
-      else { g.go('feliz'); if (racha === 1 && Math.random() < 0.3) decir(azar(BIEN)); }
-    }
+    // respuestas sueltas: el director decide según la confianza; en la esquina casi siempre es solo un gesto
+    const resp = l.flatMap((a): { ok: boolean; conf?: Conf }[] =>
+      a === 'acierto' ? [{ ok: true }] : a === 'fallo' ? [{ ok: false }] : typeof a === 'object' && a.tipo === 'respuesta' ? [{ ok: a.ok, conf: a.conf }] : []);
+    const fallo = resp.find((x) => !x.ok);
+    if (fallo) { racha = 0; ejecutar(reaccionRespuesta(false, fallo.conf, 0, 'esquina')); return; }
+    if (resp.length) { racha += 1; ejecutar(reaccionRespuesta(true, resp[resp.length - 1].conf, racha, 'esquina')); }
+  }
+
+  /** Ejecuta una decisión del director: gestos, mirada (si apunta a algo) y frase */
+  let tPensar = 0, tMirar = 0;
+  function ejecutar(d: Decision, informa = false) {
+    if (!g) return;
+    if (d.estado) { estado = d.estado; clearTimeout(tPensar); tPensar = window.setTimeout(() => { if (estado === 'pensando') estado = 'reposo'; }, 1400); }
+    for (const x of d.gestos) g.go(x);
+    const el = d.apunta ? document.querySelector(d.apunta) : null;
+    if (el) { g.mirar(el); clearTimeout(tMirar); tMirar = window.setTimeout(() => g?.mirar(null), 5000); }
+    if (d.frase) decir(d.frase, informa);
+  }
+
+  // Por iniciativa propia, como mucho una frase por página (y tres al día, sin repetir: memoria del director).
+  // Al cargar: la vuelta tras días sin estudiar y, en la portada, el parte del día con los datos de «Hoy».
+  let hablo = false;
+  function proactiva() {
+    if (hablo || examen || !g) return;
+    // en la portada espera a los datos de «Hoy» (llegan con su aviso): sin ellos diría algo más pobre
+    if (!leerHoy() && document.querySelector('astro-island[component-url*="Hoy"]')) return;
+    const hoy = isoDay();
+    const m = leerMemoria(hoy);
+    const d = alCargar(diasSinEstudiar(progress.days, hoy), hoy, leerHoy(), m);
+    if (!d || !puedeDecir(m, d)) return;
+    hablo = true;
+    guardarMemoria(anotar(m, d));
+    ejecutar(d, true); // trae información nueva: el globo se anuncia (role=status)
   }
 
   // Pulsar (sin arrastrar) cuenta un dato; muchos toques seguidos lo marean.
@@ -154,11 +182,19 @@
     let hola = false;
     try { hola = !sessionStorage.getItem(KEY); sessionStorage.setItem(KEY, '1'); } catch { /* sin almacenamiento */ }
     const tHola = hola && !examen ? setTimeout(() => g?.go('saludo'), 700) : 0;
+    // la frase del día llega después del saludo, cuando la página ya está quieta; si «Hoy» se hidrata más tarde,
+    // su aviso la vuelve a intentar (solo en los primeros segundos: luego sería interrumpir)
+    const tProactiva = setTimeout(proactiva, 1600);
+    const desde = Date.now();
+    const onHoy = () => { if (Date.now() - desde < 8000 && Date.now() - desde > 1600) proactiva(); };
+    addEventListener(EV_HOY, onHoy);
     return () => {
       removeEventListener(EV_AVISO, onAviso);
       removeEventListener(EV_LOCAL, onLocal);
       removeEventListener(EV_PREF, onPref);
       removeEventListener(EV_MODO, onModo);
+      removeEventListener(EV_HOY, onHoy);
+      clearTimeout(tProactiva); clearTimeout(tPensar); clearTimeout(tMirar);
       for (const ev of eventos) removeEventListener(ev, actividad);
       clearInterval(reloj); clearTimeout(tHola); clearTimeout(tLote); clearTimeout(tGlobo);
     };

@@ -150,7 +150,7 @@ export function recordAnswer(qid: string, correct: boolean, conf?: Conf, helped 
   progress.quiz[qid] = n;
   markToday();
   save();
-  if (avisar) avisarGrumete(correct ? 'acierto' : 'fallo');
+  if (avisar) avisarGrumete({ tipo: 'respuesta', ok: correct, conf });
 }
 
 export function toggleKnown(term: string) {

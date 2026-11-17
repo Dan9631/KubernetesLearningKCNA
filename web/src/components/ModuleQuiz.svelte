@@ -12,6 +12,7 @@
   import { questionParts, answerParts } from '../lib/voz.svelte';
   import { onMount, tick } from 'svelte';
   import { wait } from '../lib/motion';
+  import { reaccionRespuesta } from '../lib/grumete-director';
   import Grumete from './Grumete.svelte';
   import type { Estado } from '../lib/grumete';
   import { EV_PREF, grumeteOculto, setGrumeteOculto } from '../lib/grumete-avisos';
@@ -51,13 +52,12 @@
   let estadoG = $state<Estado>('reposo');
   let frase = $state({ texto: '', n: 0 });
   let racha = 0, tResumen = 0;
-  const optEls: HTMLButtonElement[] = [];
+  const optEls = $state<HTMLButtonElement[]>([]);
   let qEl: HTMLElement | undefined = $state();
   let explainEl: HTMLElement | undefined = $state();
   const azar = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
   // nada que suene a dato si no lo es (antes: «Esta sale mucho en el examen», elegido al azar)
   const PREGUNTA = ['¿Cuál crees?', '¿Qué dirías?', 'A ver esta…', 'Lee bien el enunciado.'];
-  const BIEN = ['¡Eso es!', '¡A toda vela!', '¡Bien leído!', '¡Exacto!'];
   function decir(texto: string) { frase = { texto, n: frase.n + 1 }; }
   function preguntar() {
     estadoG = 'reposo';
@@ -92,15 +92,14 @@
     if (good) ok += 1;
     res[i] = good;
     recordAnswer(q.id, good, conf);
-    estadoG = 'reposo';
-    if (good) {
-      racha += 1;
-      if (racha % 3 === 0) { mascota?.go('timon'); decir(`¡${racha} seguidas! Mira por qué:`); }
-      else { mascota?.go('feliz'); decir(`${azar(BIEN)} Mira por qué:`); }
-    } else {
-      racha = 0; mascota?.go('triste');
-      decir(conf === 's' ? 'Ibas seguro y no era: esa idea volverá hasta que la aciertes.' : 'Casi. Mira por qué:');
-    }
+    // la reacción depende de la confianza declarada (lib/grumete-director.ts): el elogio es escaso y la frase
+    // dice algo útil («Dudabas y era esa», «Esta idea hay que cambiarla»), no repite lo que pone la tarjeta
+    racha = good ? racha + 1 : 0;
+    const d = reaccionRespuesta(good, conf, racha, 'chat');
+    estadoG = d.estado ?? 'reposo';
+    if (d.estado) setTimeout(() => { if (estadoG === d.estado) estadoG = 'reposo'; }, 1400);
+    for (const x of d.gestos) mascota?.go(x);
+    if (d.frase) decir(d.frase);
     await tick();
     mascota?.mirar(explainEl ?? null);
     // al cerrar la ronda, después de la reacción, el resumen (y lo que pasa con los fallos)
