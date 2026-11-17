@@ -69,7 +69,7 @@ Un **volume** de Kubernetes se declara en `spec.volumes` del pod y cada contened
 |---|---|---|---|
 | **emptyDir** | Lo que dure el pod (se crea vacío al programarlo, se borra al eliminarlo) | Caché, archivos temporales, compartir datos entre contenedores del pod (sidecars) | `medium: Memory` usa RAM (cuenta para el límite de memoria); `sizeLimit` |
 | **hostPath** | Lo que dure el nodo | Agentes del sistema que necesitan archivos del nodo (logs, `/var/run/containerd`) | **Riesgo de seguridad**: acceso al sistema de archivos del nodo, posible escalada; el pod queda atado a un nodo concreto; prohibido por el perfil *baseline* de Pod Security Standards |
-| **configMap / secret** | Lo que dure el objeto | Inyectar archivos de configuración o credenciales | Se montan de solo lectura; se actualizan solos (salvo con `subPath`) |
+| **configMap / secret** | Lo que dure el objeto | Inyectar archivos de configuración o credenciales | Se montan de solo lectura; se actualizan solos (salvo con `subPath`). Los de **secret** van en **tmpfs** (RAM): su contenido nunca se escribe en el disco del nodo |
 | **downwardAPI** | — | Exponer labels, anotaciones, nombre del pod como archivos | |
 | **projected** | — | Combinar en **un solo directorio** configMap + secret + downwardAPI + token de ServiceAccount | Así se monta el token de la ServiceAccount en cada pod |
 | **persistentVolumeClaim** | **Independiente del pod** | Datos de aplicación que deben persistir | Ver PV/PVC |
@@ -706,6 +706,7 @@ La reclaim policy del PV dinámico la hereda de la StorageClass. Si borras el PV
 - **StorageClass**: provisioner, parameters, reclaimPolicy, **volumeBindingMode** (`Immediate` / **`WaitForFirstConsumer`** → PVC Pending hasta que hay pod), **allowVolumeExpansion** (solo crecer). Clase por defecto por anotación.
 - **StatefulSet + volumeClaimTemplates**: un PVC por réplica (`datos-db-0`), estable, no se borra al escalar abajo.
 - **VolumeSnapshot / VolumeSnapshotContent / VolumeSnapshotClass**: copias puntuales vía CSI.
+- Volúmenes **secret** van en **tmpfs** (RAM) y de solo lectura: nunca tocan el disco del nodo.
 
 ## Limpieza
 
@@ -728,3 +729,4 @@ La reclaim policy del PV dinámico la hereda de la StorageClass. Si borras el PV
 - [StatefulSets — kubernetes.io](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/): `volumeClaimTemplates`, nombres `<plantilla>-<sts>-<ordinal>`, PVCs conservados al escalar o borrar, `persistentVolumeClaimRetentionPolicy`, Service headless.
 - [Container Storage Interface (CSI) for Kubernetes GA — kubernetes.io/blog](https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/): CSI GA en Kubernetes 1.13.
 - [CSI Specification — github.com/container-storage-interface](https://github.com/container-storage-interface/spec): especificación estándar adoptada por Kubernetes, Mesos, Nomad y Cloud Foundry.
+- [Secrets — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/secret/): los volúmenes secret se guardan en tmpfs y nunca en el almacenamiento del nodo.

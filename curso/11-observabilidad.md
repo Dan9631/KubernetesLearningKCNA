@@ -191,6 +191,8 @@ flowchart LR
 - Una **traza** (*trace*) representa una petición de principio a fin; está formada por **spans** (cada operación: llamada HTTP, consulta SQL), con inicio, duración, atributos y relación padre-hijo.
 - El **contexto** (trace ID) viaja entre servicios en cabeceras (estándar W3C Trace Context, cabecera `traceparent`, el propagador por defecto de OpenTelemetry): eso es la **propagación de contexto**.
 - **OpenTelemetry (OTel)**: proyecto CNCF **graduado** (mayo de 2026; nació en 2019 de la fusión de OpenTracing y OpenCensus) que estandariza **cómo se generan y transportan** trazas, métricas y logs: APIs y SDKs por lenguaje, auto-instrumentación, el protocolo **OTLP** y el **OpenTelemetry Collector** (recibe, procesa y exporta a cualquier backend). **No almacena** datos: es neutral respecto al proveedor.
+- **Instrumentar** es hacer que la app emita telemetría. Con la instrumentación **sin código** (*zero-code*, o automática), un agente o unas librerías que se enganchan al arrancar la aplicación generan trazas y métricas **sin tocar el código fuente**: es la forma rápida de empezar. La instrumentación **manual** (con la API y el SDK de OTel en tu código) añade después lo propio del negocio, como un span para "calcular precio" o un atributo con el ID del pedido.
+- **Muestreo** (*sampling*): guardar la traza de cada petición sale muy caro en volumen, así que se conserva solo una **parte representativa**. Por ejemplo, el 10 % de las peticiones, o todas las que fallan o tardan demasiado. Así se reduce el coste de recoger y almacenar trazas sin perder la visión del sistema.
 - **Jaeger** (CNCF graduado, creado en Uber): backend y UI para almacenar y visualizar trazas; compatible con OpenTelemetry (Jaeger v2 está construido sobre el OpenTelemetry Collector). Alternativas: Zipkin, Grafana Tempo.
 - Un **service mesh** (Istio, Linkerd) puede generar spans de red sin tocar el código, pero la propagación del contexto sigue necesitando que la app reenvíe las cabeceras.
 
@@ -713,6 +715,7 @@ Fíjate en que los labels del pod (`app`, `pod_template_hash`) y `namespace`, `p
 - Grafana = dashboards sobre muchas fuentes. Logs: stdout → agente de nodo (Fluent Bit/Fluentd) → Loki/Elasticsearch. Kubernetes no trae logging de clúster.
 - Trazas: trace = spans; OpenTelemetry (CNCF graduado; APIs/SDKs/Collector/OTLP, no almacena) + Jaeger (backend/UI). Loki y Grafana son de Grafana Labs, no de la CNCF.
 - FinOps: Inform → Optimize → Operate; los nodos se llenan por `requests`; right-sizing, spot, autoscaling; OpenCost para costos por namespace/label.
+- **Sampling**: guardar solo una parte representativa de las trazas para reducir coste. Instrumentación **sin código** (agente, sin tocar el fuente) frente a **manual** (SDK en tu código).
 
 ## Limpieza
 
@@ -744,3 +747,4 @@ helm uninstall prometheus -n lab-11
 - [Service Level Objectives — sre.google](https://sre.google/sre-book/service-level-objectives/): definiciones de SLI, SLO, SLA y error budget.
 - [OpenCost — opencost.io](https://www.opencost.io/docs/) y [OpenCost en la CNCF](https://www.cncf.io/projects/opencost/): medición y asignación de costos; incubating desde octubre de 2024.
 - [Node-pressure Eviction — kubernetes.io](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/): `memory.available` se calcula con el working set.
+- [Sampling — opentelemetry.io](https://opentelemetry.io/docs/concepts/sampling/) y [Zero-code instrumentation — opentelemetry.io](https://opentelemetry.io/docs/concepts/instrumentation/zero-code/): muestreo de trazas e instrumentación sin código.

@@ -223,10 +223,10 @@ Escribir YAML para cada entorno a mano no escala. Hay dos enfoques principales:
 | Término | Qué es |
 |---|---|
 | **Chart** | El paquete: `Chart.yaml` (nombre, `version` del chart, `appVersion`), `values.yaml` (valores por defecto) y `templates/` (manifiestos con plantillas Go: `{{ .Values.replicaCount }}`) |
-| **Values** | Parámetros que personalizan el chart: `-f mis-values.yaml` o `--set clave=valor` |
+| **Values** | Parámetros que personalizan el chart. Se combinan por capas y **gana la última**: primero el `values.yaml` del chart (valores por defecto), luego los archivos de `-f`/`--values` (en orden) y por último `--set clave=valor`. Si `values.yaml` dice 1 réplica, `-f prod.yaml` dice 3 y `--set replicaCount=5`, se usan 5 |
 | **Release** | Una **instalación concreta** de un chart en un clúster, con nombre propio. El mismo chart puede instalarse varias veces con nombres distintos |
 | **Revision** | Cada install/upgrade/rollback crea una revisión numerada; Helm guarda el historial en **Secrets** del namespace del release |
-| **Repository** | Servidor HTTP con un `index.yaml` y charts empaquetados (`.tgz`), o un registry **OCI**. Buscador público: **Artifact Hub** |
+| **Repository** | Servidor HTTP con un `index.yaml` y charts empaquetados (`.tgz`), o un registry **OCI** (lo que Helm recomienda hoy: los charts viven en el mismo registry que las imágenes; `helm package`, `helm push mi-chart-1.0.0.tgz oci://registro/charts` y `helm install web oci://registro/charts/mi-chart`). Buscador público: **Artifact Hub**, que solo indexa, no almacena |
 
 Dato histórico muy preguntado: **Helm 2** usaba un componente en el clúster llamado **Tiller**, con permisos amplios; **Helm 3 lo eliminó** y Helm pasó a ser solo un cliente que usa tus credenciales de kubeconfig (además, Helm 3 introdujo el *three-way merge* y guarda los releases como Secrets en el namespace del release). Helm 4 ya está publicado y es la versión actual de la documentación; tu laboratorio tiene Helm 4 y los comandos del curso son los mismos.
 
@@ -990,6 +990,7 @@ Si intentas hacer trampa con `kubectl scale --replicas=3`, el selfHeal lo devuel
 - **Helm:** chart (Chart.yaml + values.yaml + templates) → release → revisiones guardadas en Secrets; `install/upgrade/rollback/history/template`; Helm 3 eliminó **Tiller**.
 - **Kustomize:** sin plantillas, integrado en kubectl (`-k`), base + overlays, `namePrefix`, `labels`, `replicas`, `images`, `patches`, generadores con sufijo hash.
 - CI conceptual: **GitHub Actions** (`.github/workflows`), **GitLab CI** (`.gitlab-ci.yml`), **Jenkins** (`Jenkinsfile`, CD Foundation), **Tekton** (CRDs nativos de Kubernetes, CNCF incubating).
+- Helm values: `values.yaml` < `-f` < `--set` (gana el último). Charts en registries **OCI**: `helm push` / `helm install oci://...`; Artifact Hub solo indexa.
 
 ## Limpieza
 
@@ -1023,3 +1024,5 @@ Las imágenes de Argo CD siguen cargadas en los nodos, así que reinstalarlo des
 - [Kustomize — github.com/kubernetes-sigs](https://github.com/kubernetes-sigs/kustomize): patrocinado por SIG CLI, versión incluida en kubectl.
 - [Tekton en la CNCF — cncf.io](https://www.cncf.io/projects/tekton/) y [CD Foundation projects — cd.foundation](https://cd.foundation/projects/): Tekton incubating en la CNCF desde marzo de 2026; Jenkins, Jenkins X y Spinnaker siguen en la CD Foundation.
 - [CNCF Projects — cncf.io](https://www.cncf.io/projects/): Harbor, Helm, Argo y Flux graduados.
+- [Values Files — helm.sh](https://helm.sh/docs/chart_template_guide/values_files/): precedencia values.yaml < -f < --set.
+- [Use OCI-based registries — helm.sh](https://helm.sh/docs/topics/registries/): helm push y helm install con referencias oci://.

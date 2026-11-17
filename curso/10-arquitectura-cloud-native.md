@@ -138,6 +138,15 @@ flowchart LR
     S["Sandbox<br/>experimental,<br/>entrada fácil"] --> I["Incubating<br/>usado en producción,<br/>comunidad creciente"] --> G["Graduated<br/>maduro, adopción amplia,<br/>auditoría de seguridad"]
 ```
 
+Para pasar a **Graduated** no basta con ser popular. Entre los requisitos están:
+- una **revisión de seguridad hecha por un tercero independiente**;
+- **mantenedores de al menos dos organizaciones** distintas, para que el proyecto no dependa de una sola empresa;
+- el badge **OpenSSF Best Practices**;
+- un gobierno del proyecto definido y documentado;
+- una lista pública de usuarios en producción.
+
+La decisión la toma el **TOC** con una mayoría de dos tercios.
+
 Ejemplos de proyectos **graduados**: Kubernetes (el primero, 2018), Prometheus, Envoy, CoreDNS, containerd, CRI-O, etcd, Helm, Harbor, Fluentd, Jaeger, Argo, Flux, Istio, Linkerd, Cilium, Open Policy Agent (OPA), Kyverno, Falco, Rook, KEDA, Knative, CloudEvents, cert-manager, Dapr, Crossplane, SPIFFE/SPIRE, TUF, Vitess y **OpenTelemetry** (uno de los proyectos más activos de la CNCF; fue incubating de 2021 a 2026 y se graduó en mayo de 2026). Ejemplos de **incubating**: Backstage, CNI, OpenCost, Thanos, Cortex, Tekton. Los niveles cambian con el tiempo: consulta el estado actual en `cncf.io/projects`.
 
 El **CNCF Landscape** (`landscape.cncf.io`) es el mapa interactivo de todo el ecosistema cloud native, organizado por categorías (runtime, orquestación, observabilidad, seguridad...), mostrando proyectos CNCF y productos comerciales.
@@ -152,6 +161,7 @@ El **CNCF Landscape** (`landscape.cncf.io`) es el mapa interactivo de todo el ec
 
 **Ciclo de releases de Kubernetes:**
 
+- Cada versión la saca adelante el **Release Team**: un equipo dentro de **SIG Release** que se forma de nuevo en cada ciclo, con roles como Release Team Lead, **Enhancements** (sigue los KEPs que entran en la versión), **Release Signal** (vigila el estado de las pruebas), **Docs** y **Communications**. Tiene un programa de *shadows*, en el que los nuevos acompañan a cada rol para aprender.
 - Versionado `MAJOR.MINOR.PATCH` (p. ej. v1.37.0). Aproximadamente **tres versiones menores por año** (cada ciclo dura unas 14 semanas, más los periodos entre ciclos).
 - Se mantienen las **tres últimas** versiones menores (hoy 1.37, 1.36 y 1.35); la página de releases habla de "aproximadamente 1 año" de parches, y la política de *patch releases* lo detalla como **unos 14 meses**: 12 de periodo estándar + 2 de *maintenance mode* (solo CVEs, dependencias y fallos críticos) antes del fin de vida (EOL). Si te preguntan, "alrededor de un año (hasta ~14 meses)" es la respuesta segura.
 - Las funcionalidades maduran por etapas, controladas con **feature gates** (`--feature-gates=Nombre=true`):
@@ -608,6 +618,7 @@ Si el último check falla, espera un minuto: el HPA tarda en recibir las primera
 - Kubernetes: Steering Committee, SIGs (permanentes), WGs (temporales), KEPs. ~3 releases/año, 3 versiones mantenidas, ~1 año de parches (hasta ~14 meses). Alpha (off) → Beta → GA, con feature gates.
 - Contribuir: Slack, listas de correo, reuniones de SIG, `good first issue`, KubeCon, KCDs.
 - Roles: SRE (SLO/error budget), DevOps (CI/CD), Platform (IDP), DevSecOps (shift-left), FinOps (costos).
+- **Graduated** exige: auditoría de seguridad de un tercero, mantenedores de **al menos dos organizaciones**, badge OpenSSF y voto de 2/3 del **TOC**. Cada versión de Kubernetes la saca el **Release Team** de SIG Release (Enhancements, Release Signal, Docs, Communications, *shadows*).
 
 ## Limpieza
 
@@ -632,3 +643,5 @@ Si el último check falla, espera un minuto: el HPA tarda en recibir las primera
 - [CNCF TOC — github.com/cncf/toc](https://github.com/cncf/toc) y [TOC restructures technical groups — cncf.io](https://www.cncf.io/blog/2025/05/07/10-years-in-cloud-native-toc-restructures-technical-groups/): funciones del TOC y los 5 TAGs actuales.
 - [Kubernetes governance](https://github.com/kubernetes/community/blob/master/governance.md), [Steering Committee](https://github.com/kubernetes/steering) y [Community membership](https://github.com/kubernetes/community/blob/master/community-membership.md): SIGs, WGs, committees, KEPs, 7 miembros del Steering, escalera member → reviewer → approver → subproject owner.
 - [Releases](https://kubernetes.io/releases/), [Release cycle](https://kubernetes.io/releases/release/) y [Patch releases](https://kubernetes.io/releases/patch-releases/) — kubernetes.io: 3 versiones mantenidas, ~3 releases al año, ~1 año de parches (12 + 2 meses).
+- [Graduation criteria — github.com/cncf/toc](https://github.com/cncf/toc/blob/main/process/graduation_criteria.md): requisitos para Graduated (auditoría de terceros, mantenedores de al menos dos organizaciones, OpenSSF Best Practices, voto de 2/3 del TOC).
+- [Release Team — github.com/kubernetes/sig-release](https://github.com/kubernetes/sig-release/tree/master/release-team): roles del Release Team y programa de shadows.

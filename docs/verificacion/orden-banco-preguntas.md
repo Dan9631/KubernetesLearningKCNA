@@ -8,6 +8,20 @@ La protección automática está en `quiz/src/conceptos.js` (la comprueba `quiz/
 
 - **Probes** (03 §2, «Probes: cómo sabe el kubelet si tu contenedor está sano»): liveness, readiness y startup se explican ya en workloads. F024, F025, F026 y las flashcards de las tres probes vuelven al 03 (la auditoría las había movido al 06 y al 09). D050 (diagnosticar una liveness mal configurada) sigue en el 09.
 - **Mantenimiento de nodos** (04, «Mantenimiento de nodos: cordon, drain y PodDisruptionBudget»): resuelve los huecos F046, F047, F074 y las flashcards PDB y drain, y la debilidad de F073 y la flashcard cordon. F046 y F047 pasan del 02 al 04; el 02 ahora remite a esa sección.
+- **Módulo 02** (§9, §10 y §11): política de deprecación de la API (F099), fusión de varios archivos en `KUBECONFIG` (F100), backup de etcd con `etcdctl snapshot save` (F051), Kubernetes gestionado (F058) y orden de actualización de un clúster kubeadm (F049, que estaba débil). Todas siguen en el 02.
+- **Módulo 01** (§6): RuntimeClass y `spec.runtimeClassName` (F091 y su flashcard) y que desde v1.26 el kubelet exige CRI v1 y si no, no registra el nodo (F098). Siguen en el 01.
+- **Módulo 04**: scheduling gates (F075) y Dynamic Resource Allocation (F076), en una sección breve antes del mantenimiento de nodos.
+- **Módulo 05**: Policy as Code tras los admission controllers (flashcard PaC) y una sección nueva de auditoría del API server (O099, que estaba débil).
+- **Módulo 06**: `externalTrafficPolicy` en Services (O111), descubrimiento por variables de entorno junto al DNS (O114) y el Secret `kubernetes.io/tls` en Ingress (O108).
+- Falco (O034 y su flashcard) se queda en el 10, donde se presenta la seguridad en runtime.
+- **Módulo 07**: API gateway frente a service mesh (O126), identidad de Istio por ServiceAccount (O131) y modos PERMISSIVE/STRICT de PeerAuthentication (O132).
+- **Módulo 08**: los volúmenes secret van en tmpfs (O087).
+- **Módulo 09**: los pods siguen corriendo si cae el apiserver (O073), `kubectl events --types=Warning` (D054), `terminationMessagePolicy: FallbackToLogsOnError` (D055) y `kubectl cp` necesita `tar` (D056).
+- **Módulo 10**: requisitos para Graduated (A033) y el Release Team de SIG Release (A031).
+- **Módulo 11**: muestreo de trazas (A055) e instrumentación sin código frente a manual (A057).
+- **Módulo 12**: precedencia de values en Helm (D040) y charts en registries OCI (D042).
+
+Con esto quedan cubiertos todos los huecos y temas débiles de la auditoría.
 
 ## Movidas a un módulo posterior (28)
 

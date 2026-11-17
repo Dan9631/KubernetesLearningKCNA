@@ -181,7 +181,7 @@ ENTRYPOINT ["/app"]
 | **Runtime de alto nivel** (gestor de contenedores) | **containerd** (graduado CNCF, 2019), **CRI-O** (graduado CNCF en 2023, hecho para Kubernetes) | Descarga y almacena imágenes, prepara el filesystem, gestiona el ciclo de vida y llama al runtime de bajo nivel |
 | **Herramientas/CLI** | Docker CLI + dockerd, Podman, nerdctl, `crictl`, `ctr` | Interfaz para humanos o depuración |
 
-**CRI (Container Runtime Interface).** Es la API gRPC que el **kubelet** usa para hablar con el runtime. Cualquier runtime que implemente CRI sirve para Kubernetes: containerd (con su plugin CRI) y CRI-O son los habituales.
+**CRI (Container Runtime Interface).** Es la API gRPC que el **kubelet** usa para hablar con el runtime. Cualquier runtime que implemente CRI sirve para Kubernetes: containerd (con su plugin CRI) y CRI-O son los habituales. Desde **v1.26** el kubelet exige la versión **v1** de la API CRI: si el runtime del nodo no la soporta, el kubelet **no registra el nodo** en el clúster.
 
 ```mermaid
 flowchart LR
@@ -212,6 +212,20 @@ flowchart LR
 - Además entiende el concepto de **pod** (`podman pod create`) y puede generar YAML de Kubernetes (`podman kube generate`). Lo acompañan **Buildah** (construir imágenes) y **Skopeo** (copiar/inspeccionar imágenes entre registries).
 
 En tu laboratorio conviven varios: **Podman** (con **crun**) en la VM de WSL ejecuta los contenedores-nodo de kind; dentro de cada nodo, el kubelet usa **containerd** (con **runc**) para ejecutar tus Pods.
+
+**Elegir runtime por Pod: RuntimeClass.** Un mismo nodo puede tener configurados varios runtimes de bajo nivel: runc para lo normal y uno con más aislamiento, como **gVisor** o **Kata Containers** (que mete cada Pod en una micro-VM), para código en el que no confías. El objeto **RuntimeClass** le pone nombre a cada una de esas configuraciones (su `handler`, el nombre que tiene en containerd o CRI-O), y cada Pod elige la suya con `spec.runtimeClassName`. Si no indica ninguna, usa el runtime por defecto del nodo.
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: sandbox          # el nombre que usarán los Pods
+handler: runsc           # la configuración de gVisor en el runtime del nodo
+---
+# en el Pod:
+spec:
+  runtimeClassName: sandbox
+```
 
 ### 7. Orquestación de contenedores
 
@@ -765,7 +779,7 @@ Si creaste el Pod antes de cargar la imagen verás `ImagePullBackOff`: carga la 
 - **OCI**: image-spec, runtime-spec, distribution-spec. Imagen = capas de solo lectura + config; el contenedor añade una capa escribible efímera.
 - Solo `RUN`, `COPY` y `ADD` crean capas. Multi-stage = imagen final mínima. `ENTRYPOINT` + `CMD`; en K8s `command` reemplaza ENTRYPOINT y `args` reemplaza CMD.
 - Buenas prácticas: base mínima, `USER` no root, tags inmutables/digests, sin secretos en la imagen, escanear (Trivy) y firmar (cosign).
-- Bajo nivel: **runc**, **crun**, Kata, gVisor. Alto nivel: **containerd**, **CRI-O**. El kubelet habla **CRI**; `crictl` lo depura.
+- Bajo nivel: **runc**, **crun**, Kata, gVisor. Alto nivel: **containerd**, **CRI-O**. El kubelet habla **CRI** (desde v1.26 exige CRI v1; si no, no registra el nodo); `crictl` lo depura. **RuntimeClass** + `spec.runtimeClassName` eligen runtime por Pod (p. ej. gVisor o Kata para aislar más).
 - **dockershim** se eliminó en **v1.24**; las imágenes de Docker siguen funcionando (son OCI).
 - Podman: **daemonless** y **rootless**, CLI compatible con Docker.
 - Madurez en la CNCF: **containerd** (2019) y **CRI-O** (2023) son proyectos **graduados**; Kubernetes fue el primer graduado (2018).
@@ -798,3 +812,4 @@ Remove-Item -Recurse -Force $env:TEMP\kcna-web-v2 -ErrorAction SilentlyContinue
 - [namespaces(7) — man7.org](https://man7.org/linux/man-pages/man7/namespaces.7.html): tipos de namespaces de Linux.
 - [podman(1) — docs.podman.io](https://docs.podman.io/en/latest/markdown/podman.1.html): Podman sin daemon, rootless con user namespaces, crun como runtime por defecto.
 - [The Twelve-Factor App — 12factor.net](https://12factor.net/): los 12 factores.
+- [Runtime Class — kubernetes.io](https://kubernetes.io/docs/concepts/containers/runtime-class/): RuntimeClass mapea un nombre a un `handler` del runtime del nodo; los Pods lo eligen con `spec.runtimeClassName`.

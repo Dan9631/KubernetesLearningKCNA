@@ -179,6 +179,8 @@ Tras autorizar la petición, pasa por los **admission controllers**: plugins del
 
 También existe **ValidatingAdmissionPolicy** (estable desde v1.30), que permite escribir reglas de validación en CEL dentro del propio clúster, sin webhook.
 
+Todo esto se apoya en una práctica: **Policy as Code** (**PaC**). Las reglas de la organización ("ninguna imagen con tag `latest`", "todo Deployment lleva la label `equipo`", "nada de contenedores privilegiados") se escriben como **archivos versionados en Git**, se revisan como cualquier código y una máquina las comprueba automáticamente en cada petición, en vez de vivir en un documento que alguien revisa a mano. En Kubernetes los motores habituales son **OPA Gatekeeper** (políticas en el lenguaje Rego) y **Kyverno** (políticas escritas como recursos YAML), conectados como admission webhooks, y la opción nativa con CEL, ValidatingAdmissionPolicy.
+
 ### Pod Security Admission y los Pod Security Standards
 
 Los **Pod Security Standards** definen tres perfiles acumulativos:
@@ -257,6 +259,14 @@ Un **Secret** guarda datos sensibles (contraseñas, tokens, certificados) separa
 - Los valores están en **base64**, que es una **codificación, no un cifrado**: cualquiera que pueda leer el Secret lo decodifica en un segundo.
 - Por defecto, el API server los guarda en etcd **sin cifrar**. Para cifrarlos en reposo se configura una `EncryptionConfiguration` en el API server (`--encryption-provider-config`) con proveedores como `aescbc`, `aesgcm`, `secretbox` o, mejor, **KMS** (la clave maestra vive en un servicio externo como AWS KMS, Azure Key Vault o Vault).
 - Protégelos con **RBAC** (pocos sujetos con `get`/`list` sobre secrets; recuerda que quien puede crear pods en un namespace puede montar cualquier Secret de ese namespace), habilita el cifrado en reposo y considera gestores externos (External Secrets Operator, Vault, Sealed Secrets para GitOps).
+
+### Auditoría del API server: quién hizo qué
+
+Todo lo anterior evita que pase algo indebido; la **auditoría** (*audit logging*) deja constancia de lo que pasó. El API server puede registrar, **en orden cronológico**, cada petición que recibe: **quién** la hizo (usuario o ServiceAccount), **qué** pidió (el verbo: `get`, `create`, `delete`...), **sobre qué recurso**, **cuándo** y con qué resultado. Es lo que se consulta al investigar un incidente: "¿quién borró este Secret?".
+
+- Qué se registra lo decide una **política de auditoría** (`--audit-policy-file`) con cuatro niveles: `None` (nada), `Metadata` (quién, qué, cuándo, sin el contenido), `Request` (además, el cuerpo de la petición) y `RequestResponse` (además, el de la respuesta). Lo habitual es `Metadata` para los Secrets, para no copiar su contenido al log.
+- Los eventos se envían a un archivo de log o a un servicio externo por webhook.
+- No confundir: la auditoría **no** recoge los logs de las aplicaciones ni métricas; solo las peticiones a la API.
 
 ## Comandos clave
 
@@ -978,6 +988,7 @@ Fíjate en que el Role usa el grupo `apps` (los Deployments no están en el grup
 - **Pod Security Admission** (sustituye a PodSecurityPolicy, eliminada en 1.25): perfiles **privileged / baseline / restricted**, modos **enforce / warn / audit** vía labels del namespace.
 - **securityContext**: `runAsNonRoot`, `runAsUser`, `readOnlyRootFilesystem`, `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]`, evitar `privileged`.
 - **NetworkPolicy**: sin políticas todo está abierto; un pod seleccionado pasa a deny por defecto en esa dirección; las políticas se suman; las aplica el **CNI** (en este clúster, kindnet sí). **Secrets** = base64, no cifrado: RBAC + cifrado en reposo (KMS).
+- **Policy as Code**: políticas versionadas y comprobadas automáticamente (OPA Gatekeeper, Kyverno, ValidatingAdmissionPolicy con CEL). **Auditoría**: registro cronológico de las peticiones al API server (quién, qué, cuándo, sobre qué); niveles None, Metadata, Request y RequestResponse.
 
 ## Limpieza
 
@@ -1010,3 +1021,5 @@ Si no aparece nada, quedó limpio.
 - [Network Policies — kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/network-policies/): requieren un plugin de red que las implemente, son aditivas, aislamiento por dirección.
 - [kind v0.24.0 release notes — github.com/kubernetes-sigs](https://github.com/kubernetes-sigs/kind/releases/tag/v0.24.0): soporte de NetworkPolicy de serie vía kube-network-policies.
 - [Encrypting Confidential Data at Rest — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/): Secrets sin cifrar por defecto, proveedores aescbc/aesgcm/secretbox/KMS, `--encryption-provider-config`.
+- [Auditing — kubernetes.io](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/): registro cronológico de peticiones al API server, niveles None/Metadata/Request/RequestResponse, backends de log y webhook.
+- [Policy as Code — glossary.cncf.io](https://glossary.cncf.io/policy-as-code/): políticas como archivos versionados y comprobados automáticamente.

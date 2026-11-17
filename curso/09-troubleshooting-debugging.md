@@ -116,6 +116,9 @@ Síntoma desde un cliente: con selector equivocado verás `Connection refused` a
 
 - **`kubectl logs`**: lee la salida estándar (stdout/stderr) del contenedor. `-f` sigue en vivo, `--previous` (`-p`) muestra el contenedor **anterior** (imprescindible en CrashLoopBackOff), `-c` elige contenedor, `--all-containers`, `-l app=x` varios pods a la vez (con `--prefix` para saber de quién es cada línea), `--since=10m`, `--tail=20`.
 - **`kubectl exec`**: ejecuta un comando en un contenedor **vivo** (`-it ... -- sh` para una shell).
+- **`kubectl cp`**: copia archivos entre tu máquina y un contenedor, en los dos sentidos (`kubectl cp mi-pod:/tmp/heap.hprof ./heap.hprof`). Por debajo usa **`tar` dentro del contenedor**, así que falla con imágenes que no lo traen, como las *distroless*.
+- **Eventos filtrados**: en un namespace con cientos de eventos `Normal`, solo los avisos con `kubectl events --types=Warning` o `kubectl get events --field-selector type=Warning`.
+- **Mensaje de terminación**: cuando un contenedor muere, Kubernetes guarda un mensaje en `status.containerStatuses[].lastState.terminated.message` (lo ves en `kubectl describe pod`). Por defecto (`terminationMessagePolicy: File`) lo lee de un archivo que la app debe escribir, `/dev/termination-log`. Si la app no lo escribe, **`terminationMessagePolicy: FallbackToLogsOnError`** hace que, cuando el contenedor termina con error, se use el final de su log como mensaje.
 - **`kubectl port-forward`**: túnel desde tu máquina a un pod/Service, sin exponer nada. Ideal para probar una app o una UI interna.
 - **`kubectl debug`**, tres modos:
   - **Contenedor efímero** (*ephemeral container*, estable desde v1.25): añade un contenedor temporal a un pod **en ejecución**, con otra imagen (p. ej. con herramientas de red). Con `--target` comparte el espacio de procesos del contenedor objetivo. Perfecto para imágenes *distroless* sin shell. No se puede quitar ni modificar después (desaparece con el pod), nunca se reinicia y no admite `ports` ni sondas.
@@ -135,7 +138,7 @@ Síntoma desde un cliente: con selector equivocado verás `Connection refused` a
 | kube-proxy, CNI (kindnet, Calico, Cilium...) | DaemonSets | `kubectl get ds -n kube-system` |
 | CoreDNS | Deployment | `kubectl get deploy coredns -n kube-system` |
 
-- Si **el apiserver** cae, `kubectl` no responde (`connection refused`): hay que ir al nodo y revisar el static pod/contenedor con `crictl`.
+- Si **el apiserver** cae, `kubectl` no responde (`connection refused`): hay que ir al nodo y revisar el static pod/contenedor con `crictl`. Mientras tanto, los pods que ya corrían en los nodos **siguen funcionando** (el kubelet y el runtime no lo necesitan para mantenerlos), pero no se puede crear, cambiar ni parar nada a través de la API. Por eso en producción el control plane va en alta disponibilidad.
 - Si **el scheduler** cae, los pods nuevos se quedan `Pending` sin eventos de scheduling.
 - Si **el controller-manager** cae, un Deployment no crea ReplicaSets/pods y nadie repone pods borrados.
 - Si **el kubelet** de un nodo cae, el nodo pasa a `NotReady` y, tras ~5 minutos, sus pods se reprograman en otros nodos (toleration `node.kubernetes.io/unreachable` por 300 s).
@@ -742,6 +745,7 @@ Si editaste los archivos de `rotos\`, el lab deja de estar "roto" para la próxi
 - `kubectl debug`: contenedor efímero (pod vivo), `--copy-to` (pod que se cae), `node/<nodo>` (host en `/host`).
 - Control plane = static pods en `/etc/kubernetes/manifests`; kubelet = servicio systemd (`journalctl -u kubelet`).
 - `kubectl top` requiere metrics-server; `describe node` muestra Conditions y Allocated resources.
+- Si cae el **apiserver**, los pods existentes siguen corriendo; lo que se pierde es crear, cambiar o parar nada. `kubectl cp` necesita `tar` en el contenedor. Solo avisos: `kubectl events --types=Warning`. `terminationMessagePolicy: FallbackToLogsOnError` usa el final del log como mensaje de terminación.
 
 ## Limpieza
 
@@ -766,3 +770,5 @@ Si editaste los archivos de `rotos\`, el lab deja de estar "roto" para la próxi
 - [kube-apiserver (referencia) — kubernetes.io](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/): `--event-ttl` por defecto 1 h (retención de eventos).
 - [Troubleshooting Clusters — kubernetes.io](https://kubernetes.io/docs/tasks/debug/debug-cluster/): efectos de la caída del apiserver o del kubelet, logs de componentes.
 - [bash(1) y signal(7) — man7.org](https://man7.org/linux/man-pages/man7/signal.7.html): código de salida 128 + n al morir por la señal n; SIGKILL = 9 (→ 137) y SIGTERM = 15 (→ 143).
+- [Determine the Reason for Pod Failure — kubernetes.io](https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/): `/dev/termination-log` y `terminationMessagePolicy: FallbackToLogsOnError`.
+- [kubectl cp — kubernetes.io](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_cp/): requiere el binario `tar` en el contenedor.
