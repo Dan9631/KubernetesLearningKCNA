@@ -3,6 +3,7 @@
   // simulacro cronometrado con revisión final, y progreso del alumno.
   import { onMount, tick as despuesDelDom } from 'svelte';
   import { wait } from '../../lib/motion';
+  import { avisarGrumete, modoExamen } from '../../lib/grumete-avisos';
   import { DOMAINS, MODULES, pad, url, type DomainKey } from '../../lib/modules';
   import { progress, recordAnswer, resetProgress, save } from '../../lib/progress.svelte';
   import { EXAM_DOMAINS, EXAM_SECONDS, PASS, fmt, fmtDate, isCorrect, pct, prep, shuffle, togglePick, type Item, type Q } from './quiz';
@@ -36,6 +37,8 @@
   let finalRun = $state(false); // simulacro con el banco reservado
 
   const cur = $derived(items[idx]);
+  // durante el simulacro, Grumete observa en silencio (se cierra al entregar, al volver al inicio o al salir)
+  $effect(() => { if (view === 'exam') return modoExamen(); });
   const okCount = $derived(items.filter((it) => it.done && isCorrect(it)).length);
   const answeredCount = $derived(items.filter((it) => it.picked.length).length);
   const doneCount = $derived(items.filter((it) => it.done).length);
@@ -157,8 +160,12 @@
     if (view !== 'exam') return;
     stopTimer(); askSubmit = false;
     const secs = Math.min(EXAM_SECONDS, Math.floor((Date.now() - startedAt) / 1000));
-    for (const it of items) { it.done = true; recordAnswer(it.q.id, isCorrect(it)); }
+    for (const it of items) { it.done = true; recordAnswer(it.q.id, isCorrect(it), undefined, false, false); }
     const ok = items.filter(isCorrect).length;
+    // un solo aviso a Grumete con el mínimo real de aciertos para llegar al PASS (no uno por respuesta)
+    let minimo = 0;
+    while (minimo < items.length && pct(minimo, items.length) < PASS) minimo++;
+    avisarGrumete({ tipo: 'lote', ok, total: items.length, minimo });
     const score = pct(ok, items.length);
     const doms: Record<string, [number, number]> = {};
     for (const it of items) { const d = (doms[it.q.domain] ??= [0, 0]); d[1]++; if (isCorrect(it)) d[0]++; }

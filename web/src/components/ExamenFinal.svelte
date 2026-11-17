@@ -6,6 +6,7 @@
   import { cubicOut } from 'svelte/easing';
   import { ms } from '../lib/motion';
   import { celebrar } from '../lib/particulas';
+  import { modoExamen } from '../lib/grumete-avisos';
   import { diplomasDisponibles, empezarExamen, verIntento, entregarExamen, urlVerificar, type Examen, type Resultado } from '../lib/diploma';
   import PedirDiploma from './PedirDiploma.svelte';
   import { progress } from '../lib/progress.svelte';
@@ -43,6 +44,8 @@
       else mascota!.go('triste');
     });
   });
+  // mientras dura el examen, el compañero observa en silencio
+  $effect(() => { if (paso === 'examen') return modoExamen(); });
   let reloj: ReturnType<typeof setInterval> | undefined;
   // diferencia entre el reloj del servidor y el de este navegador: el plazo lo lleva el servidor, y un reloj
   // local atrasado entregaría tarde y perdería el intento

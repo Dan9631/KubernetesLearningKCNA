@@ -8,7 +8,8 @@
 
   // local: un Grumete puesto en la página (práctica, examen, banco de pruebas). Mientras se ve en pantalla,
   // el compañero de la esquina se aparta para que no haya dos a la vez.
-  let { estado = 'reposo', energia = 1, size = 160, moldeable = true, local = true }: { estado?: Estado; energia?: number; size?: number; moldeable?: boolean; local?: boolean } = $props();
+  // seguir: la mirada sigue al cursor (se apaga mientras se lee o en un examen, para no distraer)
+  let { estado = 'reposo', energia = 1, size = 160, moldeable = true, local = true, seguir = true }: { estado?: Estado; energia?: number; size?: number; moldeable?: boolean; local?: boolean; seguir?: boolean } = $props();
   let slot: HTMLDivElement;
   let g: Grumete | undefined = $state();
 
@@ -26,6 +27,7 @@
   });
   $effect(() => { g?.go(estado); });
   $effect(() => { g?.setEnergia(energia); });
+  $effect(() => { g?.setSeguir(seguir); });
 
   /** Lanza un estado (bucle o acción) desde fuera. */
   export function go(e: Estado) { if (g) g.go(e); else pendientes.push(e); }

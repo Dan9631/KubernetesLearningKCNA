@@ -157,6 +157,8 @@ export interface Grumete {
   readonly estado: Estado;
   readonly base: Estado;
   setEnergia(v: number): Grumete;
+  /** Sigue (o deja de seguir) al cursor con la mirada; al dejarlo, mira al frente. */
+  setSeguir(v: boolean): Grumete;
   /** Mira un elemento de la página (una opción, un mensaje) hasta que se le pase null; null vuelve a seguir al cursor. */
   mirar(destino: Element | null): Grumete;
   destroy(): void;
@@ -453,6 +455,7 @@ export function createGrumete(contenedor: HTMLElement, opts: { energia?: number;
     get estado() { return actual; },
     get base() { return base; },
     setEnergia(v: number) { energia = Math.max(0, Math.min(1.5, v)); despertar(); return api; },
+    setSeguir(v: boolean) { opts.seguir = v; if (!v && !objetivo) { mira.tx = 0; mira.ty = 0; } despertar(); return api; },
     mirar(destino: Element | null) { objetivo = destino; if (!destino) { mira.tx = 0; mira.ty = 0; } despertar(); return api; },
     destroy() {
       cancelAnimationFrame(raf); raf = 0;

@@ -1,6 +1,6 @@
 // Progreso del alumno, guardado en localStorage de este navegador.
 // Estado reactivo (Svelte 5 runes) compartido por todas las islas de una página.
-import { avisarGrumete } from './grumete-avisos';
+import { avisarGrumete, claseReto } from './grumete-avisos';
 
 export interface Progress {
   /** pasos de laboratorio marcados: { "04": ["3","5"] } */
@@ -119,15 +119,16 @@ export function addReto(id: string) {
   progress.retos = [...progress.retos, id];
   markToday();
   save();
-  avisarGrumete('reto');
+  avisarGrumete({ tipo: 'reto', clase: claseReto(id) });
 }
 
 export function touchSim(id: string) {
   if (!progress.sims.includes(id)) { progress.sims = [...progress.sims, id]; save(); }
 }
 
-/** `helped`: acierto con pistas o tras varios intentos (comandos de memoria): cuenta, pero no sube de caja */
-export function recordAnswer(qid: string, correct: boolean, conf?: Conf, helped = false) {
+/** `helped`: acierto con pistas o tras varios intentos (comandos de memoria): cuenta, pero no sube de caja.
+ *  `avisar`: los exámenes lo apagan y avisan una sola vez con el lote (y su mínimo real para aprobar). */
+export function recordAnswer(qid: string, correct: boolean, conf?: Conf, helped = false, avisar = true) {
   const now = Date.now();
   const s = progress.quiz[qid];
   const n: QuizStat = s
@@ -149,7 +150,7 @@ export function recordAnswer(qid: string, correct: boolean, conf?: Conf, helped 
   progress.quiz[qid] = n;
   markToday();
   save();
-  avisarGrumete(correct ? 'acierto' : 'fallo');
+  if (avisar) avisarGrumete(correct ? 'acierto' : 'fallo');
 }
 
 export function toggleKnown(term: string) {

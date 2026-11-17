@@ -6,6 +6,7 @@
   import { cubicOut } from 'svelte/easing';
   import { ms, reduced } from '../lib/motion';
   import { celebrar } from '../lib/particulas';
+  import { avisarGrumete, modoExamen } from '../lib/grumete-avisos';
   import preguntas from '../data/preguntas.json';
   import { progress, recordAnswer, addReto, toggleDone } from '../lib/progress.svelte';
   import { pad } from '../lib/modules';
@@ -30,6 +31,8 @@
   // el HTML del servidor sale sin progreso: el aprobado se lee una vez montado, para que la página lo actualice
   let montado = $state(false);
   onMount(() => { montado = true; });
+  // mientras se responde, Grumete observa en silencio (se cierra al entregar, al salir o al desmontar)
+  $effect(() => { if (paso === 'examen') return modoExamen(); });
   const yaAprobado = $derived(montado && aprobado(progress, module));
   const sinResponder = $derived(marcadas.filter((m) => !m.length).length);
   const acierta = (q: Q, m: number[]) => m.length === q.answer.length && m.every((x) => q.answer.includes(x));
@@ -57,7 +60,9 @@
   }
   function entregar() {
     // cada respuesta cuenta también para el repaso espaciado; las que quedaron en blanco, como fallo
-    items.forEach((q, i) => recordAnswer(q.id, acierta(q, marcadas[i])));
+    // un solo aviso a Grumete con el resultado y el mínimo real (no uno por respuesta)
+    items.forEach((q, i) => recordAnswer(q.id, acierta(q, marcadas[i]), undefined, false, false));
+    avisarGrumete({ tipo: 'lote', ok: aciertos, total: items.length, minimo: necesita });
     vistas = items.map((q) => q.id);
     if (aciertos >= necesita) {
       addReto(claveExamen(module));

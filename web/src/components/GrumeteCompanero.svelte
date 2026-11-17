@@ -2,15 +2,17 @@
   // Grumete como compañero de estudio: vive en la esquina inferior izquierda de cada página (la derecha es del
   // botón de lectura) y reacciona a lo que pasa en el curso a través de lib/grumete-avisos.ts.
   //  - Acierto: salta. Fallo: se derrite un poco. Tres aciertos seguidos o un módulo terminado: se vuelve timón.
-  //  - Un lote de respuestas a la vez (examen de módulo, simulacro): reacciona al resultado con un globo.
+  //  - Un examen entregado (aviso «lote», con su mínimo real): celebra solo si aprueba; si no, dice cuánto faltó.
   //  - Pulsarlo: cuenta un dato de marinero sobre el examen. Arrastrarlo: se moldea como plastilina.
-  //  - Si no pasa nada en un buen rato se duerme, y saluda al volver.
+  //  - Si no pasa nada en un buen rato se duerme, y saluda al volver (salvo leyendo o en un examen).
+  //  - Modo examen (lib/grumete-avisos.ts): quieto, sin seguir el cursor, sin globos ni datos.
+  //  - Leyendo un módulo: respira más despacio y no sigue el cursor, para no tirar de la vista.
   // Se aparta cuando hay otro Grumete en la página, cuando suena el lector o se abre un diagrama a pantalla completa,
   // y el alumno puede esconderlo (se recuerda en este navegador).
   import { onMount } from 'svelte';
   import Grumete from './Grumete.svelte';
   import type { Estado } from '../lib/grumete';
-  import { EV_AVISO, EV_LOCAL, EV_PREF, grumetesLocales, grumeteOculto, setGrumeteOculto, type Aviso } from '../lib/grumete-avisos';
+  import { EV_AVISO, EV_LOCAL, EV_MODO, EV_PREF, enExamen, grumetesLocales, grumeteOculto, setGrumeteOculto, type Aviso, type ClaseReto } from '../lib/grumete-avisos';
 
   const KEY = 'kcna.grumete'; // sessionStorage: ya saludó en esta visita
   const SUENO = 120_000; // ms sin actividad para dormirse
@@ -32,6 +34,17 @@
   ];
   const BIEN = ['¡Eso es!', '¡A toda vela!', '¡Buen rumbo!', '¡Bien leído!'];
   const MODULO = ['¡Módulo terminado! Rumbo al siguiente.', '¡Un puerto más en el mapa!'];
+  // cada clase de reto tiene su frase; el examen aprobado ya lo cuenta el lote (y el módulo terminado)
+  const RETO: Record<ClaseReto, string | null> = {
+    diagrama: 'Diagrama de memoria sin fallos.', terminal: 'Misión cumplida.', diagnostico: 'Caso resuelto.', examen: null, otro: null,
+  };
+  const esLote = (a: Aviso): a is Extract<Aviso, { tipo: 'lote' }> => typeof a === 'object' && a.tipo === 'lote';
+  const esReto = (a: Aviso): a is Extract<Aviso, { tipo: 'reto' }> => typeof a === 'object' && a.tipo === 'reto';
+
+  // modos que lo calman: examen (silencio) y lectura de un módulo (menos movimiento)
+  let examen = $state(false);
+  let lectura = $state(false);
+  const energia = $derived(examen ? 0.3 : lectura ? 0.4 : 0.85);
 
   let g: ReturnType<typeof Grumete> | undefined = $state();
   let listo = $state(false);
@@ -53,10 +66,15 @@
 
   function actividad() {
     ultimo = Date.now();
-    if (estado === 'dormido') { estado = 'reposo'; g?.go('saludo'); }
+    if (estado !== 'dormido') return;
+    estado = 'reposo';
+    // leyendo o en un examen despierta sin saludar: un gesto ahí tira de la vista
+    if (!examen && !lectura) g?.go('saludo');
   }
 
-  // Varios avisos casi a la vez son un lote (examen de módulo, simulacro): se reacciona al conjunto.
+  // Los avisos que llegan casi a la vez (un módulo aprobado trae lote, reto y módulo) se juntan y se reacciona
+  // al más importante. El filtro de examen va al reaccionar, no al recibir: al entregar, el lote, el reto y el
+  // módulo terminado llegan un instante antes de que se cierre el modo examen y no deben perderse.
   function onAviso(e: Event) {
     lote.push((e as CustomEvent<Aviso>).detail);
     clearTimeout(tLote);
@@ -66,22 +84,30 @@
   function reaccionar() {
     const l = lote.splice(0);
     if (!g) return;
+    if (examen && !l.some(esLote)) return; // respondiendo un examen: nada (las comprobaciones sueltas no cuentan)
     if (l.includes('modulo')) { racha = 0; g.go('timon'); decir(azar(MODULO)); return; }
-    if (l.includes('reto')) { g.go('feliz'); decir('¡Diagrama de memoria sin fallos!'); return; }
+    // examen entregado: el umbral es el real de ese examen (80 % el de módulo, 75 % el simulacro)
+    const ex = l.find(esLote);
+    if (ex) {
+      racha = 0;
+      if (ex.ok >= ex.minimo) { g.go('feliz'); g.go('timon'); decir(`${ex.ok} de ${ex.total}. ¡Aprobado!`); }
+      else {
+        const faltan = ex.minimo - ex.ok;
+        g.go('triste');
+        decir(`${ex.ok} de ${ex.total}. ${faltan === 1 ? 'Faltó una' : `Faltaron ${faltan}`}: se aprueba con ${ex.minimo}.`);
+      }
+      return;
+    }
+    const reto = l.find(esReto);
+    if (reto) { g.go('feliz'); const f = RETO[reto.clase]; if (f) decir(f); return; }
     // acuses pequeños: un paso del laboratorio o una tarjeta dominada; asiente sin hablar (cada 5 tarjetas, se alegra)
     if (l.includes('paso')) { g.go('asiente'); return; }
     if (l.includes('dominada')) { dominadas += 1; g.go(dominadas % 5 ? 'asiente' : 'feliz'); return; }
-    const ok = l.filter((a) => a === 'acierto').length, total = ok + l.filter((a) => a === 'fallo').length;
-    if (total > 1) {
-      racha = 0;
-      if (ok / total >= 0.7) { g.go('feliz'); g.go('timon'); decir(`${ok} de ${total}. ¡Buen rumbo!`); }
-      else { g.go('triste'); decir(`${ok} de ${total}. Repasa los porqués y vuelve a intentarlo.`); }
-    } else if (ok) {
+    if (l.includes('fallo')) { racha = 0; g.go('triste'); return; }
+    if (l.includes('acierto')) {
       racha += 1;
       if (racha % 3 === 0) { g.go('timon'); decir(`¡${racha} seguidas!`); }
       else { g.go('feliz'); if (racha === 1 && Math.random() < 0.3) decir(azar(BIEN)); }
-    } else if (total) {
-      racha = 0; g.go('triste');
     }
   }
 
@@ -91,6 +117,8 @@
   function onClick() {
     if (arrastrado) { arrastrado = false; return; }
     actividad();
+    // en un examen no da datos (serían pistas): solo un gesto de «aquí estoy»
+    if (examen) { g?.go('asiente'); return; }
     const ahora = Date.now();
     toques = [...toques.filter((t) => ahora - t < 1600), ahora];
     if (toques.length >= 4) { toques = []; g?.go('timon'); decir('¡Que me mareo!'); return; }
@@ -108,20 +136,29 @@
     listo = true;
     const onLocal = () => (locales = grumetesLocales());
     const onPref = () => (oculto = grumeteOculto());
+    // al entrar en un examen se calla al instante: fuera el globo que hubiera y a reposo
+    const onModo = () => {
+      examen = enExamen();
+      if (examen) { globo = null; clearTimeout(tGlobo); if (estado !== 'dormido') estado = 'reposo'; }
+    };
+    onModo();
+    lectura = !!document.querySelector('article .prose');
     addEventListener(EV_AVISO, onAviso);
     addEventListener(EV_LOCAL, onLocal);
     addEventListener(EV_PREF, onPref);
+    addEventListener(EV_MODO, onModo);
     const eventos = ['pointerdown', 'keydown', 'scroll'] as const;
     for (const ev of eventos) addEventListener(ev, actividad, { passive: true });
     const reloj = setInterval(() => { if (estado !== 'dormido' && Date.now() - ultimo > SUENO) estado = 'dormido'; }, 10_000);
     // saludo una vez por visita, no en cada página
     let hola = false;
     try { hola = !sessionStorage.getItem(KEY); sessionStorage.setItem(KEY, '1'); } catch { /* sin almacenamiento */ }
-    const tHola = hola ? setTimeout(() => g?.go('saludo'), 700) : 0;
+    const tHola = hola && !examen ? setTimeout(() => g?.go('saludo'), 700) : 0;
     return () => {
       removeEventListener(EV_AVISO, onAviso);
       removeEventListener(EV_LOCAL, onLocal);
       removeEventListener(EV_PREF, onPref);
+      removeEventListener(EV_MODO, onModo);
       for (const ev of eventos) removeEventListener(ev, actividad);
       clearInterval(reloj); clearTimeout(tHola); clearTimeout(tLote); clearTimeout(tGlobo);
     };
@@ -140,9 +177,10 @@
           <p class="globo g-globo" class:dato={globo.dato} role={globo.dato ? 'status' : undefined} aria-hidden={globo.dato ? undefined : 'true'}>{globo.texto}</p>
         {/key}
       {/if}
-      <button type="button" class="cuerpo" aria-label="Grumete, la mascota del curso: pulsa para un dato sobre el examen"
+      <button type="button" class="cuerpo" class:callado={examen}
+        aria-label={examen ? 'Grumete, la mascota del curso: en silencio durante el examen' : 'Grumete, la mascota del curso: pulsa para un dato sobre el examen'}
         onpointerdown={onDown} onpointermove={onMove} onclick={onClick}>
-        <Grumete bind:this={g} {estado} energia={0.85} size={96} local={false} />
+        <Grumete bind:this={g} {estado} {energia} seguir={!examen && !lectura} size={96} local={false} />
       </button>
       <button type="button" class="cerrar" aria-label="Esconder a Grumete" title="Esconder a Grumete" onclick={esconder}>
         <svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
@@ -155,6 +193,9 @@
   .companero { position: fixed; z-index: 23; left: 8px; bottom: 4px; view-transition-name: grumete; }
   .cuerpo { display: block; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .cuerpo:focus-visible { outline: 2px solid var(--helm); outline-offset: -8px; }
+  /* en un examen se queda atrás: más tenue, para no competir con las preguntas */
+  .cuerpo { transition: opacity var(--dur) linear; }
+  .cuerpo.callado { opacity: 0.55; }
 
   .globo { position: absolute; left: 22px; bottom: calc(100% - 14px); width: max-content; max-width: min(260px, calc(100vw - 40px)); margin: 0;
     padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel); color: var(--ink);
