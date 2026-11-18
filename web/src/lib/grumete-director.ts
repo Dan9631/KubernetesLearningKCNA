@@ -110,6 +110,17 @@ export interface DatosHoy {
   siguiente?: string;
   /** Módulo que se estaba leyendo */
   leyendo?: { mod: string; titulo: string };
+  /** Fecha del examen y preparación (cuenta atrás) */
+  examen?: DatosExamen;
+}
+export interface DatosExamen {
+  /** Fecha del examen (AAAA-MM-DD) y días que faltan; sin fecha, no hay cuenta atrás */
+  fecha?: string;
+  faltan?: number;
+  /** La competencia más floja ahora y su módulo: por acierto (peor primer intento) o, sin datos, la menos practicada */
+  flojo?: { nombre: string; mod?: number; por?: 'acierto' | 'cobertura' };
+  /** Cobertura y primer intento en verde, y aún sin examen de graduación (preparacion.ts finalAdvised) */
+  graduacion?: boolean;
 }
 
 /**
@@ -189,10 +200,41 @@ export function hitoConstancia(days: string[], hoy: string): Decision | null {
   return { gestos: ['feliz'], frase: 'Cinco de los últimos siete días estudiando. Buen ritmo.', clave: `hito:cinco:${lunes}`, perdura: true };
 }
 
-/** Qué decir al cargar una página: primero la vuelta tras ausencia; en la portada, el parte del día y después los
- *  hitos de constancia. Con memoria, devuelve la primera que aún se puede decir hoy. */
+/* ---------------- examen: cuenta atrás y preparación ---------------- */
+
+const UMBRALES = [14, 7, 3]; // más el día antes y el mismo día
+
+/**
+ * Cuenta atrás en la portada: una vez por umbral (14, 7 y 3 días, la víspera y el día) y siempre con una acción
+ * concreta, nunca solo el número: lo más flojo ahora y su módulo, o el siguiente paso. Si el alumno entra con 5 días,
+ * cuenta como el umbral de 7. La clave lleva la fecha: si la cambia, vuelve a contar.
+ */
+export function cuentaAtras(d: DatosHoy): Decision | null {
+  const e = d.examen;
+  if (!e?.fecha || e.faltan === undefined || e.faltan < 0) return null;
+  const f = e.faltan;
+  if (f === 0) return { gestos: ['timon'], frase: 'Hoy es el examen. Lee cada pregunta hasta el final: tienes 90 minutos.', clave: `examen:0:${e.fecha}`, perdura: true };
+  if (f === 1) return { gestos: ['asiente'], frase: 'Mañana es el día. Hoy, repaso corto y a dormir.', clave: `examen:1:${e.fecha}`, perdura: true };
+  const umbral = [...UMBRALES].reverse().find((u) => f <= u);
+  if (!umbral) return null;
+  const quedan = `Quedan ${enLetra(f)} días.`;
+  const accion = e.flojo ? ` ${e.flojo.por === 'cobertura' ? 'Lo que menos has practicado' : 'Lo más flojo ahora'}: ${e.flojo.nombre}${e.flojo.mod ? `; ${e.flojo.por === 'cobertura' ? 'practícalo' : 'repásalo'} en el Módulo ${dos(e.flojo.mod)}` : ''}.`
+    : d.siguiente ? ` Siguiente: ${d.siguiente.replace(/\.$/, '')}.` : ' Lo que más rinde ahora es el repaso del día.';
+  return { gestos: ['asiente'], frase: quedan + accion, clave: `examen:${umbral}:${e.fecha}`, perdura: true, apunta: '.hoy .exam' };
+}
+
+/** Cobertura y primer intento en verde: toca gastar el examen de graduación (una vez) */
+export function graduacion(d: DatosHoy): Decision | null {
+  if (!d.examen?.graduacion) return null;
+  return { gestos: ['timon'], frase: 'Cobertura y primer intento en verde: toca el examen de graduación.', clave: 'hito:graduacion', perdura: true };
+}
+
+/** Qué decir al cargar una página: primero la vuelta tras ausencia; en la portada, la cuenta atrás del examen, la
+ *  graduación recomendada, el parte del día y los hitos de constancia. Con memoria, devuelve la primera que aún se
+ *  puede decir hoy. */
 export function alCargar(dias: number | null, hoy: string, datos?: DatosHoy, m?: Memoria, days: string[] = []): Decision | null {
-  const candidatas = [regreso(dias, hoy, datos), datos ? parteDelDia(datos, hoy) : null, datos ? hitoConstancia(days, hoy) : null];
+  const candidatas = [regreso(dias, hoy, datos)];
+  if (datos) candidatas.push(cuentaAtras(datos), graduacion(datos), parteDelDia(datos, hoy), hitoConstancia(days, hoy));
   return candidatas.find((d) => d && (!m || puedeDecir(m, d))) ?? null;
 }
 
@@ -247,6 +289,44 @@ export function avisoTrampa(tipos: Trampa[], dichasEnRonda: number): Decision | 
   if (dichasEnRonda >= MAX_TRAMPAS) return null;
   const t = (['neg', 'superl', 'multi'] as const).find((x) => tipos.includes(x));
   return t ? { gestos: [], frase: TRAMPA_FRASE[t] } : null;
+}
+
+/* ---------------- al pulsarlo: un dato que venga a cuento ---------------- */
+
+export interface Tarjeta { term: string; def: string; module: number }
+
+/**
+ * El dato que cuenta al pulsarlo (lo pide el alumno, así que no gasta presupuesto). En un módulo, un término de ese
+ * módulo (primero los no dominados). En otras páginas alterna los datos de marinero con términos frágiles: de módulos
+ * que ya empezó a leer y que aún no marcó como dominados. `n` es el número de toque (avanza en cada pulsación).
+ */
+export function datoAlPulsar(tarjetas: Tarjeta[], mod: number | undefined, leidos: number[], dominadas: string[], n: number, fijos: string[]): string {
+  const comoDato = (t: Tarjeta) => `${t.term}: ${t.def}`;
+  const sabe = new Set(dominadas);
+  if (mod) {
+    const suyas = tarjetas.filter((t) => t.module === mod);
+    if (suyas.length) {
+      const orden = [...suyas.filter((t) => !sabe.has(t.term)), ...suyas.filter((t) => sabe.has(t.term))];
+      return comoDato(orden[n % orden.length]);
+    }
+  }
+  const fragiles = tarjetas.filter((t) => leidos.includes(t.module) && !sabe.has(t.term));
+  if (!fragiles.length || n % 2) return fijos[Math.floor(n / 2) % fijos.length];
+  return comoDato(fragiles[Math.floor(n / 2) % fragiles.length]);
+}
+
+/* ---------------- laboratorio y comandos: casi todo gestos ---------------- */
+
+/** Último paso del laboratorio marcado: el único cierre con frase */
+export const labCompleto = (): Decision => ({ gestos: ['feliz'], frase: 'Laboratorio completo.' });
+
+/**
+ * Comando de memoria acertado. A la primera: asiente, sin más (la tarjeta ya lo dice). Con pistas o varios intentos:
+ * asiente y, una vez por página, por qué vuelve mañana (el repaso espaciado no es un castigo).
+ */
+export function reaccionComando(limpio: boolean, yaExplicado: boolean): Decision {
+  if (limpio || yaExplicado) return { gestos: ['asiente'] };
+  return { gestos: ['asiente'], frase: 'Con pista cuenta, pero vuelve mañana.' };
 }
 
 /* ---------------- preferencia ---------------- */

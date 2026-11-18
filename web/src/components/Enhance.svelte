@@ -178,7 +178,12 @@
           box.addEventListener('change', () => {
             toggleStep(module, id);
             // al marcarlo (no al cargar la página con pasos ya hechos): la casilla da un pequeño salto y Grumete asiente
-            if (box!.checked) { h.classList.remove('recien'); void h.offsetWidth; h.classList.add('recien'); avisarGrumete('paso'); }
+            // si era el último que faltaba, el laboratorio está completo: eso sí lo celebra
+            if (box!.checked) {
+              h.classList.remove('recien'); void h.offsetWidth; h.classList.add('recien');
+              const hechos = progress.steps[module] ?? [];
+              avisarGrumete(steps.length > 1 && steps.every((s) => hechos.includes(s.id)) ? 'lab' : 'paso');
+            }
           });
           h.classList.add('step'); h.prepend(box);
         }

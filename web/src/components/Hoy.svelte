@@ -3,7 +3,7 @@
   // seguir leyendo, el siguiente paso de la preparación y la constancia de la semana. Todo se calcula
   // en el navegador con el progreso guardado (y sincronizado, si está activo).
   import { progress, setExamDate, isoDay, DAY } from '../lib/progress.svelte';
-  import { dueToday, dueTomorrow, dueCommands, readiness, nextStep } from '../lib/preparacion';
+  import { dueToday, dueTomorrow, dueCommands, readiness, nextStep, moduleFor, type CompRow } from '../lib/preparacion';
   import { lastRead, pctOf } from '../lib/lectura';
   import { MODULES, moduleUrl, url } from '../lib/modules';
   import MapaMemoria from './MapaMemoria.svelte';
@@ -58,8 +58,18 @@
       // solo los pasos con verbo («practica…», «haz…»); «Listo para reservar fecha» ya se lee en la tarjeta
       siguiente: next.text.startsWith('Siguiente paso: ') ? next.text.slice('Siguiente paso: '.length).replace(/ \(.*\)/, '') : undefined,
       leyendo: top && meta ? { mod: top.mod, titulo: meta.title } : undefined,
+      examen: { fecha: exam || undefined, faltan: left ?? undefined, flojo: flojo(), graduacion: r.finalAdvised && !r.final },
     });
   });
+  // lo más flojo ahora, para la cuenta atrás: el peor primer intento (con 3 o más) por debajo del 80 %;
+  // sin eso, la competencia menos cubierta
+  function flojo() {
+    const pct = (x: CompRow) => x.firstOk / x.firstN;
+    const peor = r.rows.filter((x) => x.firstN >= 3 && pct(x) < 0.8).sort((a, b) => pct(a) - pct(b))[0];
+    if (peor) return { nombre: peor.c.name, mod: moduleFor(peor.c)?.n, por: 'acierto' as const };
+    const hueco = r.rows.filter((x) => x.seen < x.need).sort((a, b) => a.seen / a.need - b.seen / b.need)[0];
+    return hueco ? { nombre: hueco.c.name, mod: moduleFor(hueco.c)?.n, por: 'cobertura' as const } : undefined;
+  }
 
   const signals = $derived([
     { ok: r.coverOk, label: `Cobertura ${r.rows.filter((x) => x.seen >= x.need).length}/${r.rows.length}` },

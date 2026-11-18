@@ -9,6 +9,7 @@
   import { progress, recordAnswer } from '../../lib/progress.svelte';
   import { priority, isDue, endOfToday } from '../../lib/preparacion';
   import { MODULES, pad, moduleUrl, url } from '../../lib/modules';
+  import { avisarGrumete } from '../../lib/grumete-avisos';
 
   // module: ejercicios de un solo módulo (página del módulo); sin él, se puede elegir el alcance.
   // ids: ejercicios concretos, en ese orden. mode: 'full' (con inicio y cierre), 'uno' (arranca solo y avisa al
@@ -71,6 +72,7 @@
         limpio = tries === 0 && level === 0;
         recordAnswer(drillKey(d), true, undefined, !limpio);
         if (limpio) tally.primera++; else tally.ayuda++;
+        avisarGrumete({ tipo: 'comando', limpio });
       }
       notas = []; fase = 'bien';
       await tick(); nextEl?.focus();
