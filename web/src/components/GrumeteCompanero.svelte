@@ -3,7 +3,11 @@
   // botón de lectura) y reacciona a lo que pasa en el curso a través de lib/grumete-avisos.ts.
   //  - Acierto: salta. Fallo: se derrite un poco. Tres aciertos seguidos o un módulo terminado: se vuelve timón.
   //  - Un examen entregado (aviso «lote», con su mínimo real): celebra solo si aprueba; si no, dice cuánto faltó.
-  //  - Pulsarlo: cuenta un dato de marinero sobre el examen. Arrastrarlo: se moldea como plastilina.
+  //  - Pulsarlo: cuenta un dato. En un módulo, un término de ese módulo; en otras páginas alterna datos de marinero
+  //    con términos de lo que ya leíste y no has dominado. Arrastrarlo: se moldea como plastilina.
+  //  - Portada: cuenta atrás del examen (14, 7, 3 días, víspera y día) con lo más flojo, y la graduación recomendada.
+  //  - Laboratorio: asiente en cada paso y celebra el último. Comandos: asiente; con pistas explica por qué vuelven.
+  //    Simulaciones: tras predecir, mira lo que haces en ella, sin globo.
   //  - Si no pasa nada en un buen rato se duerme, y saluda al volver (salvo leyendo o en un examen).
   //  - Modo examen (lib/grumete-avisos.ts): quieto, sin seguir el cursor, sin globos ni datos.
   //  - Leyendo un módulo: respira más despacio y no sigue el cursor, para no tirar de la vista; si el marcador
@@ -20,7 +24,7 @@
   import Grumete from './Grumete.svelte';
   import type { Estado } from '../lib/grumete';
   import { EV_AVISO, EV_HOY, EV_LOCAL, EV_MODO, EV_PREF, avisoPendiente, enExamen, grumetesLocales, guardarMemoria, leerHoy, leerMemoria, nivelGrumete, setNivelGrumete, type Aviso, type ClaseReto } from '../lib/grumete-avisos';
-  import { alCargar, anotar, avisoTrampa, cierreRonda, diasSinEstudiar, puedeDecir, reaccionRespuesta, type Conf, type Decision, type Nivel } from '../lib/grumete-director';
+  import { alCargar, anotar, avisoTrampa, cierreRonda, datoAlPulsar, diasSinEstudiar, labCompleto, puedeDecir, reaccionComando, reaccionRespuesta, type Conf, type Decision, type Nivel, type Tarjeta } from '../lib/grumete-director';
   import { progress, isoDay } from '../lib/progress.svelte';
 
   const KEY = 'kcna.grumete'; // sessionStorage: ya saludó en esta visita
@@ -66,7 +70,7 @@
   let globo = $state<{ texto: string; dato: boolean; n: number } | null>(null);
 
   let racha = 0, dominadas = 0, dato =Math.floor(Math.random() * DATOS.length), ultimo = Date.now();
-  let lote: Aviso[] = [], tLote = 0, tGlobo = 0, esperas = 0;
+  let lote: Aviso[] = [], tLote = 0, tGlobo = 0, esperas = 0, pistaExplicada = false;
   let toques: number[] = [], desde = { x: 0, y: 0 }, arrastrado = false;
   const azar = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
@@ -126,6 +130,19 @@
     // pregunta de un tipo que le cuesta: aviso de formato (informa: se anuncia)
     const trampa = l.find((a): a is Extract<Aviso, { tipo: 'trampa' }> => typeof a === 'object' && a.tipo === 'trampa');
     if (trampa) { const d = avisoTrampa(trampa.tipos, trampa.dichas); if (d) ejecutar({ ...d, apunta: '.round .card .q' }, true); return; }
+    // el laboratorio entero: el único cierre de la parte práctica con frase
+    if (l.includes('lab')) { ejecutar(labCompleto()); return; }
+    // comando de memoria: asiente; con pistas, una vez por página, por qué vuelve mañana
+    const cmd = l.find((a): a is Extract<Aviso, { tipo: 'comando' }> => typeof a === 'object' && a.tipo === 'comando');
+    if (cmd) {
+      const d = reaccionComando(cmd.limpio, pistaExplicada);
+      if (d.frase && nivel === 'habla') pistaExplicada = true;
+      ejecutar(d, true);
+      return;
+    }
+    // empieza a tocar una simulación tras predecir: la mira, nada más
+    const mira = l.find((a): a is Extract<Aviso, { tipo: 'mira' }> => typeof a === 'object' && a.tipo === 'mira');
+    if (mira) { g.mirar(mira.el); clearTimeout(tMirar); tMirar = window.setTimeout(() => g?.mirar(null), 4000); return; }
     // acuses pequeños: un paso del laboratorio o una tarjeta dominada; asiente sin hablar (cada 5 tarjetas, se alegra)
     if (l.includes('paso')) { g.go('asiente'); return; }
     if (l.includes('dominada')) { dominadas += 1; g.go(dominadas % 5 ? 'asiente' : 'feliz'); return; }
@@ -171,10 +188,13 @@
     if (continuar) { hablo = true; ejecutar({ gestos: ['asiente'], apunta: '.marcador .btn.primary' }); }
   }
 
-  // Pulsar (sin arrastrar) cuenta un dato; muchos toques seguidos lo marean.
-  function onDown(e: PointerEvent) { desde = { x: e.clientX, y: e.clientY }; arrastrado = false; }
+  // Pulsar (sin arrastrar) cuenta un dato que venga a cuento (director: datoAlPulsar); muchos toques seguidos lo marean.
+  // Los términos (data/flashcards.json) se cargan aparte y solo cuando se va a pulsar: no pesan en cada página.
+  let tarjetas: Promise<Tarjeta[]> | undefined;
+  const cargarTarjetas = () => (tarjetas ??= import('../data/flashcards.json').then((m) => m.default as Tarjeta[]).catch(() => []));
+  function onDown(e: PointerEvent) { desde = { x: e.clientX, y: e.clientY }; arrastrado = false; cargarTarjetas(); }
   function onMove(e: PointerEvent) { if (e.buttons && Math.hypot(e.clientX - desde.x, e.clientY - desde.y) > 6) arrastrado = true; }
-  function onClick() {
+  async function onClick() {
     if (arrastrado) { arrastrado = false; return; }
     actividad();
     // en un examen no da datos (serían pistas): solo un gesto de «aquí estoy»
@@ -182,9 +202,11 @@
     const ahora = Date.now();
     toques = [...toques.filter((t) => ahora - t < 1600), ahora];
     if (toques.length >= 4) { toques = []; g?.go('timon'); decir('¡Que me mareo!'); return; }
-    dato = (dato + 1) % DATOS.length;
+    dato += 1;
     g?.go(dato % 2 ? 'saludo' : 'feliz');
-    decir(DATOS[dato], true);
+    const mod = Number(location.pathname.match(/\/modulos\/(\d{2})/)?.[1]) || undefined;
+    const leidos = [...Object.keys(progress.reading), ...progress.done].map(Number);
+    decir(datoAlPulsar(await cargarTarjetas(), mod, leidos, progress.known, dato, DATOS), true);
   }
 
   function elegir(n: Nivel) {
@@ -263,7 +285,7 @@
         {/key}
       {/if}
       <button type="button" class="cuerpo" class:callado={examen}
-        aria-label={examen ? 'Grumete, la mascota del curso: en silencio durante el examen' : 'Grumete, la mascota del curso: pulsa para un dato sobre el examen'}
+        aria-label={examen ? 'Grumete, la mascota del curso: en silencio durante el examen' : 'Grumete, la mascota del curso: pulsa para un dato'}
         onpointerdown={onDown} onpointermove={onMove} onclick={onClick}>
         <Grumete bind:this={g} {estado} {energia} seguir={!examen && !lectura} size={96} local={false} />
       </button>
@@ -294,7 +316,8 @@
     padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel); color: var(--ink);
     font-size: 0.86rem; line-height: 1.4; box-shadow: var(--shadow); pointer-events: none;
     transform-origin: 18px 100%; }
-  .globo.dato { border-left: 3px solid var(--helm); }
+  /* los datos pueden ser una definición entera: algo más anchos */
+  .globo.dato { border-left: 3px solid var(--helm); max-width: min(300px, calc(100vw - 40px)); }
   /* piquito hacia Grumete */
   .globo::after { content: ''; position: absolute; left: 16px; top: 100%; width: 10px; height: 10px; margin-top: -5px; background: inherit;
     border: inherit; border-width: 0 1px 1px 0; rotate: 45deg; }

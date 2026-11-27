@@ -1,5 +1,5 @@
 // Prueba del director de Grumete: node src/lib/grumete-director.test.mjs
-import { reaccionRespuesta, alDia, puedeDecir, anotar, memoriaVacia, MAX_DIA, diasSinEstudiar, regreso, parteDelDia, alCargar, rachaActual, hitoConstancia, cierreRonda, avisoTrampa, MAX_TRAMPAS } from './grumete-director.ts';
+import { reaccionRespuesta, alDia, puedeDecir, anotar, memoriaVacia, MAX_DIA, diasSinEstudiar, regreso, parteDelDia, alCargar, rachaActual, hitoConstancia, cierreRonda, avisoTrampa, MAX_TRAMPAS, cuentaAtras, graduacion, datoAlPulsar, reaccionComando, labCompleto } from './grumete-director.ts';
 
 let n = 0; let failures = 0;
 const check = (name, cond, extra = '') => { n++; if (cond) console.log(`ok ${n}: ${name}`); else { failures++; console.log(`\nFALLO ${n}: ${name}\n  ${extra}`); } };
@@ -122,6 +122,50 @@ check('negación primero', /opción falsa/.test(avisoTrampa(['multi', 'neg'], 0)
 check('ningún tipo débil: nada', avisoTrampa([], 0) === null);
 check(`como mucho ${MAX_TRAMPAS} por ronda`, avisoTrampa(['neg'], MAX_TRAMPAS) === null);
 check('no da la respuesta (habla del formato)', !/(correcta es|la respuesta)/i.test(avisoTrampa(['superl'], 0).frase));
+
+// ---- examen: cuenta atrás y graduación ----
+const BASE = { due: 0, sure: 0, cmdDue: 0, tomorrow: 0 };
+const ex = (faltan, extra = {}) => ({ ...BASE, ...extra, examen: { fecha: '2026-12-01', faltan, ...(extra.examen ?? {}) } });
+const FLOJO = { examen: { flojo: { nombre: 'Observability', mod: 11 } } };
+let e = cuentaAtras(ex(7, FLOJO));
+check('7 días: el número y lo más flojo con su módulo', e.frase === 'Quedan siete días. Lo más flojo ahora: Observability; repásalo en el Módulo 11.' && e.perdura, e?.frase);
+check('sin respuestas: «lo que menos has practicado»', /^Quedan tres días\. Lo que menos has practicado: Storage/.test(cuentaAtras(ex(3, { examen: { flojo: { nombre: 'Storage', mod: 9, por: 'cobertura' } } })).frase));
+check('5 días cuenta como el umbral de 7', cuentaAtras(ex(5, FLOJO)).clave === 'examen:7:2026-12-01');
+check('14 días: umbral 14', cuentaAtras(ex(14)).clave === 'examen:14:2026-12-01');
+check('más de 14 días: calla', cuentaAtras(ex(20)) === null);
+check('sin flojo: el siguiente paso', /Siguiente: practica Storage\.$/.test(cuentaAtras(ex(3, { siguiente: 'practica Storage' })).frase));
+check('sin flojo ni paso: el repaso del día (siempre una acción)', /repaso del día/.test(cuentaAtras(ex(3)).frase));
+check('víspera', /^Mañana es el día/.test(cuentaAtras(ex(1)).frase) && cuentaAtras(ex(1)).clave === 'examen:1:2026-12-01');
+check('el día: 90 minutos', /90 minutos/.test(cuentaAtras(ex(0)).frase));
+check('examen pasado o sin fecha: calla', cuentaAtras(ex(-2)) === null && cuentaAtras(BASE) === null);
+check('cada umbral se dice una vez (perdura)', (() => { let mm = memoriaVacia(HOY); const x = cuentaAtras(ex(7)); mm = anotar(mm, x); return !puedeDecir(alDia(mm, '2026-11-18'), cuentaAtras(ex(6))); })());
+check('si cambia la fecha, vuelve a contar', (() => { const mm = anotar(memoriaVacia(HOY), cuentaAtras(ex(7))); return puedeDecir(mm, cuentaAtras({ ...BASE, examen: { fecha: '2026-12-05', faltan: 7 } })); })());
+check('graduación recomendada: timón, una vez', graduacion({ ...BASE, examen: { graduacion: true } }).perdura && graduacion(BASE) === null);
+let ac = alCargar(1, HOY, { ...ex(7, FLOJO), due: 4 }, memoriaVacia(HOY), []);
+check('al cargar: la cuenta atrás va antes que el parte del día', /^Quedan siete/.test(ac.frase), ac?.frase);
+ac = alCargar(1, HOY, { ...ex(7, FLOJO), due: 4 }, anotar(memoriaVacia(HOY), cuentaAtras(ex(7, FLOJO))), []);
+check('ya dicha la cuenta atrás: el parte del día', /^Hoy tocan 4/.test(ac.frase), ac?.frase);
+
+// ---- al pulsarlo ----
+const T = [
+  { term: 'Pod', def: 'unidad mínima', module: 3 }, { term: 'ReplicaSet', def: 'mantiene réplicas', module: 3 },
+  { term: 'Service', def: 'IP estable', module: 6 }, { term: 'etcd', def: 'almacén', module: 2 },
+];
+const FIJOS = ['f0', 'f1', 'f2'];
+check('en un módulo: un término de ese módulo', /^(Pod|ReplicaSet): /.test(datoAlPulsar(T, 3, [], [], 0, FIJOS)));
+check('en un módulo: primero los no dominados', datoAlPulsar(T, 3, [], ['Pod'], 0, FIJOS).startsWith('ReplicaSet'));
+check('en un módulo: va rotando', datoAlPulsar(T, 3, [], [], 0, FIJOS) !== datoAlPulsar(T, 3, [], [], 1, FIJOS));
+check('módulo sin términos: como fuera de un módulo', FIJOS.includes(datoAlPulsar(T, 13, [], [], 1, FIJOS)));
+check('sin nada leído: datos de marinero', [0, 1, 2, 3].every((k) => FIJOS.includes(datoAlPulsar(T, undefined, [], [], k, FIJOS))));
+const fr = [0, 1, 2, 3].map((k) => datoAlPulsar(T, undefined, [6], [], k, FIJOS));
+check('con módulos leídos: alterna término frágil y dato fijo', fr[0].startsWith('Service') && FIJOS.includes(fr[1]) && fr[2].startsWith('Service'), fr.join(' | '));
+check('dominado no es frágil', [0, 2, 4].every((k) => FIJOS.includes(datoAlPulsar(T, undefined, [6], ['Service'], k, FIJOS))));
+
+// ---- laboratorio y comandos ----
+check('laboratorio completo: feliz y frase', labCompleto().gestos[0] === 'feliz' && labCompleto().frase === 'Laboratorio completo.');
+check('comando a la primera: solo asiente', !reaccionComando(true, false).frase && reaccionComando(true, false).gestos[0] === 'asiente');
+check('comando con pista: vuelve mañana', /vuelve mañana/.test(reaccionComando(false, false).frase));
+check('comando con pista ya explicado: solo gesto', !reaccionComando(false, true).frase);
 
 console.log(failures ? `\n${failures} de ${n} pruebas fallaron` : `\n${n} pruebas correctas`);
 if (failures) process.exit(1);

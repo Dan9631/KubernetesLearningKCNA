@@ -3,7 +3,7 @@
  * Quien detecta algo (una respuesta, un reto, un módulo) llama a avisarGrumete y no necesita saber si Grumete
  * está en la página: es un evento de ventana. Así el curso no depende de la mascota y se puede quitar sin tocarlo.
  */
-/** paso: casilla del laboratorio marcada; dominada: flashcard marcada como dominada. Son acuses pequeños (asiente).
+/** paso: casilla del laboratorio marcada (lab: la última); dominada: flashcard marcada como dominada. Son acuses pequeños (asiente).
  *  lote: un examen entregado, con su mínimo real para aprobar (el compañero no adivina el umbral).
  *  reto: un reto superado, con su clase (cada uno tiene su frase). */
 import { untrack } from 'svelte';
@@ -19,7 +19,13 @@ export type Aviso =
   /** fin de una ronda de práctica (no de examen), con los fallos y su tema */
   | { tipo: 'ronda'; ok: number; total: number; fallos: Fallo[] }
   /** la pregunta en pantalla es de un tipo que al alumno le cuesta (ya filtrado: como mucho dos por ronda) */
-  | { tipo: 'trampa'; tipos: Trampa[]; dichas: number };
+  | { tipo: 'trampa'; tipos: Trampa[]; dichas: number }
+  /** laboratorio del módulo completo (último paso marcado) */
+  | 'lab'
+  /** comando de memoria acertado: limpio = a la primera y sin pistas */
+  | { tipo: 'comando'; limpio: boolean }
+  /** el alumno empieza a tocar una simulación tras predecir: Grumete la mira, sin decir nada */
+  | { tipo: 'mira'; el: Element };
 export const EV_AVISO = 'grumete:aviso';
 
 /** La portada «Hoy» deja aquí lo que ya calcula (repasos, fallos con seguridad, siguiente paso) para el parte del
